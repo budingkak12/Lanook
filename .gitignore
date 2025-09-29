@@ -1,0 +1,39 @@
+# --- Python / FastAPI ---
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.cache/
+.eggs/
+*.egg-info/
+.coverage
+htmlcov/
+.venv/
+venv/
+.env
+.env.local
+*.log
+
+# Local database and media
+media_app.db
+sample_media/
+
+# --- Node / Vite (webapp) ---
+webapp/node_modules/
+webapp/dist/
+webapp/.vite/
+webapp/.cache/
+
+# --- IDE / OS noise ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Temporary files ---
+*.tmp
+*.bak
