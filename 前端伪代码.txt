@@ -1,0 +1,197 @@
+# ===================================================================
+# 1. 全局状态与数据结构 (Global State & Data Structures)
+# ===================================================================
+
+# 用户会话ID
+session_id = null
+
+# 工作区集合，为每个上下文（如首页、收藏页）保存独立状态
+# key: string (e.g., 'feed', 'tag_favorite')
+# value: WorkspaceState object
+workspaces = {}
+
+# 当前激活的工作区ID，全局播放器根据它来展示内容
+activeWorkspace = null
+
+# 当前的UI视图，决定是显示全局播放器还是其他页面（如缩略图列表）
+currentView = 'player' // 'player' or 'tag_list'
+
+# --- 数据结构定义 ---
+# WorkspaceState Object:
+# {
+#   mediaList: [MediaItem],
+#   currentIndex: number,
+#   offset: number,
+#   hasMore: boolean,
+#   isLoading: boolean
+# }
+#
+# MediaItem Object:
+# {
+#   id: string,
+#   url: string,
+#   playbackPosition: number, // 单位：秒
+#   ...other_media_properties
+# }
+
+
+# ===================================================================
+# 2. 核心逻辑：工作区管理 (Core Logic: Workspace Management)
+# ===================================================================
+
+# 切换或初始化工作区
+function switchToWorkspace(workspaceId, options = {}):
+    # 如果工作区还不存在，则初始化它
+    if workspaces[workspaceId] == null:
+        workspaces[workspaceId] = {
+            mediaList: [],
+            currentIndex: 0,
+            offset: 0,
+            hasMore: true,
+            isLoading: false,
+        }
+        # 异步加载该工作区的初始数据
+        loadMoreMediaFor(workspaceId)
+
+    # 如果是从列表页点击缩略图进来，需要设置起始播放位置
+    if options.startIndex != null:
+        workspaces[workspaceId].currentIndex = options.startIndex
+    
+    # 切换激活的工作区
+    activeWorkspace = workspaceId
+    
+    # 确保UI视图为播放器
+    currentView = 'player'
+    # UI层监听到`activeWorkspace`和`currentView`的变化，会自动刷新播放器内容
+
+# 为指定工作区加载更多数据
+function loadMoreMediaFor(workspaceId):
+    ws = workspaces[workspaceId]
+    if ws.isLoading or not ws.hasMore: return // 防止重复加载
+
+    ws.isLoading = true
+    
+    # 根据工作区ID决定API路径
+    api_path = null
+    if workspaceId == 'feed':
+        api_path = `/feed?session_id=${session_id}&offset=${ws.offset}&limit=PAGE_SIZE`
+    else if workspaceId.startsWith('tag_'):
+        tag = workspaceId.split('_')[1] // e.g., 'favorite' or 'like'
+        api_path = `/tag/${tag}?user_id=...&offset=${ws.offset}&limit=PAGE_SIZE`
+
+    # 发起网络请求
+    newMediaItems = GET api_path
+    
+    # 为每个新媒体项目初始化`playbackPosition`
+    for item in newMediaItems:
+        item.playbackPosition = 0
+
+    # 更新工作区状态
+    ws.mediaList.extend(newMediaItems)
+    ws.offset += newMediaItems.length
+    ws.hasMore = newMediaItems.length > 0
+    ws.isLoading = false
+    # UI层监听到`mediaList`变化，可以刷新数据
+
+
+# ===================================================================
+# 3. 应用生命周期与用户交互 (App Lifecycle & User Interaction)
+# ===================================================================
+
+# 应用冷启动
+function onAppColdStart():
+    resp = POST /session
+    session_id = resp.session_id
+    # 默认进入首页推荐流工作区
+    switchToWorkspace('feed')
+
+# 用户向下滑动
+function onSwipeNext():
+    ws = workspaces[activeWorkspace]
+    if ws == null: return
+
+    newIndex = ws.currentIndex + 1
+    
+    # 提前加载：如果滑动到列表末尾(或倒数第N个)，并且还有更多数据，则加载
+    if newIndex >= ws.mediaList.length - 3 and ws.hasMore:
+        loadMoreMediaFor(activeWorkspace)
+
+    # 更新当前工作区的索引
+    if newIndex < ws.mediaList.length:
+        ws.currentIndex = newIndex
+        # UI层监听到`currentIndex`变化，自动切换播放内容
+
+# 用户点击“喜欢”
+function onClickLike():
+    ws = workspaces[activeWorkspace]
+    currentMedia = ws.mediaList[ws.currentIndex]
+    POST /tag { user_id, media_id=currentMedia.id, tag="like" }
+
+# 用户点击“收藏”
+function onClickFavorite():
+    ws = workspaces[activeWorkspace]
+    currentMedia = ws.mediaList[ws.currentIndex]
+    POST /tag { user_id, media_id=currentMedia.id, tag="favorite" }
+
+# (可以补充 onClickRemoveLike, onClickRemoveFavorite 等)
+
+
+# ===================================================================
+# 4. 视图导航 (View Navigation)
+# ===================================================================
+
+# 用户点击底部Tab导航到首页
+function navigateToHomeTab():
+    switchToWorkspace('feed')
+
+# 用户通过某个入口打开标签列表页（如个人中心的收藏夹）
+function openTagListPage(tag): // tag is "favorite" or "like"
+    currentView = 'tag_list'
+    // UI层监听到`currentView`变化，会隐藏播放器，显示该tag的缩略图列表页
+
+# 在缩略图列表页，用户点击了某个项目
+function onThumbnailClick(tag, index):
+    workspaceId = `tag_${tag}` // e.g., 'tag_favorite'
+    # 切换到该标签的工作区，并指定开始播放的索引
+    switchToWorkspace(workspaceId, { startIndex: index })
+
+
+# ===================================================================
+# 5. 播放器事件与行为 (Player Events & Behavior)
+# ===================================================================
+
+# 播放器播放进度更新时调用
+function onPlayerTimeUpdate(currentTime):
+    if activeWorkspace == null: return
+    ws = workspaces[activeWorkspace]
+    if ws == null or ws.mediaList.length == 0: return
+
+    # 更新当前媒体对象的播放位置
+    currentMedia = ws.mediaList[ws.currentIndex]
+    currentMedia.playbackPosition = currentTime
+
+# 当前视频播放完成时调用
+function onPlayerMediaEnd():
+    if activeWorkspace == null: return
+    ws = workspaces[activeWorkspace]
+    currentMedia = ws.mediaList[ws.currentIndex]
+    # 将进度重置为0，以便下次从头播放
+    currentMedia.playbackPosition = 0
+
+# --- 播放器组件的内部行为逻辑 ---
+# on "display new media" event:
+#   1. 获取要播放的媒体对象:
+#      mediaToPlay = workspaces[activeWorkspace].mediaList[currentIndex]
+#
+#   2. 检查已保存的播放位置:
+#      savedPosition = mediaToPlay.playbackPosition or 0
+#
+#   3. 加载媒体资源:
+#      player.load(mediaToPlay.url)
+#
+#   4. 如果是视频且有已保存的进度, 则跳转到该位置:
+#      if savedPosition > 0:
+#          player.seek(savedPosition)
+#
+#   5. 开始播放:
+#      player.play()
