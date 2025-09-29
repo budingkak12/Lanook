@@ -1,4 +1,4 @@
-import { getMediaResourceList, MediaItem, postSession } from '../lib/api';
+import { getMediaResourceList, getThumbnailList, MediaItem, postSession, addTag, removeTag } from '../lib/api';
 
 export type WorkspaceState = {
   mediaList: MediaItem[];
@@ -6,6 +6,7 @@ export type WorkspaceState = {
   offset: number;
   hasMore: boolean;
   isLoading: boolean;
+  scrollTop: number;
 };
 
 type View = 'player' | 'tag_grid';
@@ -39,6 +40,7 @@ export function ensureWorkspace(workspaceId: string) {
       offset: 0,
       hasMore: true,
       isLoading: false,
+      scrollTop: 0,
     };
   }
   return workspaces[workspaceId];
@@ -58,6 +60,15 @@ export async function switchToWorkspace(workspaceId: string, options: { startInd
   }
 }
 
+// 强制在某工作区进入播放器视图（用于缩略图点击进入详情）
+export function switchToPlayerInWorkspace(workspaceId: string, startIndex: number) {
+  ensureWorkspace(workspaceId);
+  activeWorkspace = workspaceId;
+  workspaces[workspaceId].currentIndex = startIndex;
+  currentView = 'player';
+  emit();
+}
+
 export async function loadMoreMediaFor(workspaceId: string) {
   const ws = ensureWorkspace(workspaceId);
   if (ws.isLoading || !ws.hasMore) return;
@@ -72,7 +83,11 @@ export async function loadMoreMediaFor(workspaceId: string) {
       ws.offset += page.items.length;
       ws.hasMore = page.items.length > 0;
     } else if (workspaceId.startsWith('tag_')) {
-      // tag grid not implemented in this step
+      const tag = workspaceId.split('_')[1];
+      const page = await getThumbnailList({ tag, offset: ws.offset, limit: 30 });
+      newItems = page.items.map((i) => ({ ...i, url: i.url ?? i.resourceUrl }));
+      ws.offset += page.items.length;
+      ws.hasMore = page.items.length > 0;
     }
     // add playbackPosition client-side field
     (newItems as any[]).forEach((it) => (it.playbackPosition = 0));
@@ -87,6 +102,26 @@ export async function onAppColdStart(optionalSeed?: string | number) {
   const resp = await postSession(optionalSeed);
   sessionSeed = resp.session_seed;
   await switchToWorkspace('feed');
+}
+
+// 导航与页面切换
+export function navigateToHomeTab() {
+  switchToWorkspace('feed');
+}
+
+export async function openTagGrid(tag: 'like' | 'favorite') {
+  await switchToWorkspace(`tag_${tag}`);
+}
+
+export function onThumbnailClick(tag: 'like' | 'favorite', index: number) {
+  switchToPlayerInWorkspace(`tag_${tag}`, index);
+}
+
+export function backToGrid() {
+  if (!activeWorkspace) return;
+  // 返回列表视图（标签网格）
+  currentView = 'tag_grid';
+  emit();
 }
 
 export async function onSwipeUp() {
@@ -128,4 +163,31 @@ export function resetPlaybackPosition() {
   if (!ws || ws.mediaList.length === 0) return;
   const currentMedia: any = ws.mediaList[ws.currentIndex];
   currentMedia.playbackPosition = 0;
+}
+
+// 点赞/收藏操作（当前媒体）
+export async function setTagForCurrent(tag: 'like' | 'favorite', value: boolean) {
+  if (!activeWorkspace) return;
+  const ws = workspaces[activeWorkspace];
+  if (!ws || ws.mediaList.length === 0) return;
+  const currentMedia: any = ws.mediaList[ws.currentIndex];
+  try {
+    if (value) await addTag(currentMedia.id, tag);
+    else await removeTag(currentMedia.id, tag);
+    // optimistic local flag
+    if (tag === 'like') currentMedia.liked = value;
+    if (tag === 'favorite') currentMedia.favorited = value;
+    emit();
+  } catch (e) {
+    // swallow errors for now; could show toast
+    console.error('Tag operation failed', e);
+  }
+}
+
+// 记录并恢复滚动位置（列表页）
+export function setScrollTop(scrollTop: number) {
+  if (!activeWorkspace) return;
+  const ws = workspaces[activeWorkspace];
+  if (!ws) return;
+  ws.scrollTop = scrollTop;
 }

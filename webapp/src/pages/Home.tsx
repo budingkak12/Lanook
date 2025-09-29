@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getState,
-  onAppColdStart,
   onSwipeDown,
   onSwipeUp,
   resetPlaybackPosition,
   subscribe,
   updatePlaybackPosition,
 } from '../store/workspaces';
+import { setTagForCurrent } from '../store/workspaces';
 
 const SWIPE_THRESHOLD = 30; // pixels
 
@@ -18,9 +18,6 @@ export default function Home() {
 
   useEffect(() => {
     const unsub = subscribe(() => force((x) => x + 1));
-    (async () => {
-      await onAppColdStart();
-    })();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowUp') onSwipeUp();
       else if (e.key === 'ArrowDown') onSwipeDown();
@@ -77,6 +74,14 @@ export default function Home() {
             <div className="filename">{current.filename}</div>
             <div className="created">{new Date(current.createdAt).toLocaleString()}</div>
             <div className="index">{ws!.currentIndex + 1} / {ws!.mediaList.length}</div>
+            <div className="actions">
+              <button className="action" onClick={() => setTagForCurrent('like', !(current as any).liked)}>
+                {(current as any).liked ? '取消点赞' : '点赞'}
+              </button>
+              <button className="action" onClick={() => setTagForCurrent('favorite', !(current as any).favorited)}>
+                {(current as any).favorited ? '取消收藏' : '收藏'}
+              </button>
+            </div>
           </div>
           {current.type === 'image' ? (
             <img className="media" src={current.resourceUrl} alt={current.filename} />
@@ -106,6 +111,9 @@ const styles = `
 .media { height: 100vh; width: auto; max-width: 100vw; object-fit: contain; }
 .meta { position: absolute; top: 16px; left: 16px; font-size: 12px; opacity: 0.9; }
 .filename { font-weight: 600; }
+.actions { margin-top: 8px; display: flex; gap: 8px; }
+.action { font-size: 12px; background: rgba(255,255,255,0.08); color: #eee; border: 1px solid rgba(255,255,255,0.12); padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.action:hover { background: rgba(255,255,255,0.16); }
 .loading, .empty { font-size: 16px; opacity: 0.8; }
 .hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; }
 `;
