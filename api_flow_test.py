@@ -178,9 +178,8 @@ def main():
     # 1) 会话种子
     resp, body = http_call(
         title="Create Session",
-        method="POST",
+        method="GET",
         path="/session",
-        json_body={},
     )
     session_seed = json.loads(body.decode("utf-8"))["session_seed"]
     assert_true(isinstance(session_seed, str) and len(session_seed) > 0, "session_seed 应为非空字符串")
@@ -188,9 +187,9 @@ def main():
     # 1.1 指定种子也可工作
     _, body = http_call(
         title="Create Session (with seed)",
-        method="POST",
+        method="GET",
         path="/session",
-        json_body={"seed": 12345},
+        query={"seed": 12345},
     )
     session_seed2 = json.loads(body.decode("utf-8")).get("session_seed")
     assert_true(str(session_seed2) == "12345", "指定种子应被回显为字符串")
@@ -349,6 +348,23 @@ def main():
     )
     code = getattr(r_416, 'status_code', getattr(r_416, 'code', None)) or r_416.getcode()
     assert_true(int(code) in (416, 206), "对超大范围应返回 416；若资源极小也可能回退 206")
+
+    # 13) 删除媒体项
+    http_call(
+        title="Delete Media Item",
+        method="DELETE",
+        path=f"/media/{first_id}",
+    )
+
+    # 13.1) 删除后再次请求应返回 404
+    r_deleted, _ = http_call(
+        title="Media Resource After Delete",
+        method="GET",
+        path=f"/media-resource/{first_id}",
+        allow_error=True,
+    )
+    code = getattr(r_deleted, 'status_code', getattr(r_deleted, 'code', None)) or r_deleted.getcode()
+    assert_true(int(code) == 404, "删除后的媒体应返回 404")
 
     print("\nAll API flow steps completed successfully.")
 

@@ -6,8 +6,9 @@ import {
   resetPlaybackPosition,
   subscribe,
   updatePlaybackPosition,
+  deleteCurrentMedia,
+  setTagForCurrent,
 } from '../store/workspaces';
-import { setTagForCurrent } from '../store/workspaces';
 
 const FIXED_ANIMATION = {
   swipeThreshold: 10,
@@ -50,6 +51,7 @@ export default function Home() {
   const current = ws && ws.mediaList[ws.currentIndex];
   const [playError, setPlayError] = useState(false);
   const [transitionDirection, setTransitionDirection] = useState<'up' | 'down' | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const lastIndexRef = useRef<number | null>(null);
   const transitionTimerRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -148,6 +150,27 @@ export default function Home() {
               <button className="action" onClick={() => setTagForCurrent('favorite', !(current as any).favorited)}>
                 {(current as any).favorited ? '取消收藏' : '收藏'}
               </button>
+              <button
+                className="action danger"
+                disabled={isDeleting}
+                onClick={async () => {
+                  if (!current || isDeleting) return;
+                  setIsDeleting(true);
+                  try {
+                    const removed = await deleteCurrentMedia();
+                    if (!removed) {
+                      window.alert('删除失败：当前媒体不存在');
+                    }
+                  } catch (e: any) {
+                    console.error('Delete media failed', e);
+                    window.alert(e?.message || '删除失败');
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+              >
+                {isDeleting ? '删除中…' : '删除'}
+              </button>
             </div>
           </div>
           {current.type === 'image' ? (
@@ -189,9 +212,9 @@ export default function Home() {
   );
 }
 
-type TunerConfig = typeof DEFAULT_TUNER;
+type AnimationConfig = typeof FIXED_ANIMATION;
 
-function DynamicStyles({ config }: { config: TunerConfig }) {
+function DynamicStyles({ config }: { config: AnimationConfig }) {
   const { animDuration, animTranslate, animOpacity, animEasing, animMode, scaleFrom } = config;
   const easingId = animEasing.replace(/[^a-z]/gi, '') || 'easing';
   const idSuffix = `${animMode}_${animDuration}_${animTranslate}_${Math.round(animOpacity * 100)}_${Math.round(scaleFrom * 100)}_${easingId}`;
@@ -268,6 +291,8 @@ function DynamicStyles({ config }: { config: TunerConfig }) {
 .actions { margin-top: 8px; display: flex; gap: 8px; }
 .action { font-size: 12px; background: rgba(255,255,255,0.08); color: #eee; border: 1px solid rgba(255,255,255,0.12); padding: 6px 8px; border-radius: 6px; cursor: pointer; }
 .action:hover { background: rgba(255,255,255,0.16); }
+.action.danger { color: #ff8a80; border-color: rgba(255,138,128,0.4); }
+.action.danger:hover { background: rgba(255,138,128,0.15); }
 .loading, .empty { font-size: 16px; opacity: 0.8; }
 .hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; z-index: 2; }
 .fallback { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; color: #ccc; }

@@ -234,6 +234,38 @@ def create_session(seed: Optional[str] = Query(None)):
     return SessionResponse(session_seed=session_seed)
 
 
+@app.delete("/media/{media_id}", status_code=204)
+def delete_media_item(
+    media_id: int,
+    delete_file: bool = Query(True, description="是否同时删除原始文件"),
+    db=Depends(get_db),
+):
+    media = db.query(Media).filter(Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="media not found")
+
+    thumb_path = _thumb_path_for(media)
+    # 从数据库删除记录（包含标签）
+    db.delete(media)
+    db.commit()
+
+    # 删除缩略图文件（若存在）
+    try:
+        if thumb_path.exists():
+            thumb_path.unlink()
+    except Exception:
+        pass
+
+    # 可选删除原媒体文件
+    if delete_file and media.absolute_path and isinstance(media.absolute_path, str):
+        try:
+            if os.path.exists(media.absolute_path):
+                os.remove(media.absolute_path)
+        except Exception:
+            # 失败不影响 API 主流程
+            pass
+
+
 
 
 @app.get("/media-resource-list", response_model=PageResponse)

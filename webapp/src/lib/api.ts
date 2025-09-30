@@ -183,3 +183,11 @@ export async function removeTag(mediaId: number, tag: 'like' | 'favorite'): Prom
   });
   if (!resp.ok && resp.status !== 404) throw new Error(`DELETE /tag failed: ${resp.status}`);
 }
+
+export async function deleteMedia(mediaId: number, options?: { deleteFile?: boolean }): Promise<void> {
+  const qs = options?.deleteFile ? '?delete_file=1' : '';
+  const resp = await apiFetch(`/media/${mediaId}${qs}`, { method: 'DELETE' });
+  if (!resp.ok && resp.status !== 204) {
+    throw new Error(`DELETE /media/${mediaId} failed: ${resp.status}`);
+  }
+}

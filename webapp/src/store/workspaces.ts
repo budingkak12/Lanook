@@ -1,4 +1,4 @@
-import { getMediaResourceList, getThumbnailList, MediaItem, postSession, addTag, removeTag } from '../lib/api';
+import { getMediaResourceList, getThumbnailList, MediaItem, postSession, addTag, removeTag, deleteMedia } from '../lib/api';
 
 export type WorkspaceState = {
   mediaList: MediaItem[];
@@ -177,6 +177,55 @@ export function resetPlaybackPosition() {
   if (!ws || ws.mediaList.length === 0) return;
   const currentMedia: any = ws.mediaList[ws.currentIndex];
   currentMedia.playbackPosition = 0;
+}
+
+function removeMediaFromWorkspace(ws: WorkspaceState, mediaId: number) {
+  const idx = ws.mediaList.findIndex((item) => item.id === mediaId);
+  if (idx === -1) return false;
+  ws.mediaList.splice(idx, 1);
+  if (ws.offset > 0) {
+    ws.offset = Math.max(0, ws.offset - 1);
+  }
+  if (ws.currentIndex > idx) {
+    ws.currentIndex -= 1;
+  } else if (ws.currentIndex >= ws.mediaList.length) {
+    ws.currentIndex = Math.max(ws.mediaList.length - 1, 0);
+  }
+  if (ws.mediaList.length === 0) {
+    ws.currentIndex = 0;
+    ws.scrollTop = 0;
+  }
+  return true;
+}
+
+function removeMediaFromAllWorkspaces(mediaId: number) {
+  let changed = false;
+  for (const ws of Object.values(workspaces)) {
+    if (removeMediaFromWorkspace(ws, mediaId)) {
+      changed = true;
+    }
+  }
+  if (changed) {
+    emit();
+  }
+  return changed;
+}
+
+export async function deleteCurrentMedia(options: { deleteFile?: boolean } = { deleteFile: true }) {
+  if (!activeWorkspace) return false;
+  const ws = workspaces[activeWorkspace];
+  if (!ws || ws.mediaList.length === 0) return false;
+  const target = ws.mediaList[ws.currentIndex];
+
+  const mergedOptions = { deleteFile: true, ...(options || {}) };
+  await deleteMedia(target.id, mergedOptions);
+  removeMediaFromAllWorkspaces(target.id);
+
+  const refreshed = workspaces[activeWorkspace];
+  if (refreshed && refreshed.mediaList.length === 0 && refreshed.hasMore) {
+    await loadMoreMediaFor(activeWorkspace);
+  }
+  return true;
 }
 
 // 点赞/收藏操作（当前媒体）
