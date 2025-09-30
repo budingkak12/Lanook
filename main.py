@@ -233,11 +233,13 @@ def get_media_thumbnail(media_id: int, db=Depends(get_db)):
     media = db.query(Media).filter(Media.id == media_id).first()
     if not media:
         raise HTTPException(status_code=404, detail="media not found")
-    if not os.path.exists(media.absolute_path):
+    # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
+    if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
         raise HTTPException(status_code=404, detail="file not found")
     # 简化：直接返回原文件作为缩略图，占位用途；后续可替换为真实缩略图。
     mime = "image/jpeg" if media.media_type == "image" else "video/mp4"
-    return FileResponse(path=media.absolute_path, media_type=mime, filename=media.filename)
+    # 注意：移除自定义 Content-Disposition 以避免非 ASCII 文件名触发 latin-1 编码错误
+    return FileResponse(path=media.absolute_path, media_type=mime)
 
 
 @app.get("/media-resource/{media_id}")
@@ -245,7 +247,9 @@ def get_media_resource(media_id: int, db=Depends(get_db)):
     media = db.query(Media).filter(Media.id == media_id).first()
     if not media:
         raise HTTPException(status_code=404, detail="media not found")
-    if not os.path.exists(media.absolute_path):
+    # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
+    if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
         raise HTTPException(status_code=404, detail="file not found")
     mime = "image/jpeg" if media.media_type == "image" else "video/mp4"
-    return FileResponse(path=media.absolute_path, media_type=mime, filename=media.filename)
+    # 注意：移除自定义 Content-Disposition 以避免非 ASCII 文件名触发 latin-1 编码错误
+    return FileResponse(path=media.absolute_path, media_type=mime)

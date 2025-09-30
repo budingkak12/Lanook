@@ -91,6 +91,8 @@ export default function Home() {
               ref={videoRef}
               src={current.resourceUrl}
               controls
+              preload="metadata"
+              playsInline
               autoPlay
               onTimeUpdate={(e) => updatePlaybackPosition((e.target as HTMLVideoElement).currentTime)}
               onEnded={() => resetPlaybackPosition()}
@@ -107,13 +109,13 @@ export default function Home() {
 
 const styles = `
 .home-container { width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #111; color: #eee; position: relative; }
-.player { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
-.media { height: 100vh; width: auto; max-width: 100vw; object-fit: contain; }
-.meta { position: absolute; top: 16px; left: 16px; font-size: 12px; opacity: 0.9; }
+.player { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+.media { height: 100vh; width: auto; max-width: 100vw; object-fit: contain; position: relative; z-index: 1; }
+.meta { position: absolute; top: 16px; left: 16px; font-size: 12px; opacity: 0.9; z-index: 3; pointer-events: auto; }
 .filename { font-weight: 600; }
 .actions { margin-top: 8px; display: flex; gap: 8px; }
 .action { font-size: 12px; background: rgba(255,255,255,0.08); color: #eee; border: 1px solid rgba(255,255,255,0.12); padding: 6px 8px; border-radius: 6px; cursor: pointer; }
 .action:hover { background: rgba(255,255,255,0.16); }
 .loading, .empty { font-size: 16px; opacity: 0.8; }
-.hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; }
+.hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; z-index: 2; }
 `;
