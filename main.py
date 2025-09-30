@@ -22,7 +22,8 @@ from 初始化数据库 import SessionLocal, Media, TagDefinition, MediaTag, cre
 # =============================
 
 class SessionRequest(BaseModel):
-    seed: Optional[str] = None
+    # 允许前端传入数字或字符串的种子；后续统一转为字符串
+    seed: Optional[str | int] = None
 
 
 class SessionResponse(BaseModel):
@@ -76,9 +77,14 @@ def get_db():
         db.close()
 
 
-# 应用启动时确保数据库表与基础标签存在，避免首次运行出现 500（表不存在）
+# 应用启动时可选地初始化数据库（默认跳过；设置环境变量开启）
 @app.on_event("startup")
 def _ensure_db_initialized():
+    flag = str(os.environ.get("MEDIA_APP_INIT_ON_STARTUP", "")).strip().lower()
+    enabled = flag in {"1", "true", "yes", "on"}
+    if not enabled:
+        print("[startup] Skip DB init (set MEDIA_APP_INIT_ON_STARTUP=1 to enable).")
+        return
     try:
         create_database_and_tables()
         db = SessionLocal()
@@ -223,6 +229,7 @@ def create_session(req: SessionRequest):
         # 生成一个稳定字符串种子（可替换为 uuid 或时间戳）
         session_seed = str(random.randint(10**12, 10**13 - 1))
     else:
+        # 接受数字/字符串并规范化为字符串
         session_seed = str(req.seed)
     return SessionResponse(session_seed=session_seed)
 

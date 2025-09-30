@@ -1,37 +1,39 @@
-# Repository Guidelines
+# 仓库指南
+约定：优先使用 `uv run python ...` 运行 Python 脚本；沟通使用中文。
 
-## Project Structure & Module Organization
-- Backend (FastAPI): `main.py` (routes, CORS, streaming), models and DB setup in `初始化数据库.py`.
-- Data: `media_app.db` (SQLite), `sample_media/` (local media), `thumbnails/` (generated). Both are git‑ignored.
-- Utilities: `generate_test_videos.py` (creates sample MP4s), `api_flow_test.py` (end‑to‑end API flow).
-- Frontend (Vite + React + TS): `webapp/` with `src/pages/`, `src/store/`, and `src/lib/api.ts` (API client). Vite proxy targets the backend at `http://localhost:8000`.
+## 项目结构
+- 后端（FastAPI）：`main.py`（路由/CORS/流式传输），数据库模型与初始化在 `初始化数据库.py`。
+- 数据：`media_app.db`（SQLite）、`sample_media/`（本地媒体）、`thumbnails/`（生成缩略图，已忽略提交）。
+- 工具：`generate_test_videos.py`（生成示例 MP4）、`api_flow_test.py`（后端流程测试）。
+- 前端（Vite + React + TS）：`webapp/`，代码位于 `src/pages/`、`src/store/`、`src/lib/api.ts`。Vite 代理到 `http://localhost:8000`。E2E 测试位于 `webapp/tests/`，配置 `playwright.config.ts`。
 
-## Build, Test, and Development Commands
-- Backend
-  - Create env and install deps: `python -m venv .venv && source .venv/bin/activate && pip install fastapi "uvicorn[standard]" sqlalchemy pydantic`.
-  - Initialize DB (edit `MEDIA_DIRECTORY_TO_SCAN` if needed): `python 初始化数据库.py`.
-  - Start API (reload): `python -m uvicorn main:app --reload --port 8000`.
-  - Generate sample media (requires ffmpeg): `python generate_test_videos.py`.
-- Frontend (in `webapp/`)
-  - Install: `npm install` (or `npm ci`).
-  - Dev server: `npm run dev` (proxied API: see `webapp/vite.config.ts`).
-  - Build/preview: `npm run build` then `npm run preview`.
-- Quick E2E check
-  - With API running: `python api_flow_test.py` (override with `API_BASE_URL=http://127.0.0.1:8000`).
+## 构建与运行命令
+- 后端（项目根目录执行）
+  - 创建环境并安装依赖：` uv pip install fastapi "uvicorn[standard]" sqlalchemy pydantic`。
+  - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
+  - 同端口强制重启：`bash scripts/dev_restart.sh 8000`。
+  - 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
+- 前端（进入 `webapp/`）
+  - 安装依赖：`npm install`（或 `npm ci`）。
+  - 开发服务：`npm run dev`。
+  - 构建/预览：`npm run build`，`npm run preview`。
+  - E2E：先 `npm run playwright:install`，再 `npm run test:e2e`；后端在线用 `npm run test:e2e:online`，离线冒烟用 `npm run test:e2e:offline`。
+- 快速后端检查：`uv run python api_flow_test.py`（也可设置 `API_BASE_URL`）。
 
-## Coding Style & Naming Conventions
-- Python: PEP 8, 4‑space indent, type hints where practical. snake_case for functions/vars, PascalCase for classes. Keep route shapes stable with existing names (e.g., `/session`, `/thumbnail-list`).
-- TypeScript/React: strict TS; camelCase for vars/functions; PascalCase for components (`pages/*.tsx`). Centralize HTTP in `src/lib/api.ts`; avoid ad‑hoc fetches in components.
-- Formatting: Prefer auto‑format (Black for Python; Prettier/editor defaults for TS/JS). Keep imports sorted and unused code removed.
+## 代码风格与命名
+- Python：PEP 8，4 空格缩进，尽量加类型标注；函数/变量用 snake_case，类使用 PascalCase。保持现有路由命名（如 `/session`、`/thumbnail-list`）。
+- TypeScript/React：严格 TS；变量/函数 camelCase，组件 PascalCase。HTTP 统一放在 `src/lib/api.ts`，避免在组件里直接 fetch。
+- 格式化：Python 推荐 Black；TS/JS 使用 Prettier/编辑器默认。
 
-## Testing Guidelines
-- Primary check: `api_flow_test.py` runs the documented API sequence in‑process (or via HTTP). Ensure it passes before sending a PR.
-- If adding Python modules, place unit tests under `tests/` as `test_*.py` and run with `pytest -q` (optional but encouraged).
+## 测试指南
+- 后端：`api_flow_test.py` 覆盖冷启动、分页、缩略图、标签与 Range 请求；优先使用进程内 TestClient，必要时走 HTTP。
+- 可选单测：新增 `tests/` 下 `test_*.py` 并用 `pytest -q` 运行。
 
-## Commit & Pull Request Guidelines
-- Commits: concise, imperative. Conventional Commits preferred when possible (e.g., `feat: add tag filter to /thumbnail-list`, `fix: handle missing absolute_path`).
-- PRs: include a clear description, steps to reproduce, screenshots/GIFs for UI changes, and notes on DB or API changes (update `webapp/vite.config.ts` and `src/lib/api.ts` if routes change).
+## 提交与合并请求
+- 提交信息简洁、祈使句；建议使用 Conventional Commits（如 `feat: add /thumbnail-list filter`、`fix: handle missing absolute_path`）。
+- PR 需包含变更说明、复现步骤，前端变更附截图/GIF；若改动接口，记得同步 `webapp/vite.config.ts` 与 `src/lib/api.ts`。
 
-## Security & Configuration Tips
-- Set `MEDIA_DIRECTORY_TO_SCAN` (absolute path recommended) before initializing the DB. Do not commit personal media.
-- ffmpeg is required for thumbnails and sample video generation. Install and ensure it’s on PATH.
+## 安全与配置
+- 配置 `MEDIA_DIRECTORY_TO_SCAN`（建议绝对路径），请勿提交个人媒体。
+- 需安装 ffmpeg 以生成缩略图与示例视频。
+- 默认启动不做 DB 初始化；若需在启动时自动建表与基础标签，设置环境变量：`MEDIA_APP_INIT_ON_STARTUP=1`。

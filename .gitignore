@@ -18,12 +18,24 @@ venv/
 # Local database and media
 media_app.db
 sample_media/
+thumbnails/
+
+# uv caches
+.uv_cache/
+.uv_data/
 
 # --- Node / Vite (webapp) ---
 webapp/node_modules/
 webapp/dist/
 webapp/.vite/
 webapp/.cache/
+webapp/playwright-report/
+webapp/test-results/
+webapp/.playwright/
+
+# npm cache and logs
+.npm_cache/
+npm-debug.log*
 
 # --- IDE / OS noise ---
 .vscode/
