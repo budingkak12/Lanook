@@ -19,6 +19,9 @@ export type PageResp<T> = {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
+// TODO: 调试期写死的默认后端地址，方便内网联调
+const DEFAULT_API_BASE = 'http://10.0.174.32:8000';
+
 function normalizeApiBaseInput(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
@@ -51,7 +54,7 @@ export function getApiBase(): string | undefined {
       return normalized ?? envBase.trim();
     }
   } catch {}
-  return undefined;
+  return DEFAULT_API_BASE;
 }
 
 export function setApiBase(v: string | null): string | null {
@@ -75,18 +78,35 @@ function resolveUrl(path: string): string {
   return path; // 使用 Vite 代理（开发）或同源相对路径（生产网页）
 }
 
+function absolutePath(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  if (!path.startsWith('/')) return path;
+  const base = getApiBase();
+  if (!base) return path;
+  try {
+    return new URL(path, base).toString();
+  } catch {
+    const cleaned = base.endsWith('/') ? base.slice(0, -1) : base;
+    return `${cleaned}${path}`;
+  }
+}
+
+function hydrateMediaItem(raw: MediaItem): MediaItem {
+  const resourceUrl = absolutePath(raw.resourceUrl) ?? raw.resourceUrl;
+  const url = absolutePath(raw.url) ?? resourceUrl;
+  const thumbnailUrl = absolutePath(raw.thumbnailUrl) ?? raw.thumbnailUrl;
+  return { ...raw, resourceUrl, url, thumbnailUrl };
+}
+
 async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = resolveUrl(path);
   return fetch(url, init);
 }
 
 export async function postSession(seed?: string | number): Promise<{ session_seed: string }> {
-  const resp = await apiFetch('/session', {
-    method: 'POST',
-    headers: JSON_HEADERS,
-    body: JSON.stringify(seed != null ? { seed } : {}),
-  });
-  if (!resp.ok) throw new Error(`POST /session failed: ${resp.status}`);
+  const qs = seed != null ? `?seed=${encodeURIComponent(String(seed))}` : '';
+  const resp = await apiFetch(`/session${qs}`);
+  if (!resp.ok) throw new Error(`GET /session failed: ${resp.status}`);
   return resp.json();
 }
 
@@ -100,7 +120,11 @@ export async function getMediaResourceList(params: {
   const url = `/media-resource-list?seed=${encodeURIComponent(seed)}&offset=${offset}&limit=${limit}&order=${order}`;
   const resp = await apiFetch(url);
   if (!resp.ok) throw new Error(`GET /media-resource-list failed: ${resp.status}`);
-  return resp.json();
+  const page: PageResp<MediaItem> = await resp.json();
+  return {
+    ...page,
+    items: page.items.map(hydrateMediaItem),
+  };
 }
 
 export async function getMediaResource(id: number): Promise<Response> {
@@ -128,7 +152,11 @@ export async function getThumbnailList(params: {
   qs.set('limit', String(limit));
   const resp = await apiFetch(`/thumbnail-list?${qs.toString()}`);
   if (!resp.ok) throw new Error(`GET /thumbnail-list failed: ${resp.status}`);
-  return resp.json();
+  const page: PageResp<MediaItem> = await resp.json();
+  return {
+    ...page,
+    items: page.items.map(hydrateMediaItem),
+  };
 }
 
 export async function listTags(): Promise<{ tags: string[] }> {

@@ -39,6 +39,10 @@ export default function Home() {
   const ws = activeWorkspace ? workspaces[activeWorkspace] : null;
   const current = ws && ws.mediaList[ws.currentIndex];
   const [playError, setPlayError] = useState(false);
+  const [transitionDirection, setTransitionDirection] = useState<'up' | 'down' | null>(null);
+  const lastIndexRef = useRef<number | null>(null);
+  const transitionTimerRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   const ext = useMemo(() => {
     const fn = current?.filename || '';
@@ -74,11 +78,55 @@ export default function Home() {
 
   const loading = !ws || ws.isLoading && ws.mediaList.length === 0;
 
+  useEffect(() => {
+    if (!ws || !current) {
+      lastIndexRef.current = null;
+      setTransitionDirection(null);
+      return;
+    }
+    const idx = ws.currentIndex;
+    const prev = lastIndexRef.current;
+    if (prev === null) {
+      lastIndexRef.current = idx;
+      return;
+    }
+    if (idx === prev) {
+      return;
+    }
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    const direction: 'up' | 'down' = idx > prev ? 'up' : 'down';
+    setTransitionDirection(null);
+    rafRef.current = window.requestAnimationFrame(() => {
+      setTransitionDirection(direction);
+      transitionTimerRef.current = window.setTimeout(() => {
+        setTransitionDirection(null);
+        transitionTimerRef.current = null;
+      }, 420);
+    });
+    lastIndexRef.current = idx;
+  }, [ws?.currentIndex, current?.id, ws, current]);
+
+  useEffect(() => () => {
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+    }
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+    }
+  }, []);
+
   return (
     <div className="home-container" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {loading && <div className="loading">加载中...</div>}
       {!loading && current && (
-        <div className="player">
+        <div className={`player ${transitionDirection ? `slide-${transitionDirection}` : ''}`}>
           <div className="meta">
             <div className="filename">{current.filename}</div>
             <div className="created">{new Date(current.createdAt).toLocaleString()}</div>
@@ -133,8 +181,12 @@ export default function Home() {
 
 const styles = `
 .home-container { width: 100vw; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #111; color: #eee; position: relative; }
-.player { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
-.media { height: 100vh; width: auto; max-width: 100vw; object-fit: contain; position: relative; z-index: 1; }
+.player { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; will-change: transform, opacity; }
+.player.slide-up { animation: slideUp 0.38s ease-out both; }
+.player.slide-down { animation: slideDown 0.38s ease-out both; }
+.media { height: 100vh; width: auto; max-width: 100vw; object-fit: contain; position: relative; z-index: 1; transition: transform 0.38s ease-out, opacity 0.38s ease-out; }
+.player.slide-up .media { transform: translateY(-6vh); opacity: 0.94; }
+.player.slide-down .media { transform: translateY(6vh); opacity: 0.94; }
 .meta { position: absolute; top: 16px; left: 16px; font-size: 12px; opacity: 0.9; z-index: 3; pointer-events: auto; }
 .filename { font-weight: 600; }
 .actions { margin-top: 8px; display: flex; gap: 8px; }
@@ -143,4 +195,12 @@ const styles = `
 .loading, .empty { font-size: 16px; opacity: 0.8; }
 .hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; z-index: 2; }
 .fallback { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; color: #ccc; }
+@keyframes slideUp {
+  from { transform: translateY(24vh); opacity: 0.2; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes slideDown {
+  from { transform: translateY(-24vh); opacity: 0.2; }
+  to { transform: translateY(0); opacity: 1; }
+}
 `;

@@ -223,14 +223,14 @@ def seeded_key(seed: str, media_id: int) -> str:
 # 路由
 # =============================
 
-@app.post("/session", response_model=SessionResponse)
-def create_session(req: SessionRequest):
-    if req.seed is None or str(req.seed).strip() == "":
+@app.get("/session", response_model=SessionResponse)
+def create_session(seed: Optional[str] = Query(None)):
+    if seed is None or str(seed).strip() == "":
         # 生成一个稳定字符串种子（可替换为 uuid 或时间戳）
         session_seed = str(random.randint(10**12, 10**13 - 1))
     else:
         # 接受数字/字符串并规范化为字符串
-        session_seed = str(req.seed)
+        session_seed = str(seed)
     return SessionResponse(session_seed=session_seed)
 
 
