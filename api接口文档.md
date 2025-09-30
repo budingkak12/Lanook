@@ -40,16 +40,17 @@
 
 缩略图文件（单个媒体）
 - `GET /media/{id}/thumbnail`
-  - 用途：获取某媒体的缩略图二进制（当前简化为原文件占位）。
+  - 用途：获取某媒体的缩略图二进制。
+  - 行为：后端将为图片等比缩放、为视频抽取关键帧生成真实缩略图（约 480px 最大边），优先返回生成文件；生成失败时回退到原文件。
   - 路径参数：`id: number`
-  - 响应：图片/视频二进制
+  - 响应：图片二进制（`Content-Type` 随缩略图类型而定，通常为 `image/jpeg`），附带 `Cache-Control`, `ETag`, `Last-Modified`, `Accept-Ranges`
   - 错误：404（媒体不存在或文件缺失）
 
 媒体文件（原媒体资源）
 - `GET /media-resource/{id}`
   - 用途：返回指定媒体的原始文件二进制，用于播放器或图片展示。
   - 路径参数：`id: number`
-  - 响应：图片或视频二进制流（`Content-Type` 随文件类型而定，如 `image/jpeg` 或 `video/mp4`）
+  - 响应：图片或视频二进制流（`Content-Type` 随文件类型而定，如 `image/jpeg`、`video/mp4` 等；后端会自动判定），支持字节范围请求 `Range: bytes=...`，当请求范围有效时返回 `206 Partial Content` 并附带 `Content-Range`、`Content-Length`、`Accept-Ranges`，配合 `ETag` 与 `Last-Modified` 进行缓存验证。
   - 错误：404（媒体不存在或文件缺失）
 
 缩略图列表JSON（唯一列表端点）

@@ -81,13 +81,13 @@ export async function loadMoreMediaFor(workspaceId: string) {
       const page = await getMediaResourceList({ seed: sessionSeed, offset: ws.offset, limit: 20, order: 'seeded' });
       newItems = page.items.map((i) => ({ ...i, url: i.url ?? i.resourceUrl }));
       ws.offset += page.items.length;
-      ws.hasMore = page.items.length > 0;
+      ws.hasMore = page.hasMore;
     } else if (workspaceId.startsWith('tag_')) {
       const tag = workspaceId.split('_')[1];
       const page = await getThumbnailList({ tag, offset: ws.offset, limit: 30 });
       newItems = page.items.map((i) => ({ ...i, url: i.url ?? i.resourceUrl }));
       ws.offset += page.items.length;
-      ws.hasMore = page.items.length > 0;
+      ws.hasMore = page.hasMore;
     }
     // add playbackPosition client-side field
     (newItems as any[]).forEach((it) => (it.playbackPosition = 0));
@@ -110,7 +110,21 @@ export function navigateToHomeTab() {
 }
 
 export async function openTagGrid(tag: 'like' | 'favorite') {
-  await switchToWorkspace(`tag_${tag}`);
+  const workspaceId = `tag_${tag}`;
+  // 强制刷新：每次点击标签列表按钮都重置数据并重新从接口获取
+  ensureWorkspace(workspaceId);
+  workspaces[workspaceId] = {
+    mediaList: [],
+    currentIndex: 0,
+    offset: 0,
+    hasMore: true,
+    isLoading: false,
+    scrollTop: 0,
+  };
+  activeWorkspace = workspaceId;
+  currentView = 'tag_grid';
+  emit();
+  await loadMoreMediaFor(workspaceId);
 }
 
 export function onThumbnailClick(tag: 'like' | 'favorite', index: number) {

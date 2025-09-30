@@ -3,14 +3,18 @@ from datetime import datetime
 import hashlib
 import random
 
-from fastapi import FastAPI, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse, StreamingResponse
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import mimetypes
+import time
+import subprocess
+from pathlib import Path
 
 # 复用数据库与模型（无用户概念）
-from 初始化数据库 import SessionLocal, Media, TagDefinition, MediaTag
+from 初始化数据库 import SessionLocal, Media, TagDefinition, MediaTag, create_database_and_tables, seed_initial_data
 
 
 # =============================
@@ -33,6 +37,9 @@ class MediaItem(BaseModel):
     filename: str
     createdAt: str
     thumbnailUrl: Optional[str] = None
+    # Optional tag state for UI correctness (global, no user)
+    liked: Optional[bool] = None
+    favorited: Optional[bool] = None
 
 
 class PageResponse(BaseModel):
@@ -69,11 +76,126 @@ def get_db():
         db.close()
 
 
+# 应用启动时确保数据库表与基础标签存在，避免首次运行出现 500（表不存在）
+@app.on_event("startup")
+def _ensure_db_initialized():
+    try:
+        create_database_and_tables()
+        db = SessionLocal()
+        try:
+            seed_initial_data(db)
+        finally:
+            db.close()
+        print("[startup] Database initialized and base tags ensured.")
+    except Exception as e:
+        # 不阻断服务启动，但打印警告以便诊断
+        print("[startup] Database init warning:", e)
+
+
 # =============================
 # 工具函数
 # =============================
 
-def to_media_item(m: Media, include_thumb: bool = False) -> MediaItem:
+# 缩略图目录（项目根目录下）
+THUMBNAILS_DIR = Path(__file__).parent / "thumbnails"
+THUMBNAILS_DIR.mkdir(exist_ok=True)
+
+def _thumb_path_for(media: Media) -> Path:
+    # 统一生成 jpg 缩略图，文件名为 <id>.jpg
+    return THUMBNAILS_DIR / f"{media.id}.jpg"
+
+def _should_regenerate(src_path: str, thumb_path: Path) -> bool:
+    try:
+        src_stat = os.stat(src_path)
+        if not thumb_path.exists():
+            return True
+        th_stat = os.stat(thumb_path)
+        # 当源文件更新或缩略图为空/过小则重新生成
+        if src_stat.st_mtime > th_stat.st_mtime:
+            return True
+        if th_stat.st_size < 2000:  # 小于 2KB 视为异常缩略图
+            return True
+        return False
+    except Exception:
+        return True
+
+def get_or_generate_thumbnail(media: Media) -> Path | None:
+    """生成并返回缩略图路径；失败时返回 None（由调用方回退到原文件）。
+
+    - 图片：等比缩放到不超过 480x480
+    - 视频：抽取 1s 处关键帧，缩放不超过 480x480
+    - 依赖系统 ffmpeg；未安装时回退 None
+    """
+    if not media.absolute_path or not isinstance(media.absolute_path, str):
+        return None
+    src = media.absolute_path
+    thumb = _thumb_path_for(media)
+    if not _should_regenerate(src, thumb):
+        return thumb
+
+    # 需要 ffmpeg 支持
+    ffmpeg = "ffmpeg"
+    try:
+        # 检查 ffmpeg 可用性
+        subprocess.run([ffmpeg, "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        return None
+
+    # 构造缩放过滤参数
+    vf_scale = "scale=w=480:h=480:force_original_aspect_ratio=decrease"
+
+    try:
+        THUMBNAILS_DIR.mkdir(exist_ok=True)
+        if media.media_type == "image":
+            # 等比缩放输出为 jpg
+            cmd = [
+                ffmpeg,
+                "-y",
+                "-i",
+                src,
+                "-vf",
+                vf_scale,
+                "-q:v",
+                "3",
+                str(thumb),
+            ]
+        else:
+            # 视频抽帧（1s），等比缩放输出为 jpg
+            cmd = [
+                ffmpeg,
+                "-y",
+                "-ss",
+                "00:00:01",
+                "-i",
+                src,
+                "-vframes",
+                "1",
+                "-vf",
+                vf_scale,
+                "-q:v",
+                "3",
+                str(thumb),
+            ]
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if thumb.exists() and thumb.stat().st_size > 0:
+            return thumb
+        return None
+    except Exception:
+        # 生成失败时清理坏文件
+        try:
+            if thumb.exists():
+                thumb.unlink()
+        except Exception:
+            pass
+        return None
+
+def to_media_item(m: Media, db, include_thumb: bool = False, include_tag_state: bool = True) -> MediaItem:
+    liked_val: Optional[bool] = None
+    favorited_val: Optional[bool] = None
+    if include_tag_state:
+        liked_val = db.query(MediaTag).filter(MediaTag.media_id == m.id, MediaTag.tag_name == 'like').first() is not None
+        favorited_val = db.query(MediaTag).filter(MediaTag.media_id == m.id, MediaTag.tag_name == 'favorite').first() is not None
+
     return MediaItem(
         id=m.id,
         url=f"/media-resource/{m.id}",  # 统一通过“原媒体资源”接口提供资源
@@ -82,6 +204,8 @@ def to_media_item(m: Media, include_thumb: bool = False) -> MediaItem:
         filename=m.filename,
         createdAt=(m.created_at.isoformat() if isinstance(m.created_at, datetime) else str(m.created_at)),
         thumbnailUrl=(f"/media/{m.id}/thumbnail" if include_thumb else None),
+        liked=liked_val,
+        favorited=favorited_val,
     )
 
 
@@ -123,7 +247,7 @@ def get_media_resource_list(
         all_items.sort(key=lambda m: seeded_key(seed, m.id))
         sliced = all_items[offset : offset + limit]
 
-    items = [to_media_item(m, include_thumb=False) for m in sliced]
+    items = [to_media_item(m, db, include_thumb=False, include_tag_state=True) for m in sliced]
     has_more = (offset + len(items)) < (len(all_items) if order == "seeded" else len(total_items))
     return PageResponse(items=items, offset=offset, hasMore=has_more)
 
@@ -150,7 +274,7 @@ def get_thumbnail_list(
         )
         total_items = q.all()
         sliced = total_items[offset : offset + limit]
-        items = [to_media_item(m, include_thumb=True) for m in sliced]
+        items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
         has_more = (offset + len(items)) < len(total_items)
         return PageResponse(items=items, offset=offset, hasMore=has_more)
 
@@ -162,14 +286,14 @@ def get_thumbnail_list(
         q = db.query(Media).order_by(Media.created_at.desc())
         total_items = q.all()
         sliced = total_items[offset : offset + limit]
-        items = [to_media_item(m, include_thumb=True) for m in sliced]
+        items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
         has_more = (offset + len(items)) < len(total_items)
         return PageResponse(items=items, offset=offset, hasMore=has_more)
     else:
         all_items = db.query(Media).all()
         all_items.sort(key=lambda m: seeded_key(seed, m.id))
         sliced = all_items[offset : offset + limit]
-        items = [to_media_item(m, include_thumb=True) for m in sliced]
+        items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
         has_more = (offset + len(items)) < len(all_items)
         return PageResponse(items=items, offset=offset, hasMore=has_more)
 
@@ -236,20 +360,104 @@ def get_media_thumbnail(media_id: int, db=Depends(get_db)):
     # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
     if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
         raise HTTPException(status_code=404, detail="file not found")
-    # 简化：直接返回原文件作为缩略图，占位用途；后续可替换为真实缩略图。
-    mime = "image/jpeg" if media.media_type == "image" else "video/mp4"
+    # 优先使用生成的真实缩略图；失败时回退原文件
+    thumb_path = get_or_generate_thumbnail(media)
+    serve_path = str(thumb_path) if thumb_path is not None else media.absolute_path
+
+    guessed, _ = mimetypes.guess_type(serve_path)
+    mime = guessed or "image/jpeg"
+    stat = os.stat(serve_path)
+    headers = {
+        "Cache-Control": "public, max-age=86400, immutable",
+        "ETag": f"{int(stat.st_mtime)}-{stat.st_size}",
+        "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stat.st_mtime)),
+        "Accept-Ranges": "bytes",
+    }
     # 注意：移除自定义 Content-Disposition 以避免非 ASCII 文件名触发 latin-1 编码错误
-    return FileResponse(path=media.absolute_path, media_type=mime)
+    return FileResponse(path=serve_path, media_type=mime, headers=headers)
 
 
 @app.get("/media-resource/{media_id}")
-def get_media_resource(media_id: int, db=Depends(get_db)):
+def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
     media = db.query(Media).filter(Media.id == media_id).first()
     if not media:
         raise HTTPException(status_code=404, detail="media not found")
     # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
     if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
         raise HTTPException(status_code=404, detail="file not found")
-    mime = "image/jpeg" if media.media_type == "image" else "video/mp4"
-    # 注意：移除自定义 Content-Disposition 以避免非 ASCII 文件名触发 latin-1 编码错误
-    return FileResponse(path=media.absolute_path, media_type=mime)
+    # 内容类型自动判定，回退到基于 media_type 的默认值
+    guessed, _ = mimetypes.guess_type(media.absolute_path)
+    mime = guessed or ("image/jpeg" if media.media_type == "image" else "video/mp4")
+
+    file_path = media.absolute_path
+    stat = os.stat(file_path)
+    file_size = stat.st_size
+    range_header = request.headers.get("range") or request.headers.get("Range")
+
+    # 通用响应头：支持缓存与范围请求
+    common_headers = {
+        "ETag": f"{int(stat.st_mtime)}-{stat.st_size}",
+        "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stat.st_mtime)),
+        "Accept-Ranges": "bytes",
+    }
+
+    # 无 Range：回退到完整文件响应（带缓存头）
+    if not range_header:
+        headers = {
+            **common_headers,
+            "Cache-Control": "public, max-age=3600",
+        }
+        return FileResponse(path=file_path, media_type=mime, headers=headers)
+
+    # 解析 Range: bytes=start-end 或 bytes=start- 或 bytes=-suffix
+    try:
+        units, ranges = range_header.split("=", 1)
+        if units.strip().lower() != "bytes":
+            raise ValueError("Only bytes unit is supported")
+        # 暂时仅支持单段范围；多段范围通常浏览器不会使用
+        first_range = ranges.split(",")[0].strip()
+        if "-" not in first_range:
+            raise ValueError("Invalid range format")
+        start_str, end_str = first_range.split("-", 1)
+        if start_str == "" and end_str != "":
+            # suffix bytes: 最后 N 字节
+            suffix_len = int(end_str)
+            if suffix_len <= 0:
+                raise ValueError("Invalid suffix length")
+            start = max(file_size - suffix_len, 0)
+            end = file_size - 1
+        else:
+            start = int(start_str)
+            end = int(end_str) if end_str != "" else file_size - 1
+        if start < 0 or end >= file_size or start > end:
+            # 范围无效，返回 416
+            headers = {**common_headers, "Content-Range": f"bytes */{file_size}"}
+            raise HTTPException(status_code=416, detail="Requested Range Not Satisfiable", headers=headers)
+    except HTTPException:
+        raise
+    except Exception:
+        headers = {**common_headers, "Content-Range": f"bytes */{file_size}"}
+        raise HTTPException(status_code=416, detail="Invalid Range", headers=headers)
+
+    chunk_size = 1024 * 1024  # 1MB per chunk
+    length = end - start + 1
+
+    def file_iter(path: str, start_pos: int, total_len: int):
+        with open(path, "rb") as f:
+            f.seek(start_pos)
+            remaining = total_len
+            while remaining > 0:
+                read_len = min(chunk_size, remaining)
+                data = f.read(read_len)
+                if not data:
+                    break
+                yield data
+                remaining -= len(data)
+
+    headers = {
+        **common_headers,
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Content-Length": str(length),
+        "Cache-Control": "public, max-age=3600",
+    }
+    return StreamingResponse(file_iter(file_path, start, length), status_code=206, media_type=mime, headers=headers)

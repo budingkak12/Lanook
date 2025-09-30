@@ -38,6 +38,15 @@ export default function Home() {
   const { activeWorkspace, workspaces } = getState();
   const ws = activeWorkspace ? workspaces[activeWorkspace] : null;
   const current = ws && ws.mediaList[ws.currentIndex];
+  const [playError, setPlayError] = useState(false);
+
+  const ext = useMemo(() => {
+    const fn = current?.filename || '';
+    const i = fn.lastIndexOf('.');
+    return i >= 0 ? fn.slice(i + 1).toLowerCase() : '';
+  }, [current?.filename]);
+  const videoTypeAttr = ext === 'mp4' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : ext === 'ogg' ? 'video/ogg' : '';
+  const unsupported = current?.type === 'video' && !['mp4', 'webm', 'ogg'].includes(ext);
 
   useEffect(() => {
     if (!current) return;
@@ -84,19 +93,34 @@ export default function Home() {
             </div>
           </div>
           {current.type === 'image' ? (
-            <img className="media" src={current.resourceUrl} alt={current.filename} />
+            <img className="media" src={current.resourceUrl} alt={current.filename} loading="lazy" />
+          ) : (unsupported || playError) ? (
+            <div className="fallback">
+              <div>该视频格式（.{ext}）浏览器可能不支持，请下载或转码为 MP4(H.264/AAC)。</div>
+              <a href={current.resourceUrl} target="_blank" rel="noreferrer">下载原视频</a>
+            </div>
           ) : (
             <video
               className="media"
               ref={videoRef}
+              key={current.id}
               src={current.resourceUrl}
               controls
               preload="metadata"
+              poster={current.thumbnailUrl || undefined}
+              crossOrigin="anonymous"
+              muted
               playsInline
               autoPlay
               onTimeUpdate={(e) => updatePlaybackPosition((e.target as HTMLVideoElement).currentTime)}
+              onError={(e) => {
+                console.error('Video playback error', e);
+                setPlayError(true);
+              }}
               onEnded={() => resetPlaybackPosition()}
-            />
+            >
+              {videoTypeAttr && <source src={current.resourceUrl} type={videoTypeAttr} />}
+            </video>
           )}
           <div className="hints">上滑下一条，下滑上一条；滚轮/键盘同规则</div>
         </div>
@@ -118,4 +142,5 @@ const styles = `
 .action:hover { background: rgba(255,255,255,0.16); }
 .loading, .empty { font-size: 16px; opacity: 0.8; }
 .hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; z-index: 2; }
+.fallback { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; color: #ccc; }
 `;
