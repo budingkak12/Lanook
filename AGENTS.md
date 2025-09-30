@@ -37,3 +37,8 @@
 - 配置 `MEDIA_DIRECTORY_TO_SCAN`（建议绝对路径），请勿提交个人媒体。
 - 需安装 ffmpeg 以生成缩略图与示例视频。
 - 默认启动不做 DB 初始化；若需在启动时自动建表与基础标签，设置环境变量：`MEDIA_APP_INIT_ON_STARTUP=1`。
+ 安卓打包
+ cd webapp
+npm run cap:sync
+cd android
+./gradlew assembleDebug
