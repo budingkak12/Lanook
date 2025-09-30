@@ -9,24 +9,22 @@ import {
 } from '../store/workspaces';
 import { setTagForCurrent } from '../store/workspaces';
 
-const DEFAULT_TUNER = {
-  swipeThreshold: 30,
-  animDuration: 320,
-  animTranslate: 18,
-  animOpacity: 0.18,
-  animEasing: 'ease-out' as 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out',
+const FIXED_ANIMATION = {
+  swipeThreshold: 10,
+  animDuration: 2,
+  animTranslate: 1,
+  animOpacity: 0,
+  animEasing: 'ease-out' as EasingOption,
   animMode: 'slide' as AnimationMode,
-  scaleFrom: 0.9,
+  scaleFrom: 1,
 };
-
 type AnimationMode = 'slide' | 'fade' | 'scale';
+type EasingOption = 'linear' | 'ease' | 'ease-in' | 'ease-out' | 'ease-in-out';
 
 export default function Home() {
   const [, force] = useState(0);
   const touchStartY = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [tunerOpen, setTunerOpen] = useState(false);
-  const [tunerConfig, setTunerConfig] = useState(DEFAULT_TUNER);
 
   useEffect(() => {
     const unsub = subscribe(() => force((x) => x + 1));
@@ -84,8 +82,8 @@ export default function Home() {
     if (touchStartY.current == null) return;
     const deltaY = e.changedTouches[0].clientY - touchStartY.current;
     touchStartY.current = null;
-    if (deltaY < -tunerConfig.swipeThreshold) onSwipeUp();
-    else if (deltaY > tunerConfig.swipeThreshold) onSwipeDown();
+    if (deltaY < -FIXED_ANIMATION.swipeThreshold) onSwipeUp();
+    else if (deltaY > FIXED_ANIMATION.swipeThreshold) onSwipeDown();
   };
 
   const loading = !ws || ws.isLoading && ws.mediaList.length === 0;
@@ -120,10 +118,10 @@ export default function Home() {
       transitionTimerRef.current = window.setTimeout(() => {
         setTransitionDirection(null);
         transitionTimerRef.current = null;
-      }, tunerConfig.animDuration + 80);
+      }, FIXED_ANIMATION.animDuration + 80);
     });
     lastIndexRef.current = idx;
-  }, [ws?.currentIndex, current?.id, ws, current, tunerConfig.animDuration]);
+  }, [ws?.currentIndex, current?.id, ws, current]);
 
   useEffect(() => () => {
     if (transitionTimerRef.current !== null) {
@@ -186,103 +184,7 @@ export default function Home() {
         </div>
       )}
       {!loading && !current && <div className="empty">暂无内容</div>}
-      <button className="tuner-toggle" onClick={() => setTunerOpen((v) => !v)}>{tunerOpen ? '收起参数' : '调参'}</button>
-      {tunerOpen && (
-        <div className="tuner-panel">
-          <div className="tuner-row">
-            <label>滑动阈值 (px)</label>
-            <input
-              type="range"
-              min={10}
-              max={120}
-              value={tunerConfig.swipeThreshold}
-              onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, swipeThreshold: Number(e.target.value) }))}
-            />
-            <span>{tunerConfig.swipeThreshold}</span>
-          </div>
-          <div className="tuner-row">
-            <label>动画时长 (ms)</label>
-            <input
-              type="range"
-              min={2}
-              max={800}
-              value={tunerConfig.animDuration}
-              onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, animDuration: Number(e.target.value) }))}
-            />
-            <span>{tunerConfig.animDuration}</span>
-          </div>
-          <div className="tuner-row">
-            <label>动效类型</label>
-            <select
-              value={tunerConfig.animMode}
-              onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, animMode: e.target.value as AnimationMode }))}
-            >
-              <option value="slide">slide（上下滑动）</option>
-              <option value="fade">fade（淡入淡出）</option>
-              <option value="scale">scale（缩放切换）</option>
-            </select>
-          </div>
-          <div className="tuner-row">
-            <label>上下位移 (vh)</label>
-            <input
-              type="range"
-              min={0}
-              max={40}
-              value={tunerConfig.animTranslate}
-              onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, animTranslate: Number(e.target.value) }))}
-              disabled={tunerConfig.animMode !== 'slide'}
-            />
-            <span>{tunerConfig.animMode === 'slide' ? tunerConfig.animTranslate : '—'}</span>
-          </div>
-          {tunerConfig.animMode === 'scale' && (
-            <div className="tuner-row">
-              <label>起始缩放</label>
-              <input
-                type="range"
-                min={70}
-                max={100}
-                value={Math.round(tunerConfig.scaleFrom * 100)}
-                onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, scaleFrom: Number(e.target.value) / 100 }))}
-              />
-              <span>{tunerConfig.scaleFrom.toFixed(2)}</span>
-            </div>
-          )}
-          <div className="tuner-row">
-            <label>初始透明度</label>
-            <input
-              type="range"
-              min={0}
-              max={80}
-              value={Math.round(tunerConfig.animOpacity * 100)}
-              onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, animOpacity: Number(e.target.value) / 100 }))}
-            />
-            <span>{tunerConfig.animOpacity.toFixed(2)}</span>
-          </div>
-          <div className="tuner-row">
-            <label>动效曲线</label>
-            <select
-              value={tunerConfig.animEasing}
-              onChange={(e) => setTunerConfig((cfg) => ({ ...cfg, animEasing: e.target.value as typeof cfg.animEasing }))}
-            >
-              <option value="linear">linear</option>
-              <option value="ease">ease</option>
-              <option value="ease-in">ease-in</option>
-              <option value="ease-out">ease-out</option>
-              <option value="ease-in-out">ease-in-out</option>
-            </select>
-          </div>
-          <div className="tuner-actions">
-            <button
-              onClick={() => {
-                setTunerConfig(DEFAULT_TUNER);
-              }}
-            >
-              恢复默认
-            </button>
-          </div>
-        </div>
-      )}
-      <DynamicStyles config={tunerConfig} />
+      <DynamicStyles config={FIXED_ANIMATION} />
     </div>
   );
 }
@@ -369,17 +271,6 @@ function DynamicStyles({ config }: { config: TunerConfig }) {
 .loading, .empty { font-size: 16px; opacity: 0.8; }
 .hints { position: absolute; bottom: 16px; font-size: 12px; opacity: 0.6; z-index: 2; }
 .fallback { display: flex; flex-direction: column; gap: 8px; align-items: center; justify-content: center; color: #ccc; }
-.tuner-toggle { position: fixed; bottom: 16px; right: 16px; z-index: 15; background: rgba(0,0,0,0.55); color: #eee; border: 1px solid rgba(255,255,255,0.2); padding: 6px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; }
-.tuner-panel { position: fixed; bottom: 56px; right: 16px; z-index: 15; background: rgba(0,0,0,0.75); color: #eee; padding: 12px; border-radius: 10px; width: min(280px, 90vw); backdrop-filter: blur(4px); display: flex; flex-direction: column; gap: 10px; font-size: 12px; }
-.tuner-row { display: grid; grid-template-columns: 90px 1fr 40px; align-items: center; gap: 8px; }
-.tuner-row label { color: #bbb; }
-.tuner-row input[type="range"] { width: 100%; }
-.tuner-row span { text-align: right; color: #fff; }
-.tuner-row select { width: 100%; background: rgba(255,255,255,0.08); color: #eee; border: 1px solid rgba(255,255,255,0.2); padding: 4px; border-radius: 6px; }
-.tuner-row select { width: 100%; background: rgba(255,255,255,0.08); color: #eee; border: 1px solid rgba(255,255,255,0.2); padding: 4px; border-radius: 6px; }
-.tuner-actions { display: flex; justify-content: flex-end; }
-.tuner-actions button { font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; cursor: pointer; }
-.tuner-actions button:hover { background: rgba(255,255,255,0.2); }
 ${keyframes}
 `;
   return <style>{styleContent}</style>;
