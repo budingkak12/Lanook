@@ -17,7 +17,6 @@ venv/
 
 # Local database and media
 media_app.db
-sample_media/
 thumbnails/
 
 # uv caches
