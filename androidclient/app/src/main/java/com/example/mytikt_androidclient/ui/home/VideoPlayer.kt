@@ -1,5 +1,6 @@
 package com.example.mytikt_androidclient.ui.home
 
+import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -12,6 +13,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.example.mytikt_androidclient.R
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
@@ -22,7 +24,7 @@ fun VideoPlayer(
     playbackPositionMs: Long,
     onPlaybackPositionChange: (Long) -> Unit,
     onPlaybackEnded: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val mediaItem = remember(url) { MediaItem.fromUri(url) }
@@ -90,17 +92,20 @@ fun VideoPlayer(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            PlayerView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                useController = true
-                player = exoPlayer
-            }
+            LayoutInflater.from(ctx)
+                .inflate(R.layout.player_view_texture, null, false)
+                .let { it as PlayerView }
+                .apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                    useController = true
+                    player = exoPlayer
+                }
         },
         update = { view ->
             view.player = exoPlayer
-        }
+        },
     )
 }

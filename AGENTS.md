@@ -1,4 +1,5 @@
 # 仓库指南
+项目内有python虚拟环境
 约定：优先使用 `uv run python ...` 运行 Python 脚本；沟通使用中文。
 
 ## 项目结构
@@ -6,12 +7,14 @@
 - 数据：`media_app.db`（SQLite）、`sample_media/`（本地媒体）、`thumbnails/`（生成缩略图，已忽略提交）。
 - 工具：`generate_test_videos.py`（生成示例 MP4）、`api_flow_test.py`（后端流程测试）。
 - 前端（Vite + React + TS）：`webapp/`，代码位于 `src/pages/`、`src/store/`、`src/lib/api.ts`。Vite 代理到 `http://localhost:8000`。E2E 测试位于 `webapp/tests/`，配置 `playwright.config.ts`。
+- 安卓客户端指定ip地址 192.168.1.152，请写死在代码里
+- 每次安卓客户端代码修改完成后必须编译成功，然后构建到我链接上的安卓设备。才允许交付
 
 ## 构建与运行命令
 - 后端（项目根目录执行）
   - 创建环境并安装依赖：` uv pip install fastapi "uvicorn[standard]" sqlalchemy pydantic`。
   - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
-  - 同端口强制重启：`bash scripts/dev_restart.sh 8000`。
+  - 启动后端：`uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000`。
   - 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
 - 前端（进入 `webapp/`）
   - 安装依赖：`npm install`（或 `npm ci`）。

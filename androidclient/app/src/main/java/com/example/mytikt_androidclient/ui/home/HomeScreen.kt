@@ -25,19 +25,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.mytikt_androidclient.data.model.MediaItem
+import com.example.mytikt_androidclient.ui.components.PhotoViewer
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import java.time.Instant
@@ -89,6 +88,7 @@ fun HomeScreen(
     onPlaybackEnded: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isZooming = remember { mutableStateOf(false) }
     val pageCount = max(state.items.size, 1)
     val pagerState = rememberPagerState(
         initialPage = state.currentIndex.coerceIn(0, pageCount - 1),
@@ -137,10 +137,10 @@ fun HomeScreen(
 
                 state.items.isEmpty() -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("暂无内容", color = Color.White)
+                        Text("\u6682\u65e0\u5185\u5bb9", color = Color.White)
                         Spacer(modifier = Modifier.height(12.dp))
                         TextButton(onClick = onRefresh) {
-                            Text("刷新试试")
+                            Text("\u5237\u65b0\u8bd5\u8bd5")
                         }
                     }
                 }
@@ -148,6 +148,7 @@ fun HomeScreen(
                 else -> {
                     VerticalPager(
                         state = pagerState,
+                        userScrollEnabled = !isZooming.value,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         val item = state.items.getOrNull(page)
@@ -159,7 +160,8 @@ fun HomeScreen(
                                 isActive = isActive,
                                 playbackPositionMs = playback,
                                 onPlaybackProgress = { pos -> onPlaybackProgress(item.id, pos) },
-                                onPlaybackEnded = { onPlaybackEnded(item.id) }
+                                onPlaybackEnded = { onPlaybackEnded(item.id) },
+                                onTransformingChanged = { active -> isZooming.value = active }
                             )
                         }
                     }
@@ -179,7 +181,7 @@ fun HomeScreen(
 
                     if (state.isPaging) {
                         Text(
-                            text = "加载更多中…",
+                            text = "\u52a0\u8f7d\u66f4\u591a\u4e2d...",
                             color = Color.White.copy(alpha = 0.6f),
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -187,7 +189,7 @@ fun HomeScreen(
                         )
                     } else {
                         Text(
-                            text = "上滑下一条，下滑上一条",
+                            text = "\u4e0a\u6ed1\u4e0b\u4e00\u6761\uff0c\u4e0b\u6ed1\u4e0a\u4e00\u6761",
                             color = Color.White.copy(alpha = 0.6f),
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -206,7 +208,8 @@ private fun MediaPage(
     isActive: Boolean,
     playbackPositionMs: Long,
     onPlaybackProgress: (Long) -> Unit,
-    onPlaybackEnded: () -> Unit
+    onPlaybackEnded: () -> Unit,
+    onTransformingChanged: (Boolean) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -215,22 +218,23 @@ private fun MediaPage(
         contentAlignment = Alignment.Center
     ) {
         if (item.isImage) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(item.resourceUrl)
-                    .crossfade(true)
-                    .build(),
+            PhotoViewer(
+                imageUrl = item.resourceUrl,
                 contentDescription = item.filename,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                onTransformingChanged = onTransformingChanged
             )
         } else {
+            LaunchedEffect(item.id) {
+                onTransformingChanged(false)
+            }
             VideoPlayer(
                 url = item.resourceUrl,
                 isActive = isActive,
                 playbackPositionMs = playbackPositionMs,
                 onPlaybackPositionChange = onPlaybackProgress,
-                onPlaybackEnded = onPlaybackEnded
+                onPlaybackEnded = onPlaybackEnded,
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
@@ -273,15 +277,15 @@ private fun BoxScope.MediaOverlay(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = onLikeClick) {
-                Text(if (item.liked == true) "取消点赞" else "点赞")
+                Text(if (item.liked == true) "\u53d6\u6d88\u70b9\u8d5e" else "\u70b9\u8d5e")
             }
             Button(onClick = onFavoriteClick) {
-                Text(if (item.favorited == true) "取消收藏" else "收藏")
+                Text(if (item.favorited == true) "\u53d6\u6d88\u6536\u85cf" else "\u6536\u85cf")
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = onDeleteClick, enabled = !isDeleting) {
-                Text(if (isDeleting) "删除中…" else "删除")
+                Text(if (isDeleting) "\u5220\u9664\u4e2d..." else "\u5220\u9664")
             }
         }
     }
