@@ -16,10 +16,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://jitpack.io")
     }
 }
 
-rootProject.name = "mytikt_androidclient"
+rootProject.name = "androidclient"
 include(":app")
- 
