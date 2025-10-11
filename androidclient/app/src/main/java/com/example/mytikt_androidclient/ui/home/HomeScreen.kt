@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mytikt_androidclient.data.model.MediaItem
-import com.example.mytikt_androidclient.ui.components.PhotoViewer
+import com.example.mytikt_androidclient.ui.components.ZoomableImage
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import java.time.Instant
@@ -146,7 +146,7 @@ fun HomeScreen(
                 }
 
                 else -> {
-                    VerticalPager(
+                    HorizontalPager(
                         state = pagerState,
                         userScrollEnabled = !isZooming.value,
                         modifier = Modifier.fillMaxSize()
@@ -179,23 +179,14 @@ fun HomeScreen(
                         )
                     }
 
-                    if (state.isPaging) {
-                        Text(
-                            text = "\u52a0\u8f7d\u66f4\u591a\u4e2d...",
-                            color = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 24.dp)
-                        )
-                    } else {
-                        Text(
-                            text = "\u4e0a\u6ed1\u4e0b\u4e00\u6761\uff0c\u4e0b\u6ed1\u4e0a\u4e00\u6761",
-                            color = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 24.dp)
-                        )
-                    }
+                    val helperText = if (state.isPaging) "\u52a0\u8f7d\u66f4\u591a\u4e2d..." else "\u5de6\u6ed1\u4e0b\u4e00\u5f20\uff0c\u53f3\u6ed1\u4e0a\u4e00\u5f20"
+                    Text(
+                        text = helperText,
+                        color = Color.White.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 24.dp)
+                    )
                 }
             }
         }
@@ -218,7 +209,7 @@ private fun MediaPage(
         contentAlignment = Alignment.Center
     ) {
         if (item.isImage) {
-            PhotoViewer(
+            ZoomableImage(
                 imageUrl = item.resourceUrl,
                 contentDescription = item.filename,
                 modifier = Modifier.fillMaxSize(),

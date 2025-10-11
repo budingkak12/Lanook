@@ -9,7 +9,7 @@ import android.content.SharedPreferences
 object ApiConfig {
     private const val PREF_NAME = "api_config"
     private const val KEY_API_BASE = "api_base_url"
-    private const val DEFAULT_BASE = "http://192.168.1.152:8000/"
+    private const val DEFAULT_BASE = "http://10.87.125.60:8000/"
 
     fun getApiBase(context: Context): String {
         val prefs = prefs(context)
