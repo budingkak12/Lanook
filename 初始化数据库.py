@@ -14,7 +14,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 # --- 请将此路径修改为你电脑上存放媒体文件的文件夹绝对路径 ---
 # 示例 (Windows): "D:\\MyVideos\\ToScan"
 # 示例 (macOS/Linux): "/Users/yourname/Movies/ToScan"
-MEDIA_DIRECTORY_TO_SCAN = "./sample_media"  # 使用相对路径作为示例，建议使用绝对路径
+MEDIA_DIRECTORY_TO_SCAN = "./abc"  # 使用相对路径作为示例，建议使用绝对路径
 
 # 数据库文件将创建在脚本运行的目录下
 DATABASE_URL = "sqlite:///./media_app.db"

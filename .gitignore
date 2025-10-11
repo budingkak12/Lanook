@@ -6,6 +6,7 @@ __pycache__/
 .mypy_cache/
 .cache/
 .eggs/
+abc/
 *.egg-info/
 .coverage
 htmlcov/
