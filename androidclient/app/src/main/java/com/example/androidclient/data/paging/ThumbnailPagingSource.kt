@@ -26,7 +26,10 @@ class ThumbnailPagingSource(
             val response = api.getThumbnailList(seed = seed, offset = offset, limit = params.loadSize)
             LoadResult.Page(
                 data = response.items.map { item ->
-                    item.copy(thumbnailUrl = item.thumbnailUrl.toAbsoluteUrl())
+                    item.copy(
+                        thumbnailUrl = item.thumbnailUrl.toAbsoluteUrl() ?: "",
+                        resourceUrl = item.resourceUrl.toAbsoluteUrl() ?: ""
+                    )
                 },
                 prevKey = if (offset == 0) null else offset - params.loadSize,
                 nextKey = if (response.hasMore) offset + params.loadSize else null

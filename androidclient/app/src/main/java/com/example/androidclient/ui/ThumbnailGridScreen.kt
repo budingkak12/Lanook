@@ -18,7 +18,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ThumbnailGridScreen(viewModel: MainViewModel) {
+fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Unit) {
     val items: LazyPagingItems<MediaItem> = viewModel.thumbnails.collectAsLazyPagingItems()
 
     Scaffold(
@@ -65,7 +65,7 @@ fun ThumbnailGridScreen(viewModel: MainViewModel) {
                     items(items.itemCount) { index ->
                         val item = items[index]
                         if (item != null) {
-                            ThumbnailItem(item)
+                            ThumbnailItem(item) { onThumbnailClick(index) }
                         }
                     }
 
@@ -105,9 +105,11 @@ fun ThumbnailGridScreen(viewModel: MainViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ThumbnailItem(item: MediaItem) {
+private fun ThumbnailItem(item: MediaItem, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.aspectRatio(1f),
         shape = MaterialTheme.shapes.small
     ) {
