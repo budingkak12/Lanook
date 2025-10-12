@@ -10,7 +10,7 @@ import com.example.androidclient.di.NetworkModule
 private fun String?.toAbsoluteUrl(): String? {
     if (this == null) return null
     if (startsWith("http://") || startsWith("https://")) return this
-    val base = "http://10.87.125.60:8000"  // 与 NetworkModule 保持一致
+    val base = NetworkModule.BASE_URL
     return if (startsWith("/")) base + this else "$base/$this"
 }
 
