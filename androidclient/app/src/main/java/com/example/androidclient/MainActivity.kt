@@ -24,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.androidclient.ui.DetailViewScreen
+import com.example.androidclient.ui.MainScreen
 import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.ThumbnailGridScreen
 import com.example.androidclient.ui.theme.AndroidclientTheme
@@ -135,6 +136,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+
+                MainScreen()
             }
         }
     }

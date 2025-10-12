@@ -21,84 +21,75 @@ import androidx.paging.compose.collectAsLazyPagingItems
 fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Unit) {
     val items: LazyPagingItems<MediaItem> = viewModel.thumbnails.collectAsLazyPagingItems()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("局域网相册") })
-        }
-    ) { paddingValues ->
-        when (items.loadState.refresh) {
-            is LoadState.Loading -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = androidx.compose.ui.Alignment.Center
-            ) { CircularProgressIndicator() }
+    when (items.loadState.refresh) {
+        is LoadState.Loading -> Box(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) { CircularProgressIndicator() }
 
-            is LoadState.Error -> {
-                val error = (items.loadState.refresh as LoadState.Error).error
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
-                ) {
-                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                        Text(text = "加载失败：${error.message}")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { items.retry() }) {
-                            Text("重试")
-                        }
+        is LoadState.Error -> {
+            val error = (items.loadState.refresh as LoadState.Error).error
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                    Text(text = "加载失败：${error.message}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = { items.retry() }) {
+                        Text("重试")
                     }
                 }
             }
+        }
 
-            else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 108.dp),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    items(items.itemCount) { index ->
-                        val item = items[index]
-                        if (item != null) {
-                            ThumbnailItem(item) { onThumbnailClick(index) }
+        else -> {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 108.dp),
+                contentPadding = PaddingValues(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                items(items.itemCount) { index ->
+                    val item = items[index]
+                    if (item != null) {
+                        ThumbnailItem(item) { onThumbnailClick(index) }
+                    }
+                }
+
+                // 底部加载更多指示器
+                when (items.loadState.append) {
+                    is LoadState.Loading -> {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
-
-                    // 底部加载更多指示器
-                    when (items.loadState.append) {
-                        is LoadState.Loading -> {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
+                    is LoadState.Error -> {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                Button(onClick = { items.retry() }) {
+                                    Text("加载更多失败，点击重试")
                                 }
                             }
                         }
-                        is LoadState.Error -> {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    Button(onClick = { items.retry() }) {
-                                        Text("加载更多失败，点击重试")
-                                    }
-                                }
-                            }
-                        }
-                        else -> Unit
                     }
+                    else -> Unit
                 }
             }
         }
