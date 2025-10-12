@@ -16,6 +16,9 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Unit) {
@@ -53,6 +56,7 @@ fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Uni
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
                     .fillMaxSize()
+                    .semantics { contentDescription = "Thumbnail Grid" }
             ) {
                 items(items.itemCount) { index ->
                     val item = items[index]

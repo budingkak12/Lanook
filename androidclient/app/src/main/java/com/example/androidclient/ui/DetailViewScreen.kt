@@ -26,6 +26,9 @@ import com.example.androidclient.data.model.MediaItem
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DetailViewScreen(
@@ -35,7 +38,11 @@ fun DetailViewScreen(
 ) {
     val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { items.itemCount })
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .semantics { contentDescription = "Detail View" }
+    ) {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),

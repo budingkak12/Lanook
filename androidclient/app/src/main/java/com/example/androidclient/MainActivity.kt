@@ -60,45 +60,18 @@ class MainActivity : ComponentActivity() {
 
                 val vm = remember { MainViewModel() }
                 val navController = rememberNavController()
-                val items = vm.thumbnails.collectAsLazyPagingItems()
                 
                 NavHost(
                     navController = navController, 
-                    startDestination = "thumbnails"
+                    startDestination = "main"
                 ) {
-                    composable(
-                        "thumbnails",
-                        enterTransition = {
-                            // 从详情页返回时的动效：从右侧滑入（时长更长以更明显）
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        exitTransition = {
-                            // 进入详情页时的动效：向左滑出（时长更长以更明显）
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popEnterTransition = {
-                            // 返回缩略图页时的动效：从左向右滑入（时长更长以更明显）
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        }
-                    ) {
-                        ThumbnailGridScreen(vm) { index ->
-                            navController.navigate("details/$index")
-                        }
+                    composable("main") {
+                        MainScreen(navController, vm)
                     }
                     composable(
                         "details/{index}",
                         arguments = listOf(navArgument("index") { type = NavType.IntType }),
                         enterTransition = {
-                            // 进入详情页时的动效：从右侧滑入 + 轻微缩放（时长更长以更明显）
                             slideIntoContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Left,
                                 animationSpec = tween(500, easing = FastOutSlowInEasing)
@@ -108,7 +81,6 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         exitTransition = {
-                            // 返回缩略图页时的动效：向右滑出 + 轻微缩放（时长更长以更明显）
                             slideOutOfContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Right,
                                 animationSpec = tween(500, easing = FastOutSlowInEasing)
@@ -118,7 +90,6 @@ class MainActivity : ComponentActivity() {
                             )
                         },
                         popExitTransition = {
-                            // 返回时详情页的动效：向右滑出 + 轻微缩放（时长更长以更明显）
                             slideOutOfContainer(
                                 towards = AnimatedContentTransitionScope.SlideDirection.Right,
                                 animationSpec = tween(500, easing = FastOutSlowInEasing)
@@ -129,6 +100,7 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { backStackEntry ->
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
+                        val items = vm.thumbnails.collectAsLazyPagingItems()
                         DetailViewScreen(
                             items = items,
                             initialIndex = index,
@@ -136,8 +108,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-
-                MainScreen()
             }
         }
     }
