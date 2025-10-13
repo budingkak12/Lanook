@@ -116,6 +116,7 @@ fun DetailViewScreen(
                 }
 
                 val toggleLikeState = rememberUpdatedState(toggleLike)
+                var controllerVisible by remember(item.id) { mutableStateOf(false) }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (item.type) {
@@ -143,22 +144,28 @@ fun DetailViewScreen(
                             VideoPlayer(
                                 url = item.resourceUrl,
                                 modifier = Modifier.fillMaxSize(),
-                                onDoubleTap = { toggleLikeState.value.invoke() }
+                                onDoubleTap = { toggleLikeState.value.invoke() },
+                                onControllerVisibilityChanged = { visible ->
+                                    controllerVisible = visible
+                                }
                             )
                         }
                     }
 
-                    LikeFavoriteBar(
-                        liked = liked,
-                        favorited = favorited,
-                        likeLoading = likeLoading,
-                        favoriteLoading = favoriteLoading,
-                        onToggleLike = toggleLike,
-                        onToggleFavorite = toggleFavorite,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 32.dp)
-                    )
+                    val hideBar = item.type == "video" && controllerVisible
+                    if (!hideBar) {
+                        LikeFavoriteBar(
+                            liked = liked,
+                            favorited = favorited,
+                            likeLoading = likeLoading,
+                            favoriteLoading = favoriteLoading,
+                            onToggleLike = toggleLike,
+                            onToggleFavorite = toggleFavorite,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 32.dp)
+                        )
+                    }
                 }
             }
         }

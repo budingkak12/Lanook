@@ -5,14 +5,18 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import android.view.View
 
 private const val VIDEO_TAG = "VideoPlayer"
 
@@ -21,10 +25,12 @@ private const val VIDEO_TAG = "VideoPlayer"
 fun VideoPlayer(
     modifier: Modifier = Modifier,
     url: String,
-    onDoubleTap: (() -> Unit)? = null
+    onDoubleTap: (() -> Unit)? = null,
+    onControllerVisibilityChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val onDoubleTapState = rememberUpdatedState(onDoubleTap)
+    val controllerVisibilityCallback = rememberUpdatedState(onControllerVisibilityChanged)
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -34,13 +40,24 @@ fun VideoPlayer(
         }
     }
 
+    var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
+    var controllerListenerRef by remember { mutableStateOf<PlayerView.ControllerVisibilityListener?>(null) }
+
     DisposableEffect(
         AndroidView(modifier = modifier, factory = { viewContext ->
             PlayerView(viewContext).apply {
+                playerViewRef = this
                 player = exoPlayer
                 setShowNextButton(false)
                 setShowPreviousButton(false)
                 controllerAutoShow = false
+                val controllerListener = PlayerView.ControllerVisibilityListener { visibility ->
+                    val visible = visibility == View.VISIBLE
+                    Log.d(VIDEO_TAG, "controller visibility changed -> $visible")
+                    controllerVisibilityCallback.value.invoke(visible)
+                }
+                controllerListenerRef = controllerListener
+                setControllerVisibilityListener(controllerListener as PlayerView.ControllerVisibilityListener)
 
                 if (onDoubleTapState.value != null) {
                     var consumedDoubleTap = false
@@ -54,8 +71,10 @@ fun VideoPlayer(
                             Log.d(VIDEO_TAG, "onSingleTapConfirmed -> toggle controller")
                             if (isControllerFullyVisible) {
                                 hideController()
+                                controllerVisibilityCallback.value.invoke(false)
                             } else {
                                 showController()
+                                controllerVisibilityCallback.value.invoke(true)
                             }
                             return true
                         }
@@ -64,6 +83,7 @@ fun VideoPlayer(
                             Log.d(VIDEO_TAG, "onDoubleTap detected at (${e.x}, ${e.y})")
                             consumedDoubleTap = true
                             hideController()
+                            controllerVisibilityCallback.value.invoke(false)
                             onDoubleTapState.value?.invoke()
                             return true
                         }
@@ -89,7 +109,10 @@ fun VideoPlayer(
         })
     ) {
         onDispose {
+            playerViewRef?.setControllerVisibilityListener(null as PlayerView.ControllerVisibilityListener?)
+            controllerListenerRef = null
             exoPlayer.release()
+            playerViewRef = null
         }
     }
 }
