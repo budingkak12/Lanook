@@ -1,10 +1,15 @@
 package com.example.androidclient.ui
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,6 +30,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +38,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import coil3.compose.AsyncImage
@@ -39,12 +47,17 @@ import coil3.request.ImageRequest
 import com.example.androidclient.data.model.MediaItem
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.consumeDownChange
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.MainViewModel.TagState
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.hypot
+
+private const val DETAIL_TAG = "DetailViewScreen"
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -57,6 +70,7 @@ fun DetailViewScreen(
     val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { items.itemCount })
     val overrides by viewModel.tagOverrides.collectAsState()
     val context = LocalContext.current
+    val viewConfig = LocalViewConfiguration.current
 
     Box(
         modifier = Modifier
@@ -69,77 +83,95 @@ fun DetailViewScreen(
         ) { page ->
             val item = items[page]
             if (item != null) {
-                when (item.type) {
-                    "image" -> {
-                        val zoomState = rememberZoomState()
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(item.resourceUrl)
-                                .build(),
-                            contentDescription = item.filename,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .zoomable(zoomState)
-                        )
-                    }
-                    "video" -> {
-                        VideoPlayer(
-                            url = item.resourceUrl,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                val override: TagState? = overrides[item.id]
+                val liked = override?.liked ?: (item.liked ?: false)
+                val favorited = override?.favorited ?: (item.favorited ?: false)
+
+                var likeLoading by remember(item.id) { mutableStateOf(false) }
+                var favoriteLoading by remember(item.id) { mutableStateOf(false) }
+
+                val toggleLike: () -> Unit = {
+                    if (!likeLoading) {
+                        likeLoading = true
+                        Log.d(DETAIL_TAG, "toggleLike invoked. target=${!liked}, mediaId=${item.id}")
+                        viewModel.setLike(item.id, !liked) { result ->
+                            likeLoading = false
+                            result.onFailure {
+                                Log.e(DETAIL_TAG, "toggleLike failed for mediaId=${item.id}", it)
+                                Toast.makeText(
+                                    context,
+                                    it.localizedMessage ?: "点赞失败，请稍后重试",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     }
                 }
+
+                val toggleFavorite: () -> Unit = {
+                    if (!favoriteLoading) {
+                        favoriteLoading = true
+                        Log.d(DETAIL_TAG, "toggleFavorite invoked. target=${!favorited}, mediaId=${item.id}")
+                        viewModel.setFavorite(item.id, !favorited) { result ->
+                            favoriteLoading = false
+                            result.onFailure {
+                                Log.e(DETAIL_TAG, "toggleFavorite failed for mediaId=${item.id}", it)
+                                Toast.makeText(
+                                    context,
+                                    it.localizedMessage ?: "收藏失败，请稍后重试",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                }
+
+                val toggleLikeState = rememberUpdatedState(toggleLike)
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (item.type) {
+                        "image" -> {
+                            val zoomState = rememberZoomState()
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(item.resourceUrl)
+                                    .build(),
+                                contentDescription = item.filename,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zoomable(
+                                        zoomState = zoomState,
+                                        enableOneFingerZoom = false,
+                                        onDoubleTap = {
+                                            Log.d(DETAIL_TAG, "zoomable onDoubleTap -> toggle like")
+                                            toggleLikeState.value.invoke()
+                                        }
+                                    )
+                            )
+                        }
+                        "video" -> {
+                            VideoPlayer(
+                                url = item.resourceUrl,
+                                modifier = Modifier.fillMaxSize(),
+                                onDoubleTap = { toggleLikeState.value.invoke() }
+                            )
+                        }
+                    }
+
+                    LikeFavoriteBar(
+                        liked = liked,
+                        favorited = favorited,
+                        likeLoading = likeLoading,
+                        favoriteLoading = favoriteLoading,
+                        onToggleLike = toggleLike,
+                        onToggleFavorite = toggleFavorite,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp)
+                    )
+                }
             }
-        }
-
-        val currentPage = pagerState.currentPage
-        val currentItem = if (items.itemCount > 0 && currentPage < items.itemCount) items[currentPage] else null
-        currentItem?.let { media ->
-            val override: TagState? = overrides[media.id]
-            val liked = override?.liked ?: (media.liked ?: false)
-            val favorited = override?.favorited ?: (media.favorited ?: false)
-
-            var likeLoading by remember(media.id, "like") { mutableStateOf(false) }
-            var favoriteLoading by remember(media.id, "favorite") { mutableStateOf(false) }
-
-            LikeFavoriteBar(
-                liked = liked,
-                favorited = favorited,
-                likeLoading = likeLoading,
-                favoriteLoading = favoriteLoading,
-                onToggleLike = {
-                    if (likeLoading) return@LikeFavoriteBar
-                    likeLoading = true
-                    viewModel.setLike(media.id, !liked) { result ->
-                        likeLoading = false
-                        result.onFailure {
-                            Toast.makeText(
-                                context,
-                                it.localizedMessage ?: "点赞失败，请稍后重试",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                },
-                onToggleFavorite = {
-                    if (favoriteLoading) return@LikeFavoriteBar
-                    favoriteLoading = true
-                    viewModel.setFavorite(media.id, !favorited) { result ->
-                        favoriteLoading = false
-                        result.onFailure {
-                            Toast.makeText(
-                                context,
-                                it.localizedMessage ?: "收藏失败，请稍后重试",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp)
-            )
         }
 
         IconButton(
@@ -234,3 +266,44 @@ private fun ActionIconButton(
         }
     }
 }
+
+private fun Modifier.doubleTapToLike(
+    config: ViewConfiguration,
+    onDoubleTap: () -> Unit
+): Modifier =
+    this.then(
+        Modifier.pointerInput(config, onDoubleTap) {
+            awaitEachGesture {
+                val firstDown = awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
+                Log.d(DETAIL_TAG, "doubleTap gesture firstDown at ${firstDown.position}")
+                waitForUpOrCancellation(pass = PointerEventPass.Initial) ?: run {
+                    Log.d(DETAIL_TAG, "doubleTap gesture aborted, no firstUp")
+                    return@awaitEachGesture
+                }
+
+                val secondDown = withTimeoutOrNull(config.doubleTapTimeoutMillis) {
+                    awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
+                } ?: run {
+                    Log.d(DETAIL_TAG, "doubleTap gesture timeout waiting secondDown")
+                    return@awaitEachGesture
+                }
+                Log.d(DETAIL_TAG, "doubleTap gesture secondDown at ${secondDown.position}")
+
+                val distance = hypot(
+                    (secondDown.position.x - firstDown.position.x).toDouble(),
+                    (secondDown.position.y - firstDown.position.y).toDouble()
+                )
+                if (distance > config.touchSlop) {
+                    Log.d(DETAIL_TAG, "doubleTap gesture cancelled by move distance=$distance, slop=${config.touchSlop}")
+                    return@awaitEachGesture
+                }
+
+                val secondUp = waitForUpOrCancellation(pass = PointerEventPass.Initial) ?: return@awaitEachGesture
+
+                firstDown.consumeDownChange()
+                secondDown.consumeDownChange()
+                Log.d(DETAIL_TAG, "doubleTap detected -> trigger onDoubleTap")
+                onDoubleTap()
+            }
+        }
+    )
