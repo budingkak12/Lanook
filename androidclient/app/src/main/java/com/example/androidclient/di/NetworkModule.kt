@@ -10,7 +10,9 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object NetworkModule {
 
-    const val BASE_URL = "http://10.87.125.60:8000" // 写死服务器地址
+    //const val BASE_URL = "http://10.87.125.60:8000" // 写死服务器地址
+    const val BASE_URL = "http://192.168.31.58:8000" // 非公司地址
+
 
     private val json = Json { ignoreUnknownKeys = true }
 
