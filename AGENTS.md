@@ -1,6 +1,7 @@
 # 仓库指南
 项目内有python虚拟环境
-约定：优先使用 `uv run python ...` 运行 Python 脚本；沟通使用中文。
+约定：项目目录优先使用 `uv run python ...` 运行 Python 脚本；uv pip install安装包
+沟通使用中文。
 修改完毕代码后，要求构建成功，然后依次执行adb install -r，adb shell am start -n com.example.androidclient/.MainActivity 
 
 ## 项目结构
