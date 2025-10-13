@@ -4,9 +4,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -38,8 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import coil3.compose.AsyncImage
@@ -47,15 +42,10 @@ import coil3.request.ImageRequest
 import com.example.androidclient.data.model.MediaItem
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.consumeDownChange
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.MainViewModel.TagState
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.hypot
 
 private const val DETAIL_TAG = "DetailViewScreen"
 
@@ -70,7 +60,6 @@ fun DetailViewScreen(
     val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { items.itemCount })
     val overrides by viewModel.tagOverrides.collectAsState()
     val context = LocalContext.current
-    val viewConfig = LocalViewConfiguration.current
 
     Box(
         modifier = Modifier
@@ -267,43 +256,3 @@ private fun ActionIconButton(
     }
 }
 
-private fun Modifier.doubleTapToLike(
-    config: ViewConfiguration,
-    onDoubleTap: () -> Unit
-): Modifier =
-    this.then(
-        Modifier.pointerInput(config, onDoubleTap) {
-            awaitEachGesture {
-                val firstDown = awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
-                Log.d(DETAIL_TAG, "doubleTap gesture firstDown at ${firstDown.position}")
-                waitForUpOrCancellation(pass = PointerEventPass.Initial) ?: run {
-                    Log.d(DETAIL_TAG, "doubleTap gesture aborted, no firstUp")
-                    return@awaitEachGesture
-                }
-
-                val secondDown = withTimeoutOrNull(config.doubleTapTimeoutMillis) {
-                    awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
-                } ?: run {
-                    Log.d(DETAIL_TAG, "doubleTap gesture timeout waiting secondDown")
-                    return@awaitEachGesture
-                }
-                Log.d(DETAIL_TAG, "doubleTap gesture secondDown at ${secondDown.position}")
-
-                val distance = hypot(
-                    (secondDown.position.x - firstDown.position.x).toDouble(),
-                    (secondDown.position.y - firstDown.position.y).toDouble()
-                )
-                if (distance > config.touchSlop) {
-                    Log.d(DETAIL_TAG, "doubleTap gesture cancelled by move distance=$distance, slop=${config.touchSlop}")
-                    return@awaitEachGesture
-                }
-
-                val secondUp = waitForUpOrCancellation(pass = PointerEventPass.Initial) ?: return@awaitEachGesture
-
-                firstDown.consumeDownChange()
-                secondDown.consumeDownChange()
-                Log.d(DETAIL_TAG, "doubleTap detected -> trigger onDoubleTap")
-                onDoubleTap()
-            }
-        }
-    )
