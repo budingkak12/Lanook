@@ -28,7 +28,9 @@ class ThumbnailPagingSource(
                 data = response.items.map { item ->
                     item.copy(
                         thumbnailUrl = item.thumbnailUrl.toAbsoluteUrl() ?: "",
-                        resourceUrl = item.resourceUrl.toAbsoluteUrl() ?: ""
+                        resourceUrl = item.resourceUrl.toAbsoluteUrl() ?: "",
+                        liked = item.liked == true,
+                        favorited = item.favorited == true
                     )
                 },
                 prevKey = if (offset == 0) null else offset - params.loadSize,

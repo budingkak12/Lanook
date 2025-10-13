@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
                         val items = vm.thumbnails.collectAsLazyPagingItems()
                         DetailViewScreen(
+                            viewModel = vm,
                             items = items,
                             initialIndex = index,
                             onBack = { navController.popBackStack() }

@@ -10,5 +10,7 @@ data class MediaItem(
     val type: String, // "image" | "video"
     val filename: String,
     val createdAt: String,
-    val thumbnailUrl: String?
+    val thumbnailUrl: String?,
+    val liked: Boolean? = null,
+    val favorited: Boolean? = null
 )
