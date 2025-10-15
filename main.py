@@ -68,6 +68,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 轻量健康检查，供 Android 客户端自动探测可用服务地址
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 def get_db():
     db = SessionLocal()

@@ -10,25 +10,48 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object NetworkModule {
 
-    //const val BASE_URL = "http://10.87.125.60:8000" // 写死服务器地址
-    const val BASE_URL = "http://192.168.31.58:8000" // 非公司地址
+    // 备选服务器地址（优先公司网，其次家庭网）
+    internal val candidateBaseUrls: List<String> = listOf(
+        "http://10.87.125.60:8000",
+        "http://192.168.31.58:8000",
+    )
 
+    @Volatile
+    private var baseUrl: String = candidateBaseUrls.first()
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val okHttp by lazy {
+    private fun newOkHttp(): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .build()
-    }
 
-    private val retrofit by lazy {
+    @Volatile
+    private var okHttp: OkHttpClient = newOkHttp()
+
+    private fun buildRetrofit(url: String): Retrofit =
         Retrofit.Builder()
-            .baseUrl("$BASE_URL/")
+            .baseUrl(if (url.endsWith('/')) url else "$url/")
             .client(okHttp)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
+
+    @Volatile
+    private var retrofit: Retrofit = buildRetrofit(baseUrl)
+
+    @Volatile
+    var api: ApiService = retrofit.create(ApiService::class.java)
+        private set
+
+    @Synchronized
+    fun updateBaseUrl(newBaseUrl: String) {
+        val normalized = if (newBaseUrl.endsWith('/')) newBaseUrl.dropLast(1) else newBaseUrl
+        if (normalized == baseUrl) return
+        baseUrl = normalized
+        // 复用同一个 OkHttpClient，重新构建 Retrofit 与 ApiService
+        retrofit = buildRetrofit(baseUrl)
+        api = retrofit.create(ApiService::class.java)
     }
 
-    val api: ApiService by lazy { retrofit.create(ApiService::class.java) }
+    fun currentBaseUrl(): String = baseUrl
 }
