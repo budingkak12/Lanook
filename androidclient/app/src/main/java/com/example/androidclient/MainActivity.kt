@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val vm = remember { MainViewModel() }
+                val searchVm = remember { com.example.androidclient.ui.SearchViewModel(com.example.androidclient.di.NetworkModule.api) }
                 val navController = rememberNavController()
                 
                 NavHost(
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
                     startDestination = "main"
                 ) {
                     composable("main") {
-                        MainScreen(navController, vm)
+                        MainScreen(navController, vm, searchVm)
                     }
                     composable(
                         "details/{index}",
@@ -103,6 +104,48 @@ class MainActivity : ComponentActivity() {
                         val items = vm.thumbnails.collectAsLazyPagingItems()
                         DetailViewScreen(
                             viewModel = vm,
+                            items = items,
+                            initialIndex = index,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    // 搜索结果详情：与随机详情复用组件，但数据源来自 searchVm
+                    composable(
+                        "search-details/{index}",
+                        arguments = listOf(navArgument("index") { type = NavType.IntType }),
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            ) + scaleIn(
+                                initialScale = 0.92f,
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            )
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            ) + scaleOut(
+                                targetScale = 0.92f,
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            )
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            ) + scaleOut(
+                                targetScale = 0.92f,
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            )
+                        }
+                    ) { backStackEntry ->
+                        val index = backStackEntry.arguments?.getInt("index") ?: 0
+                        val items = searchVm.thumbnails.collectAsLazyPagingItems()
+                        DetailViewScreen(
+                            viewModel = vm, // 复用同一个 MainViewModel 做点赞/收藏
                             items = items,
                             initialIndex = index,
                             onBack = { navController.popBackStack() }

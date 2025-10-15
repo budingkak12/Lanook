@@ -33,6 +33,16 @@ interface ApiService {
         @Query("limit") limit: Int = 20
     ): ThumbnailListResponse
 
+    /**
+     * 按标签获取缩略图列表（不使用 seed）
+     */
+    @GET("thumbnail-list")
+    suspend fun getThumbnailListByTag(
+        @Query("tag") tag: String,
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 20
+    ): ThumbnailListResponse
+
     @POST("tag")
     suspend fun addTag(@Body req: TagRequest): TagResponse
 

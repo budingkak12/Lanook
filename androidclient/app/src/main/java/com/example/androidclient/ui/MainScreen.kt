@@ -48,7 +48,7 @@ val items = listOf(
 )
 
 @Composable
-fun MainScreen(mainNavController: NavController, vm: MainViewModel) {
+fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: SearchViewModel) {
     val innerNavController = rememberNavController()
 
     Scaffold(
@@ -90,8 +90,11 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel) {
                 Text("Album Screen")
             }
             composable(Screen.Search.route) {
-                // TODO: Replace with actual Search screen
-                Text("Search Screen")
+                SearchScreen(
+                    navController = mainNavController,
+                    mainViewModel = vm,
+                    searchViewModel = searchVm
+                )
             }
             composable(Screen.Settings.route) {
                 // TODO: Replace with actual Settings screen
