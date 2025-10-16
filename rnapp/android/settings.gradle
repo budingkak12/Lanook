@@ -1,0 +1,30 @@
+pluginManagement {
+  includeBuild("../node_modules/@react-native/gradle-plugin")
+  repositories {
+    // 先用国内加速镜像以避免 TLS/HEAD 握手问题，其次回落到官方源
+    maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+    maven { url = uri("https://maven.aliyun.com/repository/public") }
+    maven { url = uri("https://maven.aliyun.com/repository/central") }
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+  repositories {
+    // 加速镜像优先，随后官方源兜底
+    maven { url = uri("https://maven.aliyun.com/repository/public") }
+    maven { url = uri("https://maven.aliyun.com/repository/central") }
+    maven { url = uri("https://maven.aliyun.com/repository/google") }
+    google()
+    mavenCentral()
+  }
+}
+
+rootProject.name = 'com.example.androidclient'
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
