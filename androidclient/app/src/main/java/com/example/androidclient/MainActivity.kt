@@ -30,6 +30,7 @@ import com.example.androidclient.ui.ThumbnailGridScreen
 import com.example.androidclient.ui.theme.AndroidclientTheme
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.example.androidclient.util.TagTranslator
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +60,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val vm = remember { MainViewModel() }
-                val searchVm = remember { com.example.androidclient.ui.SearchViewModel(com.example.androidclient.di.NetworkModule.api) }
+                val translate = remember { TagTranslator.load(applicationContext) }
+                val searchVm = remember { com.example.androidclient.ui.SearchViewModel(com.example.androidclient.di.NetworkModule.api, translate) }
                 val navController = rememberNavController()
                 
                 NavHost(

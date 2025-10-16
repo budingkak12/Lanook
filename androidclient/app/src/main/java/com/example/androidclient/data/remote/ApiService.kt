@@ -48,4 +48,11 @@ interface ApiService {
 
     @HTTP(method = "DELETE", path = "tag", hasBody = true)
     suspend fun removeTag(@Body req: TagRequest)
+
+    /**
+     * 获取全部标签名（英文原名数组）
+     * 响应：{"tags": ["like", "favorite", ...]}
+     */
+    @GET("tags")
+    suspend fun getAllTags(): com.example.androidclient.data.model.TagListResponse
 }

@@ -8,6 +8,7 @@ import androidx.paging.PagingData
 import com.example.androidclient.data.model.MediaItem
 import com.example.androidclient.data.paging.SearchPagingSource
 import com.example.androidclient.data.remote.ApiService
+import com.example.androidclient.data.model.TagOption
 import kotlinx.coroutines.flow.Flow
 import androidx.paging.cachedIn
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,9 +16,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class SearchViewModel(
-    private val api: ApiService
+    private val api: ApiService,
+    private val translate: Map<String, String> = emptyMap()
 ) : ViewModel() {
 
     private val _selectedTag = MutableStateFlow<String?>(null)
@@ -26,6 +29,26 @@ class SearchViewModel(
     fun setTag(tag: String?) {
         val t = tag?.trim()?.takeIf { it.isNotEmpty() }
         _selectedTag.value = t
+    }
+
+    // 全量标签（含 displayName），供本地联想过滤
+    private val _allTags = MutableStateFlow<List<TagOption>>(emptyList())
+    val allTags = _allTags.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    init {
+        // 首次进入拉取全部标签并构造显示名
+        viewModelScope.launch {
+            runCatching { api.getAllTags() }
+                .onSuccess { resp ->
+                    val mapped = resp.tags.map { name ->
+                        TagOption(name = name, displayName = translate[name])
+                    }
+                    _allTags.value = mapped
+                }
+                .onFailure {
+                    // 保持空表，UI 将不会显示建议
+                }
+        }
     }
 
     val thumbnails: Flow<PagingData<MediaItem>> = _selectedTag
