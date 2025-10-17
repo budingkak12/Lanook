@@ -8,6 +8,10 @@ buildscript {
         kotlinVersion = "2.1.20"
     }
     repositories {
+        // 优先镜像以解决 TLS/握手问题
+        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
+        maven { url = uri("https://maven.aliyun.com/repository/public") }
+        maven { url = uri("https://maven.aliyun.com/repository/central") }
         google()
         mavenCentral()
     }

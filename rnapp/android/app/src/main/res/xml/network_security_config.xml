@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 开发阶段允许明文 HTTP；如需收敛，可改为仅允许特定域名/IP -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
+
