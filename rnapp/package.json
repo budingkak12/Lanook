@@ -20,8 +20,9 @@
     "react-dom": "19.1.0",
     "react-native": "0.80.0",
     "react-native-gesture-handler": "^2.20.2",
-    "react-native-safe-area-context": "^4.10.5",
-    "react-native-screens": "^4.8.0",
+    "react-native-nitro-modules": "^0.27.6",
+    "react-native-screens": "^4.9.0",
+    "react-native-video": "^7.0.0-alpha.7",
     "react-native-web": "~0.19.12"
   },
   "devDependencies": {

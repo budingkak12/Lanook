@@ -10,6 +10,8 @@ export default defineConfig({
     alias: {
       'react-native$': 'react-native-web',
       'react-native': 'react-native-web',
+      // 在 Web 端将 react-native-video 指向空实现，避免 requireNativeComponent 抛错
+      'react-native-video': path.resolve(__dirname, './shims/react-native-video.ts'),
       '@': path.resolve(__dirname, '../'),
     },
   },

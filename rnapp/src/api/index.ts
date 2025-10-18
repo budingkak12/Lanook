@@ -8,6 +8,16 @@ const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefine
 const browserBases = isBrowser ? [''] : [];
 const envBase = (process.env as any)?.API_BASE_URL ? [(process.env as any).API_BASE_URL] : [];
 
+// Web 端支持通过 ?api_base= 覆盖（便于快速诊断网络问题，不影响原生端）
+let qsBase: string[] = [];
+try {
+  if (isBrowser) {
+    const url = new URL(window.location.href);
+    const q = url.searchParams.get('api_base');
+    if (q && /^https?:\/\//i.test(q)) qsBase = [q];
+  }
+} catch {}
+
 // 尝试从 RN Dev Server (Metro) 的 scriptURL 推断宿主机 IP（仅调试包）
 let metroHostBase: string[] = [];
 try {
@@ -31,11 +41,13 @@ const deviceLocalBases = isBrowser
     ];
 export const candidateBaseUrls: string[] = [
   ...browserBases,
+  ...qsBase,
   ...envBase,
+  // 设备端优先使用 Metro 宿主机 IP 与明确的内网 IP，降低探测失败时间
   ...metroHostBase,
-  ...deviceLocalBases,
   'http://10.209.30.60:8000',
   'http://192.168.31.58:8000',
+  ...deviceLocalBases,
 ];
 
 let SELECTED_BASE: string | null = null;
@@ -43,6 +55,12 @@ let SESSION_SEED: string | null = null;
 
 export async function resolveApiBase(): Promise<string> {
   if (SELECTED_BASE) return SELECTED_BASE;
+  // Web 端优先使用同源（由 Vite 代理到后端），可被 ?api_base 覆盖
+  if (isBrowser) {
+    SELECTED_BASE = qsBase[0] ?? '';
+    try { console.log('[api] base (browser) =', SELECTED_BASE || '(same-origin via Vite proxy)'); } catch {}
+    return SELECTED_BASE;
+  }
   const timeout = (ms: number) => new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));
   // 优先 /health 探测；失败再回退 /thumbnail-list?limit=1
   for (const base of candidateBaseUrls) {
@@ -55,10 +73,13 @@ export async function resolveApiBase(): Promise<string> {
         timeout(1500),
       ]) as Response;
       if (!res || !(res as any).ok) {
+        const controller2 = new AbortController();
+        const timer2 = setTimeout(() => controller2.abort(), 2000);
         res = await Promise.race([
-          fetch(`${probeBase}/thumbnail-list?limit=1`, { signal: controller.signal }),
+          fetch(`${probeBase}/thumbnail-list?limit=1&seed=debug`, { signal: controller2.signal }),
           timeout(2000),
         ]) as Response;
+        clearTimeout(timer2);
       }
       clearTimeout(timer);
       if (res && (res.ok || res.status === 400 || res.status === 404)) {
@@ -71,7 +92,7 @@ export async function resolveApiBase(): Promise<string> {
     }
   }
   // 兜底使用第一个候选（通常为 env 或 localhost）
-  SELECTED_BASE = candidateBaseUrls[0] || 'http://localhost:8000';
+  SELECTED_BASE = candidateBaseUrls.find(Boolean) || 'http://10.209.30.60:8000';
   try { console.log('[api] base fallback =', SELECTED_BASE || '(same-origin)'); } catch {}
   return SELECTED_BASE;
 }

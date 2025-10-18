@@ -14,12 +14,14 @@ plugins { id("com.facebook.react.settings") }
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 
 dependencyResolutionManagement {
+  // 优先使用此处定义的仓库，但不阻断插件声明（以避免部分插件报错）
   repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
   repositories {
-    // 加速镜像优先，随后官方源兜底
-    maven { url = uri("https://maven.aliyun.com/repository/public") }
-    maven { url = uri("https://maven.aliyun.com/repository/central") }
-    maven { url = uri("https://maven.aliyun.com/repository/google") }
+    // 加速镜像优先，随后官方源兜底；通过命名与插件保持一致以提高命中概率
+    maven { name = "MavenRepo"; url = uri("https://maven.aliyun.com/repository/central") }
+    maven { name = "Google"; url = uri("https://maven.aliyun.com/repository/google") }
+    maven { name = "maven"; url = uri("https://maven.aliyun.com/repository/public") }
+    maven { url = uri("https://jitpack.io") }
     google()
     mavenCentral()
   }
