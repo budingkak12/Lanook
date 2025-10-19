@@ -14,8 +14,10 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [offset, setOffset] = useState(0);
-  const limit = 90;
+  // 与安卓原生一致的分页大小
+  const limit = 20;
   const reachedEndRef = useRef(false);
+  const noMoreRef = useRef(false);
   const [showDetail, setShowDetail] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
@@ -26,12 +28,17 @@ export default function HomeScreen() {
 
   const load = useCallback(async (reset = false) => {
     if (loading) return;
+    if (!reset && noMoreRef.current) return;
     setLoading(true);
     try {
       const data = await fetchThumbnails(reset ? 0 : offset, limit);
       const mixed = shuffleInPlace([...data]);
       setItems(prev => (reset ? mixed : [...prev, ...mixed]));
       setOffset(prev => (reset ? limit : prev + limit));
+      if (reset) noMoreRef.current = false;
+      if (!reset && mixed.length === 0) {
+        noMoreRef.current = true;
+      }
     } catch (e) {
       console.warn('load thumbnails failed', e);
     } finally {
@@ -210,6 +217,12 @@ export default function HomeScreen() {
               if (Number.isFinite(idx)) {
                 detailIndexRef.current = Math.max(0, Math.min(items.length - 1, idx));
                 prefetchNeighbors(detailIndexRef.current);
+                // 详情页接近尾部时自动分页加载
+                const remain = items.length - 1 - detailIndexRef.current;
+                const threshold = Math.max(5, Math.floor(limit / 2));
+                if (remain <= threshold && !loading && !noMoreRef.current) {
+                  load(false);
+                }
               }
             }}
             renderItem={({ item }) => (

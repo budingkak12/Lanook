@@ -15,7 +15,6 @@
 - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
 - 启动后端：`uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000`。
 - 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
-- Web 前端：`cd webapp && npm i && npm run dev`（浏览器按终端提示端口）。
 - RN 开发：
   - Metro：`cd rnapp && npm start`
   - 设备端口：`adb reverse tcp:8081 tcp:8081 && adb reverse tcp:8000 tcp:8000`

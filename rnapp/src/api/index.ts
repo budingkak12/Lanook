@@ -153,49 +153,41 @@ function normalizeItem(raw: any): ThumbItem | null {
   };
 }
 
-export async function fetchThumbnails(offset = 0, limit = 60): Promise<ThumbItem[]> {
+export async function fetchThumbnails(offset = 0, limit = 20): Promise<ThumbItem[]> {
+  // 与安卓原生保持一致：严格使用 offset/limit 分页参数
   let attempts = 0;
   let lastErr: any = null;
   while (attempts < 2) {
     attempts++;
-    const base = await getApiBase();
-    const seed = await getSessionSeed();
-    const page = Math.floor(offset / limit) + 1;
-    const tryUrls = [
-      `${base}/thumbnail-list?seed=${encodeURIComponent(seed)}&order=seeded&offset=${offset}&limit=${limit}`,
-      `${base}/thumbnail-list?seed=${encodeURIComponent(seed)}&order=seeded&page=${page}&page_size=${limit}`,
-      `${base}/thumbnail-list?seed=${encodeURIComponent(seed)}&order=seeded`,
-    ];
-    for (const url of tryUrls) {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const list = Array.isArray(data)
-          ? data
-          : data.items || data.results || data.data || [];
-        const mapped = (list as any[])
-          .map(normalizeItem)
-          .filter(Boolean)
-          .map(it => ({
-            ...it!,
-            uri: (it as ThumbItem).uri.startsWith('http')
-              ? (it as ThumbItem).uri
-              : `${base}${(it as ThumbItem).uri.startsWith('/') ? '' : '/'}${(it as ThumbItem).uri}`,
-            resourceUrl: (it as ThumbItem).resourceUrl
-              ? ((it as ThumbItem).resourceUrl!.startsWith('http')
-                  ? (it as ThumbItem).resourceUrl!
-                  : `${base}${(it as ThumbItem).resourceUrl!.startsWith('/') ? '' : '/'}${(it as ThumbItem).resourceUrl!}`)
-              : undefined,
-          })) as ThumbItem[];
-        return mapped;
-      } catch (e: any) {
-        try { console.warn('[api] request failed, will retry next url', url, String(e)); } catch {}
-        lastErr = e;
-      }
+    try {
+      const base = await getApiBase();
+      const seed = await getSessionSeed();
+      const url = `${base}/thumbnail-list?seed=${encodeURIComponent(seed)}&order=seeded&offset=${offset}&limit=${limit}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : data.items || data.results || data.data || [];
+      const mapped = (list as any[])
+        .map(normalizeItem)
+        .filter(Boolean)
+        .map(it => ({
+          ...it!,
+          uri: (it as ThumbItem).uri.startsWith('http')
+            ? (it as ThumbItem).uri
+            : `${base}${(it as ThumbItem).uri.startsWith('/') ? '' : '/'}${(it as ThumbItem).uri}`,
+          resourceUrl: (it as ThumbItem).resourceUrl
+            ? ((it as ThumbItem).resourceUrl!.startsWith('http')
+                ? (it as ThumbItem).resourceUrl!
+                : `${base}${(it as ThumbItem).resourceUrl!.startsWith('/') ? '' : '/'}${(it as ThumbItem).resourceUrl!}`)
+            : undefined,
+        })) as ThumbItem[];
+      return mapped;
+    } catch (e: any) {
+      try { console.warn('[api] request failed, will retry with base re-resolve', String(e)); } catch {}
+      lastErr = e;
+      // 第一次失败时，清空已缓存的 BASE 并重探（适配 USB 重插/网络切换）
+      SELECTED_BASE = null;
     }
-    // 第一次失败时，清空已缓存的 BASE 并重探（适配 USB 重插/网络切换）
-    SELECTED_BASE = null;
   }
   throw lastErr || new Error('Failed to fetch /thumbnail-list');
 }
