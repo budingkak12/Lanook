@@ -12,8 +12,8 @@ export default defineConfig({
       'react-native': 'react-native-web',
       // 在 Web 端将 react-native-video 指向空实现，避免 requireNativeComponent 抛错
       'react-native-video': path.resolve(__dirname, './shims/react-native-video.ts'),
-      // FastImage 在 Web 上不可用，这里提供一个安全的空实现（但我们默认通过 SmartImage.web 使用 <img>，不会直接依赖）
-      'react-native-fast-image': path.resolve(__dirname, './shims/react-native-fast-image.ts'),
+      // FastImage 在 Web 上不可用，提供空实现；我们默认通过 SmartImage.web 使用 <img>
+      '@d11/react-native-fast-image': path.resolve(__dirname, './shims/react-native-fast-image.ts'),
       '@': path.resolve(__dirname, '../'),
     },
   },

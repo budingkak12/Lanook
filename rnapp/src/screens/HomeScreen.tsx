@@ -94,7 +94,7 @@ export default function HomeScreen() {
           try { const img = new (window as any).Image(); img.src = url; } catch {}
         } else {
           // 原生端仅使用 FastImage 预加载，不再回退到 Image.prefetch
-          const FI = require('react-native-fast-image');
+          const FI = require('@d11/react-native-fast-image');
           if (FI && typeof FI.preload === 'function') {
             FI.preload([{ uri: url }]);
           }
