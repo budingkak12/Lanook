@@ -1,7 +1,7 @@
 # Repository Guidelines
 ## 正在做的事情
 - 正在开发一个局域网相册，支持媒体浏览/管理，
-- 前端 React Native，后端 python fastapi
+- 前端 React Native 仅需考虑支持安卓 rn 和 pc-web 即可，需要最好的性能，暂不开发 ios。后端 python fastapi
 - androidclient/为前端项目参考代码和初步实现逻辑
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据与初始化在 `初始化数据库.py`。

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform } from 'react-native';
+import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { VideoView, useVideoPlayer, useEvent } from 'react-native-video';
 import { ThumbItem, fetchThumbnails, shuffleInPlace } from '../api';
+import SmartImage from '../components/SmartImage';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const GAP = 2;
@@ -19,6 +20,9 @@ export default function HomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedId, setSelectedId] = useState<string | number | null>(null);
   const pagerRef = useRef<FlatList<ThumbItem>>(null);
+  const isWeb = Platform.OS === 'web';
+  const detailIndexRef = useRef(0);
+  const lastNavAtRef = useRef(0);
 
   const load = useCallback(async (reset = false) => {
     if (loading) return;
@@ -47,14 +51,6 @@ export default function HomeScreen() {
     return idx >= 0 ? idx : currentIndex;
   }, [items, selectedId, currentIndex]);
 
-  // 当选中项或数据变化时，确保详情页正确对齐到选中项
-  useEffect(() => {
-    if (!showDetail || !pagerRef.current) return;
-    try {
-      pagerRef.current.scrollToIndex({ index: selectedIndex, animated: false });
-    } catch {}
-  }, [showDetail, selectedIndex]);
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load(true);
@@ -66,12 +62,81 @@ export default function HomeScreen() {
       activeOpacity={0.8}
       style={styles.cell}
       onPress={() => { setSelectedId(item.id); setCurrentIndex(index); setShowDetail(true); }}>
-      <Image source={{ uri: item.uri }} style={styles.img} resizeMode="cover" />
+      <SmartImage source={{ uri: item.uri }} style={styles.img} resizeMode="cover" priority="low" />
     </TouchableOpacity>
   ), []);
 
   const keyExtractor = useCallback((it: ThumbItem) => String(it.id), []);
   const ItemSeparator = useMemo(() => <View style={{ height: GAP }} />, []);
+
+  // 预加载相邻媒体（图片）
+  const prefetchNeighbors = useCallback((centerIndex: number) => {
+    const indices = [centerIndex - 2, centerIndex - 1, centerIndex + 1, centerIndex + 2];
+    for (const i of indices) {
+      if (i < 0 || i >= items.length) continue;
+      const it = items[i];
+      const url = it.resourceUrl || it.uri;
+      if (!url) continue;
+      if (it.type === 'video') {
+        // Web: 轻量触发连接建立；原生端依赖系统缓存
+        if (isWeb) {
+          try { fetch(url, { method: 'HEAD' }).catch(() => {}); } catch {}
+        }
+      } else {
+        if (isWeb) {
+          try { const img = new (window as any).Image(); img.src = url; } catch {}
+        } else {
+          // 原生端仅使用 FastImage 预加载，不再回退到 Image.prefetch
+          const FI = require('react-native-fast-image');
+          if (FI && typeof FI.preload === 'function') {
+            FI.preload([{ uri: url }]);
+          }
+        }
+      }
+    }
+  }, [items, isWeb]);
+
+  // 当选中项或数据变化时，确保详情页正确对齐到选中项
+  useEffect(() => {
+    if (!showDetail || !pagerRef.current) return;
+    try {
+      pagerRef.current.scrollToIndex({ index: selectedIndex, animated: false });
+    } catch {}
+    detailIndexRef.current = selectedIndex;
+    // 初次进入详情立即预加载邻居
+    prefetchNeighbors(selectedIndex);
+  }, [showDetail, selectedIndex, prefetchNeighbors]);
+
+  // Web 端详情页键盘切换：←/→、PgUp/PgDn、Home/End
+  useEffect(() => {
+    if (!showDetail || !isWeb) return;
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key;
+      if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'PageUp' || k === 'PageDown' || k === 'Home' || k === 'End') {
+        // 阻止浏览器滚动，提升手感
+        try { e.preventDefault(); } catch {}
+        const now = Date.now();
+        if ((e as any).repeat && now - lastNavAtRef.current < 60) return; // 简单节流
+        lastNavAtRef.current = now;
+        const cur = detailIndexRef.current;
+        let target = cur;
+        if (k === 'ArrowLeft' || k === 'PageUp') target = cur - 1;
+        if (k === 'ArrowRight' || k === 'PageDown') target = cur + 1;
+        if (k === 'Home') target = 0;
+        if (k === 'End') target = items.length - 1;
+        target = Math.max(0, Math.min(items.length - 1, target));
+        if (target !== cur) {
+          try {
+            pagerRef.current?.scrollToIndex({ index: target, animated: true });
+            detailIndexRef.current = target;
+            prefetchNeighbors(target);
+          } catch {}
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey as any, { passive: false } as any);
+    return () => window.removeEventListener('keydown', onKey as any);
+  }, [showDetail, isWeb, items.length, prefetchNeighbors]);
 
   function VideoDetailPlayer({ uri }: { uri: string }) {
     // v7 正确形态：直接传字符串 URI 或 { uri }
@@ -129,7 +194,24 @@ export default function HomeScreen() {
             style={styles.detailPager}
             initialScrollIndex={selectedIndex}
             getItemLayout={(_, i) => ({ length: SCREEN_W, offset: SCREEN_W * i, index: i })}
+            initialNumToRender={3}
+            windowSize={5}
+            maxToRenderPerBatch={3}
+            removeClippedSubviews={Platform.OS === 'web' ? false : true}
             keyExtractor={(it) => String(it.id)}
+            onScrollToIndexFailed={(info) => {
+              // 尝试延迟后再次定位，避免首帧还未测量完导致失败
+              const wait = new Promise(res => setTimeout(res, 50));
+              wait.then(() => pagerRef.current?.scrollToIndex({ index: info.index, animated: false })).catch(() => {});
+            }}
+            onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const offsetX = e.nativeEvent.contentOffset.x || 0;
+              const idx = Math.round(offsetX / SCREEN_W);
+              if (Number.isFinite(idx)) {
+                detailIndexRef.current = Math.max(0, Math.min(items.length - 1, idx));
+                prefetchNeighbors(detailIndexRef.current);
+              }
+            }}
             renderItem={({ item }) => (
               <View style={styles.detailPage}>
                 {Platform.OS === 'web' ? (
@@ -145,17 +227,13 @@ export default function HomeScreen() {
                       preload="auto"
                     />
                   ) : (
-                    // eslint-disable-next-line react/no-unknown-property
-                    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
-                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                      <img src={item.resourceUrl || item.uri} style={{ height: '100vh', width: 'auto', display: 'block' }} />
-                    </div>
+                    <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
                   )
                 ) : (
                   item.type === 'video' ? (
                     <VideoDetailPlayer uri={item.resourceUrl || item.uri} />
                   ) : (
-                    <Image source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" />
+                    <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
                   )
                 )}
               </View>
