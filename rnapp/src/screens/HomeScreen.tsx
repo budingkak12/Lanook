@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing } from 'react-native';
 import { VideoView, useVideoPlayer, useEvent } from 'react-native-video';
 import { ThumbItem, fetchThumbnails, shuffleInPlace } from '../api';
 import SmartImage from '../components/SmartImage';
@@ -25,6 +25,8 @@ export default function HomeScreen() {
   const isWeb = Platform.OS === 'web';
   const detailIndexRef = useRef(0);
   const lastNavAtRef = useRef(0);
+  // 详情页滑入/滑出动画：从右向左进入，返回相反
+  const slideXRef = useRef(new Animated.Value(SCREEN_W));
 
   const load = useCallback(async (reset = false) => {
     if (loading) return;
@@ -114,6 +116,30 @@ export default function HomeScreen() {
     prefetchNeighbors(selectedIndex);
   }, [showDetail, selectedIndex, prefetchNeighbors]);
 
+  // 进入/退出的过渡动画
+  useEffect(() => {
+    const v = slideXRef.current;
+    if (showDetail) {
+      v.setValue(SCREEN_W);
+      Animated.timing(v, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showDetail]);
+
+  const onBack = useCallback(() => {
+    const v = slideXRef.current;
+    Animated.timing(v, {
+      toValue: SCREEN_W,
+      duration: 200,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => setShowDetail(false));
+  }, []);
+
   // Web 端详情页键盘切换：←/→、PgUp/PgDn、Home/End
   useEffect(() => {
     if (!showDetail || !isWeb) return;
@@ -192,7 +218,7 @@ export default function HomeScreen() {
       />
 
       {showDetail && (
-        <View style={styles.detailWrap}>
+        <Animated.View style={[styles.detailWrap, { transform: [{ translateX: slideXRef.current }] }]} pointerEvents="auto">
           <FlatList
             ref={pagerRef}
             data={items}
@@ -252,10 +278,10 @@ export default function HomeScreen() {
               </View>
             )}
           />
-          <TouchableOpacity style={styles.detailClose} onPress={() => setShowDetail(false)}>
-            <Text style={{ color: '#fff', fontSize: 16 }}>关闭</Text>
+          <TouchableOpacity style={styles.detailBack} onPress={onBack}>
+            <Text style={{ color: '#fff', fontSize: 16 }}>返回</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -270,5 +296,5 @@ const styles = StyleSheet.create({
   detailWrap: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: '#000', zIndex: 999 },
   detailPage: { width: SCREEN_W, height: SCREEN_H, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   detailImg: { width: SCREEN_W, height: SCREEN_H },
-  detailClose: { position: 'absolute', top: 48, right: 16, padding: 8, backgroundColor: '#0008', borderRadius: 6, zIndex: 1001 },
+  detailBack: { position: 'absolute', top: 48, left: 16, padding: 8, backgroundColor: '#0008', borderRadius: 6, zIndex: 1001 },
 });
