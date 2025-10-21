@@ -29,6 +29,7 @@ export default defineConfig({
       '/thumbnail-list': { target: 'http://localhost:8000', changeOrigin: true },
       '/media': { target: 'http://localhost:8000', changeOrigin: true },
       '/media-resource': { target: 'http://localhost:8000', changeOrigin: true },
+      '/tag': { target: 'http://localhost:8000', changeOrigin: true },
       '/tags': { target: 'http://localhost:8000', changeOrigin: true },
     },
   },

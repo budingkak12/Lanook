@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing } from 'react-native';
+import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing, Pressable, Alert } from 'react-native';
 import { VideoView, useVideoPlayer, useEvent } from 'react-native-video';
-import { ThumbItem, fetchThumbnails, shuffleInPlace } from '../api';
+import { ThumbItem, fetchThumbnails, shuffleInPlace, setLike, setFavorite } from '../api';
 import SmartImage from '../components/SmartImage';
+import DoubleTap from '../components/DoubleTap';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const GAP = 2;
@@ -25,6 +26,11 @@ export default function HomeScreen() {
   const isWeb = Platform.OS === 'web';
   const detailIndexRef = useRef(0);
   const lastNavAtRef = useRef(0);
+  const curOffsetRef = useRef(0);
+  // 详情页的点赞/收藏覆盖状态与加载态（与 Android 端 TagOverrides 思路一致）
+  const [tagOverrides, setTagOverrides] = useState<Record<string | number, { liked?: boolean; favorited?: boolean }>>({});
+  const [likeLoading, setLikeLoading] = useState<Record<string | number, boolean>>({});
+  const [favLoading, setFavLoading] = useState<Record<string | number, boolean>>({});
   // 详情页滑入/滑出动画：从右向左进入，返回相反
   const slideXRef = useRef(new Animated.Value(SCREEN_W));
 
@@ -123,7 +129,7 @@ export default function HomeScreen() {
       v.setValue(SCREEN_W);
       Animated.timing(v, {
         toValue: 0,
-        duration: 220,
+        duration: 140,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
@@ -134,7 +140,7 @@ export default function HomeScreen() {
     const v = slideXRef.current;
     Animated.timing(v, {
       toValue: SCREEN_W,
-      duration: 200,
+      duration: 120,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(() => setShowDetail(false));
@@ -160,6 +166,7 @@ export default function HomeScreen() {
         target = Math.max(0, Math.min(items.length - 1, target));
         if (target !== cur) {
           try {
+            // 恢复内置平滑动画（Web 端也 animated:true），以保留原有观感
             pagerRef.current?.scrollToIndex({ index: target, animated: true });
             detailIndexRef.current = target;
             prefetchNeighbors(target);
@@ -188,6 +195,41 @@ export default function HomeScreen() {
         controls
       />
     );
+  }
+
+  function currentTagState(it: ThumbItem) {
+    const o = tagOverrides[it.id] || {};
+    const liked = typeof o.liked === 'boolean' ? o.liked : !!it.liked;
+    const favorited = typeof o.favorited === 'boolean' ? o.favorited : !!it.favorited;
+    return { liked, favorited };
+  }
+
+  async function toggleLike(it: ThumbItem) {
+    const { liked } = currentTagState(it);
+    if (likeLoading[it.id]) return;
+    setLikeLoading(s => ({ ...s, [it.id]: true }));
+    try {
+      await setLike(it.id, !liked);
+      setTagOverrides(s => ({ ...s, [it.id]: { ...(s[it.id] || {}), liked: !liked } }));
+    } catch (e: any) {
+      try { Alert.alert('提示', e?.message || '点赞失败，请稍后重试'); } catch {}
+    } finally {
+      setLikeLoading(s => ({ ...s, [it.id]: false }));
+    }
+  }
+
+  async function toggleFavorite(it: ThumbItem) {
+    const { favorited } = currentTagState(it);
+    if (favLoading[it.id]) return;
+    setFavLoading(s => ({ ...s, [it.id]: true }));
+    try {
+      await setFavorite(it.id, !favorited);
+      setTagOverrides(s => ({ ...s, [it.id]: { ...(s[it.id] || {}), favorited: !favorited } }));
+    } catch (e: any) {
+      try { Alert.alert('提示', e?.message || '收藏失败，请稍后重试'); } catch {}
+    } finally {
+      setFavLoading(s => ({ ...s, [it.id]: false }));
+    }
   }
 
   return (
@@ -224,6 +266,10 @@ export default function HomeScreen() {
             data={items}
             horizontal
             pagingEnabled
+            decelerationRate="fast"
+            snapToInterval={SCREEN_W}
+            snapToAlignment="start"
+            disableIntervalMomentum={true}
             style={styles.detailPager}
             initialScrollIndex={selectedIndex}
             getItemLayout={(_, i) => ({ length: SCREEN_W, offset: SCREEN_W * i, index: i })}
@@ -231,6 +277,24 @@ export default function HomeScreen() {
             windowSize={5}
             maxToRenderPerBatch={3}
             removeClippedSubviews={Platform.OS === 'web' ? false : true}
+            scrollEventThrottle={16}
+            onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const x = e.nativeEvent.contentOffset.x || 0;
+              curOffsetRef.current = x;
+              if (isWeb) {
+                // 节流检查，保持与 onMomentumScrollEnd 逻辑一致
+                const idx = Math.round(x / SCREEN_W);
+                if (Number.isFinite(idx) && idx !== detailIndexRef.current) {
+                  detailIndexRef.current = Math.max(0, Math.min(items.length - 1, idx));
+                  prefetchNeighbors(detailIndexRef.current);
+                  const remain = items.length - 1 - detailIndexRef.current;
+                  const threshold = Math.max(5, Math.floor(limit / 2));
+                  if (remain <= threshold && !loading && !noMoreRef.current) {
+                    load(false);
+                  }
+                }
+              }
+            }}
             keyExtractor={(it) => String(it.id)}
             onScrollToIndexFailed={(info) => {
               // 尝试延迟后再次定位，避免首帧还未测量完导致失败
@@ -251,32 +315,65 @@ export default function HomeScreen() {
                 }
               }
             }}
-            renderItem={({ item }) => (
-              <View style={styles.detailPage}>
-                {Platform.OS === 'web' ? (
-                  item.type === 'video' ? (
-                    // eslint-disable-next-line react/no-unknown-property
-                    <video
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100vh', objectFit: 'contain' }}
-                      src={item.resourceUrl || item.uri}
-                      controls
-                      autoPlay
-                      muted
-                      playsInline
-                      preload="auto"
-                    />
+            renderItem={({ item }) => {
+              const tagState = currentTagState(item);
+              const likeBusy = !!likeLoading[item.id];
+              const favBusy = !!favLoading[item.id];
+              return (
+                <View style={styles.detailPage}>
+                  {Platform.OS === 'web' ? (
+                    item.type === 'video' ? (
+                      // eslint-disable-next-line react/no-unknown-property
+                      <video
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100vh', objectFit: 'contain' }}
+                        src={item.resourceUrl || item.uri}
+                        controls
+                        autoPlay
+                        muted
+                        playsInline
+                        preload="auto"
+                        onDoubleClick={() => toggleLike(item)}
+                      />
+                    ) : (
+                      <DoubleTap onDoubleTap={() => toggleLike(item)} style={{ position: 'absolute', inset: 0 }}>
+                        <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
+                      </DoubleTap>
+                    )
                   ) : (
-                    <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
-                  )
-                ) : (
-                  item.type === 'video' ? (
-                    <VideoDetailPlayer uri={item.resourceUrl || item.uri} />
-                  ) : (
-                    <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
-                  )
-                )}
-              </View>
-            )}
+                    item.type === 'video' ? (
+                      <View style={{ position: 'absolute', inset: 0 }}>
+                        <VideoDetailPlayer uri={item.resourceUrl || item.uri} />
+                        {/* 原生端视频控件不易获知显示状态，此处仅对图片提供双击点赞；视频通过按钮操作 */}
+                      </View>
+                    ) : (
+                      <DoubleTap onDoubleTap={() => toggleLike(item)} style={{ position: 'absolute', inset: 0 }}>
+                        <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
+                      </DoubleTap>
+                    )
+                  )}
+
+                  {/* 底部操作条：点赞/收藏 */}
+                  <View style={styles.actionBar}>
+                    <Pressable
+                      onPress={() => toggleLike(item)}
+                      disabled={likeBusy}
+                      style={[styles.actionBtn, { opacity: likeBusy ? 0.6 : 1 }]}
+                    >
+                      <Text style={{ color: tagState.liked ? '#ff4d4f' : '#fff', fontSize: 20 }}>{tagState.liked ? '❤' : '♡'}</Text>
+                      <Text style={{ color: '#fff', marginLeft: 6 }}>{tagState.liked ? '已赞' : '点赞'}</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => toggleFavorite(item)}
+                      disabled={favBusy}
+                      style={[styles.actionBtn, { opacity: favBusy ? 0.6 : 1 }]}
+                    >
+                      <Text style={{ color: tagState.favorited ? '#FFC107' : '#fff', fontSize: 20 }}>{tagState.favorited ? '★' : '☆'}</Text>
+                      <Text style={{ color: '#fff', marginLeft: 6 }}>{tagState.favorited ? '已藏' : '收藏'}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            }}
           />
           <TouchableOpacity style={styles.detailBack} onPress={onBack}>
             <Text style={{ color: '#fff', fontSize: 16 }}>返回</Text>
@@ -297,4 +394,21 @@ const styles = StyleSheet.create({
   detailPage: { width: SCREEN_W, height: SCREEN_H, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   detailImg: { width: SCREEN_W, height: SCREEN_H },
   detailBack: { position: 'absolute', top: 48, left: 16, padding: 8, backgroundColor: '#0008', borderRadius: 6, zIndex: 1001 },
+  actionBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 32,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0008',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
 });

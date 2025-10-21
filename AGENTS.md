@@ -13,7 +13,7 @@
 ## 构建、测试与本地开发
 - 安装后端依赖：`uv pip install fastapi "uvicorn[standard]" sqlalchemy pydantic`。
 - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
-- 启动后端：`uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000`。
+- 启动后端：`uv run main.py`。
 - 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
 - RN 开发：
   - Metro：`cd rnapp && npm start`

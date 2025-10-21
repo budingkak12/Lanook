@@ -4,6 +4,9 @@
 // - 否则按候选地址顺序探测可用地址（优先公司网，其次家庭网），最后兜底 localhost
 import { NativeModules, Platform } from 'react-native';
 const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+// 强制使用指定后端地址（覆盖浏览器同源与自动探测逻辑）
+const FORCED_BASE = 'http://10.175.87.159:8000';
 // 浏览器：优先同源，相对路径交给 Vite 代理；设备：优先 127.0.0.1 与 localhost（经 adb reverse）
 const browserBases = isBrowser ? [''] : [];
 const envBase = (process.env as any)?.API_BASE_URL ? [(process.env as any).API_BASE_URL] : [];
@@ -55,6 +58,12 @@ let SESSION_SEED: string | null = null;
 
 export async function resolveApiBase(): Promise<string> {
   if (SELECTED_BASE) return SELECTED_BASE;
+  // 若配置了强制后端地址，则统一返回该地址（Web 与原生一致）
+  if (FORCED_BASE) {
+    SELECTED_BASE = FORCED_BASE;
+    try { console.log('[api] base (forced) =', SELECTED_BASE); } catch {}
+    return SELECTED_BASE;
+  }
   // Web 端优先使用同源（由 Vite 代理到后端），可被 ?api_base 覆盖
   if (isBrowser) {
     SELECTED_BASE = qsBase[0] ?? '';
@@ -126,6 +135,9 @@ export type ThumbItem = {
   width?: number;
   height?: number;
   title?: string;
+  // 服务端返回的全局标签状态（无用户概念）
+  liked?: boolean;
+  favorited?: boolean;
 };
 
 function normalizeItem(raw: any): ThumbItem | null {
@@ -150,6 +162,8 @@ function normalizeItem(raw: any): ThumbItem | null {
     width: raw.width,
     height: raw.height,
     title: raw.title || raw.filename || raw.name,
+    liked: typeof raw.liked === 'boolean' ? raw.liked : undefined,
+    favorited: typeof raw.favorited === 'boolean' ? raw.favorited : undefined,
   };
 }
 
@@ -198,4 +212,31 @@ export function shuffleInPlace<T>(arr: T[]): T[] {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+// === 点赞/收藏（参考 Android 端 ApiService + TagRepository） ===
+type TagName = 'like' | 'favorite';
+
+async function setTag(mediaId: string | number, tag: TagName, enabled: boolean): Promise<void> {
+  const base = await getApiBase();
+  const url = `${base}/tag`;
+  const body = JSON.stringify({ media_id: Number(mediaId), tag });
+  const opts: RequestInit = enabled
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+    : { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body };
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    // 与安卓一致：开启时 409/关闭时 404 视同成功（幂等）
+    if (enabled && res.status === 409) return;
+    if (!enabled && res.status === 404) return;
+    throw new Error(`tag ${enabled ? 'set' : 'unset'} failed: HTTP ${res.status}`);
+  }
+}
+
+export async function setLike(mediaId: string | number, enabled: boolean): Promise<void> {
+  return setTag(mediaId, 'like', enabled);
+}
+
+export async function setFavorite(mediaId: string | number, enabled: boolean): Promise<void> {
+  return setTag(mediaId, 'favorite', enabled);
 }

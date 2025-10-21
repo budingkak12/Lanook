@@ -12,6 +12,9 @@ import mimetypes
 import time
 import subprocess
 from pathlib import Path
+import socket
+
+import uvicorn
 
 # 复用数据库与模型（无用户概念）
 from 初始化数据库 import SessionLocal, Media, TagDefinition, MediaTag, create_database_and_tables, seed_initial_data
@@ -505,3 +508,34 @@ def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
         "Cache-Control": "public, max-age=3600",
     }
     return StreamingResponse(file_iter(file_path, start, length), status_code=206, media_type=mime, headers=headers)
+
+
+# =============================
+# 直接运行支持
+# =============================
+
+def _get_local_ip() -> str:
+    """尽可能获取局域网 IP（IPv4）。在没有外网时回退到主机名解析或 127.0.0.1。"""
+    ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # 不会真正发包，仅用于选择出站网卡
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        finally:
+            s.close()
+    except Exception:
+        try:
+            ip = socket.gethostbyname(socket.gethostname())
+        except Exception:
+            pass
+    return ip
+
+
+if __name__ == "__main__":
+    host = "0.0.0.0"
+    port = 8000
+    lan_ip = _get_local_ip()
+    print(f"[boot] Media App API 即将启动: http://{lan_ip}:{port}  (本机: http://localhost:{port})")
+    uvicorn.run(app, host=host, port=port)
