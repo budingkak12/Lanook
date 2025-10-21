@@ -4,7 +4,7 @@
 - 前端 React19，rn0.80+， 仅需考虑支持安卓 原生 和 pc-web 即可，需要最好的性能，暂不开发 ios。后端 python fastapi
 - androidclient/为前端项目参考代码和初步实现逻辑
 ## 你必须做的事情
-- 修改完代码后 请执行构建 安装 apk  
+- 请不要让用户构建安装 apk 你可以执行 /Users/wang/Documents/mytikt/rnapp && npx react-native run-android
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据与初始化在 `初始化数据库.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。

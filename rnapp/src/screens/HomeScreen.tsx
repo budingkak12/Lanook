@@ -186,7 +186,11 @@ export default function HomeScreen() {
     // v7 正确形态：直接传字符串 URI 或 { uri }
     const player = useVideoPlayer(
       { uri },
-      (p) => { p.loop = false; }
+      (p) => {
+        p.loop = false;
+        // Android 上提前设置为播放，配合 onLoad 可避免初始闪一下
+        try { p.play(); } catch {}
+      }
     );
     // 加载完成后自动开播，并记录错误便于排查
     useEvent(player, 'onLoad', () => { try { player.play(); } catch {} });
@@ -196,7 +200,8 @@ export default function HomeScreen() {
         player={player}
         style={styles.detailImg}
         resizeMode={"contain" as any}
-        controls
+        // Android 端不展示系统控件，避免进入时闪现控件
+        {...(Platform.OS === 'android' ? { controls: false } : {})}
       />
     );
   }
