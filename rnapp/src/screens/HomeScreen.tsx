@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Image, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, NativeSyntheticEvent, NativeScrollEvent, Animated, Easing, Pressable, Alert } from 'react-native';
+import { Dimensions, FlatList, RefreshControl, StatusBar, StyleSheet, TouchableOpacity, View, Text, Platform, Animated, Easing, Pressable, Alert } from 'react-native';
 import { VideoView, useVideoPlayer, useEvent } from 'react-native-video';
 import { ThumbItem, fetchThumbnails, shuffleInPlace, setLike, setFavorite } from '../api';
 import SmartImage from '../components/SmartImage';
 import DoubleTap from '../components/DoubleTap';
+// 兼容不同打包/导出形态（named/default）
+// 某些 Metro 缓存或 ESM/CJS 场景下直接命名导入可能得到 undefined
+// 这里用 require + 回退，避免运行时 "GestureViewer of undefined"。
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const RNGestureImageViewer: any = require('react-native-gesture-image-viewer');
+const GestureViewer: any = RNGestureImageViewer?.GestureViewer || RNGestureImageViewer?.default || RNGestureImageViewer;
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const GAP = 2;
@@ -27,6 +33,7 @@ export default function HomeScreen() {
   const detailIndexRef = useRef(0);
   const lastNavAtRef = useRef(0);
   const curOffsetRef = useRef(0);
+  const [viewerIndex, setViewerIndex] = useState(0);
   // 详情页的点赞/收藏覆盖状态与加载态（与 Android 端 TagOverrides 思路一致）
   const [tagOverrides, setTagOverrides] = useState<Record<string | number, { liked?: boolean; favorited?: boolean }>>({});
   const [likeLoading, setLikeLoading] = useState<Record<string | number, boolean>>({});
@@ -113,12 +120,9 @@ export default function HomeScreen() {
 
   // 当选中项或数据变化时，确保详情页正确对齐到选中项
   useEffect(() => {
-    if (!showDetail || !pagerRef.current) return;
-    try {
-      pagerRef.current.scrollToIndex({ index: selectedIndex, animated: false });
-    } catch {}
+    if (!showDetail) return;
     detailIndexRef.current = selectedIndex;
-    // 初次进入详情立即预加载邻居
+    setViewerIndex(selectedIndex);
     prefetchNeighbors(selectedIndex);
   }, [showDetail, selectedIndex, prefetchNeighbors]);
 
@@ -261,123 +265,80 @@ export default function HomeScreen() {
 
       {showDetail && (
         <Animated.View style={[styles.detailWrap, { transform: [{ translateX: slideXRef.current }] }]} pointerEvents="auto">
-          <FlatList
-            ref={pagerRef}
+          <GestureViewer
             data={items}
-            horizontal
-            pagingEnabled
-            decelerationRate="fast"
-            snapToInterval={SCREEN_W}
-            snapToAlignment="start"
-            disableIntervalMomentum={true}
-            style={styles.detailPager}
-            initialScrollIndex={selectedIndex}
-            getItemLayout={(_, i) => ({ length: SCREEN_W, offset: SCREEN_W * i, index: i })}
-            initialNumToRender={3}
-            windowSize={5}
-            maxToRenderPerBatch={3}
-            removeClippedSubviews={Platform.OS === 'web' ? false : true}
-            scrollEventThrottle={16}
-            onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-              const x = e.nativeEvent.contentOffset.x || 0;
-              curOffsetRef.current = x;
-              if (isWeb) {
-                // 节流检查，保持与 onMomentumScrollEnd 逻辑一致
-                const idx = Math.round(x / SCREEN_W);
-                if (Number.isFinite(idx) && idx !== detailIndexRef.current) {
-                  detailIndexRef.current = Math.max(0, Math.min(items.length - 1, idx));
-                  prefetchNeighbors(detailIndexRef.current);
-                  const remain = items.length - 1 - detailIndexRef.current;
-                  const threshold = Math.max(5, Math.floor(limit / 2));
-                  if (remain <= threshold && !loading && !noMoreRef.current) {
-                    load(false);
-                  }
-                }
+            initialIndex={selectedIndex}
+            ListComponent={FlatList as any}
+            onIndexChange={(idx) => {
+              setViewerIndex(idx);
+              detailIndexRef.current = idx;
+              prefetchNeighbors(idx);
+              const remain = items.length - 1 - idx;
+              const threshold = Math.max(5, Math.floor(limit / 2));
+              if (remain <= threshold && !loading && !noMoreRef.current) {
+                load(false);
               }
             }}
-            keyExtractor={(it) => String(it.id)}
-            onScrollToIndexFailed={(info) => {
-              // 尝试延迟后再次定位，避免首帧还未测量完导致失败
-              const wait = new Promise(res => setTimeout(res, 50));
-              wait.then(() => pagerRef.current?.scrollToIndex({ index: info.index, animated: false })).catch(() => {});
-            }}
-            onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-              const offsetX = e.nativeEvent.contentOffset.x || 0;
-              const idx = Math.round(offsetX / SCREEN_W);
-              if (Number.isFinite(idx)) {
-                detailIndexRef.current = Math.max(0, Math.min(items.length - 1, idx));
-                prefetchNeighbors(detailIndexRef.current);
-                // 详情页接近尾部时自动分页加载
-                const remain = items.length - 1 - detailIndexRef.current;
-                const threshold = Math.max(5, Math.floor(limit / 2));
-                if (remain <= threshold && !loading && !noMoreRef.current) {
-                  load(false);
-                }
-              }
-            }}
-            renderItem={({ item }) => {
-              const tagState = currentTagState(item);
-              const likeBusy = !!likeLoading[item.id];
-              const favBusy = !!favLoading[item.id];
-              return (
-                <View style={styles.detailPage}>
-                  {Platform.OS === 'web' ? (
-                    item.type === 'video' ? (
-                      // eslint-disable-next-line react/no-unknown-property
-                      <video
-                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100vh', objectFit: 'contain' }}
-                        src={item.resourceUrl || item.uri}
-                        controls
-                        autoPlay
-                        muted
-                        playsInline
-                        preload="auto"
-                        onDoubleClick={() => toggleLike(item)}
-                      />
-                    ) : (
-                      <DoubleTap onDoubleTap={() => toggleLike(item)} style={{ position: 'absolute', inset: 0 }}>
-                        <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
-                      </DoubleTap>
-                    )
+            renderItem={(item) => (
+              <View style={styles.detailPage}>
+                {Platform.OS === 'web' ? (
+                  item.type === 'video' ? (
+                    // eslint-disable-next-line react/no-unknown-property
+                    <video
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100vh', objectFit: 'contain' }}
+                      src={item.resourceUrl || item.uri}
+                      controls
+                      autoPlay
+                      muted
+                      playsInline
+                      preload="auto"
+                    />
                   ) : (
-                    item.type === 'video' ? (
-                      <View style={{ position: 'absolute', inset: 0 }}>
-                        <VideoDetailPlayer uri={item.resourceUrl || item.uri} />
-                        {/* 原生端视频控件不易获知显示状态，此处仅对图片提供双击点赞；视频通过按钮操作 */}
-                      </View>
-                    ) : (
-                      <DoubleTap onDoubleTap={() => toggleLike(item)} style={{ position: 'absolute', inset: 0 }}>
-                        <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
-                      </DoubleTap>
-                    )
-                  )}
-
-                  {/* 底部操作条：点赞/收藏 */}
-                  <View style={styles.actionBar}>
-                    <Pressable
-                      onPress={() => toggleLike(item)}
-                      disabled={likeBusy}
-                      style={[styles.actionBtn, { opacity: likeBusy ? 0.6 : 1 }]}
-                    >
-                      <Text style={{ color: tagState.liked ? '#ff4d4f' : '#fff', fontSize: 20 }}>{tagState.liked ? '❤' : '♡'}</Text>
-                      <Text style={{ color: '#fff', marginLeft: 6 }}>{tagState.liked ? '已赞' : '点赞'}</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => toggleFavorite(item)}
-                      disabled={favBusy}
-                      style={[styles.actionBtn, { opacity: favBusy ? 0.6 : 1 }]}
-                    >
-                      <Text style={{ color: tagState.favorited ? '#FFC107' : '#fff', fontSize: 20 }}>{tagState.favorited ? '★' : '☆'}</Text>
-                      <Text style={{ color: '#fff', marginLeft: 6 }}>{tagState.favorited ? '已藏' : '收藏'}</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            }}
+                    <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
+                  )
+                ) : (
+                  item.type === 'video' ? (
+                    <View style={{ position: 'absolute', inset: 0 }}>
+                      <VideoDetailPlayer uri={item.resourceUrl || item.uri} />
+                    </View>
+                  ) : (
+                    <SmartImage source={{ uri: item.resourceUrl || item.uri }} style={styles.detailImg} resizeMode="contain" priority="high" />
+                  )
+                )}
+              </View>
+            )}
+            containerStyle={{ backgroundColor: '#000' }}
+            onDismiss={onBack}
           />
+          {/* 顶部返回 */}
           <TouchableOpacity style={styles.detailBack} onPress={onBack}>
             <Text style={{ color: '#fff', fontSize: 16 }}>返回</Text>
           </TouchableOpacity>
+          {/* 底部操作条：点赞/收藏（跟随当前 index 渲染） */}
+          {items[viewerIndex] && (
+            <View style={styles.actionBar}>
+              <Pressable
+                onPress={() => toggleLike(items[viewerIndex])}
+                disabled={!!likeLoading[items[viewerIndex].id]}
+                style={[styles.actionBtn, { opacity: likeLoading[items[viewerIndex].id] ? 0.6 : 1 }]}
+              >
+                <Text style={{ color: currentTagState(items[viewerIndex]).liked ? '#ff4d4f' : '#fff', fontSize: 20 }}>
+                  {currentTagState(items[viewerIndex]).liked ? '❤' : '♡'}
+                </Text>
+                <Text style={{ color: '#fff', marginLeft: 6 }}>{currentTagState(items[viewerIndex]).liked ? '已赞' : '点赞'}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => toggleFavorite(items[viewerIndex])}
+                disabled={!!favLoading[items[viewerIndex].id]}
+                style={[styles.actionBtn, { opacity: favLoading[items[viewerIndex].id] ? 0.6 : 1 }]}
+              >
+                <Text style={{ color: currentTagState(items[viewerIndex]).favorited ? '#FFC107' : '#fff', fontSize: 20 }}>
+                  {currentTagState(items[viewerIndex]).favorited ? '★' : '☆'}
+                </Text>
+                <Text style={{ color: '#fff', marginLeft: 6 }}>{currentTagState(items[viewerIndex]).favorited ? '已藏' : '收藏'}</Text>
+              </Pressable>
+            </View>
+          )}
         </Animated.View>
       )}
     </View>

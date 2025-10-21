@@ -8,3 +8,11 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# FastImage / Glide keep rules to avoid stripping models and generated classes
+-keep class com.dylanvann.fastimage.** { *; }
+-keep class com.bumptech.glide.** { *; }
+-dontwarn com.bumptech.glide.**
+-keep class * extends com.bumptech.glide.module.AppGlideModule
+-keep public class * implements com.bumptech.glide.module.GlideModule
+-keep public enum com.bumptech.glide.load.ImageHeaderParser$** { *; }
