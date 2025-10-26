@@ -23,11 +23,13 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +59,16 @@ fun DetailViewScreen(
     initialIndex: Int,
     onBack: () -> Unit
 ) {
-    val pagerState = rememberPagerState(initialPage = initialIndex, pageCount = { items.itemCount })
+    val savedPageState = rememberSaveable(initialIndex) { mutableStateOf(initialIndex) }
+    val pagerState = rememberPagerState(
+        initialPage = savedPageState.value,
+        pageCount = { items.itemCount }
+    )
+    LaunchedEffect(pagerState.currentPage) {
+        if (savedPageState.value != pagerState.currentPage) {
+            savedPageState.value = pagerState.currentPage
+        }
+    }
     val overrides by viewModel.tagOverrides.collectAsState()
     val context = LocalContext.current
 
@@ -262,4 +273,3 @@ private fun ActionIconButton(
         }
     }
 }
-

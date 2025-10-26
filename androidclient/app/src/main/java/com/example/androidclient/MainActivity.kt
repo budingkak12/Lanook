@@ -29,6 +29,7 @@ import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.ThumbnailGridScreen
 import com.example.androidclient.ui.theme.AndroidclientTheme
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.example.androidclient.util.TagTranslator
 
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                val vm = remember { MainViewModel() }
+                val vm: MainViewModel = viewModel()
                 val translate = remember { TagTranslator.load(applicationContext) }
                 val searchVm = remember { com.example.androidclient.ui.SearchViewModel(com.example.androidclient.di.NetworkModule.api, translate) }
                 val navController = rememberNavController()
