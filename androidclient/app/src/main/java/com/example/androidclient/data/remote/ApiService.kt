@@ -5,9 +5,11 @@ import com.example.androidclient.data.model.TagRequest
 import com.example.androidclient.data.model.TagResponse
 import com.example.androidclient.data.model.ThumbnailListResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
@@ -48,6 +50,12 @@ interface ApiService {
 
     @HTTP(method = "DELETE", path = "tag", hasBody = true)
     suspend fun removeTag(@Body req: TagRequest)
+
+    @DELETE("media/{media_id}")
+    suspend fun deleteMedia(
+        @Path("media_id") mediaId: Int,
+        @Query("delete_file") deleteFile: Boolean = true
+    )
 
     /**
      * 获取全部标签名（英文原名数组）

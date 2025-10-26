@@ -1,7 +1,16 @@
 package com.example.androidclient.ui.components
 
+import android.util.Log
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -12,30 +21,64 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.example.androidclient.data.model.MediaItem
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
+private val AutoScrollTrigger: Dp = 40.dp
+private const val GRID_LOG_TAG = "MediaGrid"
+
+private enum class DragSelectionAction { Select, Deselect }
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MediaGrid(
     items: LazyPagingItems<MediaItem>,
     onThumbnailClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     gridContentDescription: String = "Thumbnail Grid",
-    emptyContent: (@Composable () -> Unit)? = null
+    emptyContent: (@Composable () -> Unit)? = null,
+    isSelecting: Boolean = false,
+    selectedIds: Set<Int> = emptySet(),
+    onSelectionToggle: ((Int, Boolean) -> Unit)? = null,
+    onRequestSelectionMode: ((Int) -> Unit)? = null,
+    onSelectionGestureFinish: (() -> Unit)? = null
 ) {
     when (items.loadState.refresh) {
         is LoadState.Loading -> Box(
@@ -61,72 +104,309 @@ fun MediaGrid(
                 emptyContent()
                 return
             }
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 108.dp),
-                contentPadding = PaddingValues(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = modifier
-                    .fillMaxSize()
-                    .semantics { contentDescription = gridContentDescription }
-            ) {
-                items(
-                    count = items.itemCount,
-                    key = items.itemKey { it.id }
-                ) { index ->
-                    val item = items[index]
-                    if (item != null) {
-                        ThumbnailItem(item) { onThumbnailClick(index) }
-                    }
-                }
 
-                when (items.loadState.append) {
-                    is LoadState.Loading -> {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) { CircularProgressIndicator() }
-                        }
-                    }
-                    is LoadState.Error -> {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Button(onClick = { items.retry() }) {
-                                    Text("加载更多失败，点击重试")
+            val selectionEnabled = onSelectionToggle != null
+            val gridState = rememberLazyGridState()
+            val containerCoordinates = remember { mutableStateOf<LayoutCoordinates?>(null) }
+            val itemBounds = remember { mutableStateMapOf<Int, Rect>() }
+            val indexToMediaId = remember { mutableStateMapOf<Int, Int>() }
+            val selectedIdsState = rememberUpdatedState(selectedIds)
+            val density = LocalDensity.current
+            val autoScrollTriggerPx = remember(density) { with(density) { AutoScrollTrigger.toPx() } }
+
+            val pointerModifier = if (selectionEnabled) {
+                Modifier.pointerInput(selectionEnabled, items.itemCount, isSelecting) {
+                    coroutineScope {
+                        awaitEachGesture {
+                            var selectionModeActive = isSelecting
+                            var dragAction: DragSelectionAction? = null
+                            var lastProcessedIndex: Int? = null
+                            var autoScrollJob: Job? = null
+                            var autoScrollDirection = 0
+
+                            fun resetDragState() {
+                                dragAction = null
+                                lastProcessedIndex = null
+                            }
+
+                            fun stopAutoScroll() {
+                                autoScrollJob?.cancel()
+                                autoScrollJob = null
+                                autoScrollDirection = 0
+                            }
+
+                            fun ensureAutoScroll(position: Offset) {
+                                val container = containerCoordinates.value ?: run {
+                                    stopAutoScroll()
+                                    return
                                 }
+                                val height = container.size.height.toFloat()
+                                if (height <= 0f) {
+                                    stopAutoScroll()
+                                    return
+                                }
+                                val y = position.y
+                                val direction = when {
+                                    y < autoScrollTriggerPx -> -1
+                                    y > height - autoScrollTriggerPx -> 1
+                                    else -> 0
+                                }
+                                if (direction == 0) {
+                                    stopAutoScroll()
+                                    return
+                                }
+                                if (direction == autoScrollDirection && autoScrollJob?.isActive == true) return
+
+                                autoScrollJob?.cancel()
+                                autoScrollDirection = direction
+                                autoScrollJob = launch {
+                                    while (isActive) {
+                                        val layoutInfo = gridState.layoutInfo
+                                        val targetIndex = if (direction < 0) {
+                                            (layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) - 1
+                                        } else {
+                                            (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) + 1
+                                        }
+                                        if (targetIndex in 0 until items.itemCount) {
+                                            gridState.scrollToItem(targetIndex)
+                                        } else {
+                                            stopAutoScroll()
+                                            break
+                                        }
+                                        delay(32)
+                                    }
+                                }
+                            }
+
+                            fun processOffset(offset: Offset) {
+                                val container = containerCoordinates.value ?: return
+                                val positionInRoot = container.localToRoot(offset)
+                                val hit = itemBounds.entries.firstOrNull { (_, rect) -> rect.contains(positionInRoot) }?.key
+                                if (hit == null || hit == lastProcessedIndex) return
+                                lastProcessedIndex = hit
+                                val mediaId = indexToMediaId[hit] ?: return
+                                val currentlySelected = selectedIdsState.value.contains(mediaId)
+                                if (dragAction == null) {
+                                    if (!selectionModeActive) {
+                                        onRequestSelectionMode?.invoke(mediaId)
+                                        selectionModeActive = true
+                                    }
+                                    dragAction = when {
+                                        !selectionModeActive -> DragSelectionAction.Select
+                                        currentlySelected -> DragSelectionAction.Deselect
+                                        else -> DragSelectionAction.Select
+                                    }
+                                    Log.d(GRID_LOG_TAG, "drag init action=$dragAction index=$hit id=$mediaId")
+                                }
+                                val targetSelect = dragAction == DragSelectionAction.Select
+                                Log.v(GRID_LOG_TAG, "drag hit index=$hit id=$mediaId target=$targetSelect current=$currentlySelected")
+                                if (currentlySelected != targetSelect) {
+                                    onSelectionToggle?.invoke(mediaId, targetSelect)
+                                }
+                            }
+
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val pointerId = down.id
+                            val initial = if (selectionModeActive) {
+                                down
+                            } else {
+                                val longPress = awaitLongPressOrCancellation(pointerId)
+                                if (longPress == null) {
+                                    return@awaitEachGesture
+                                } else {
+                                    longPress
+                                }
+                            }
+
+                            resetDragState()
+                            processOffset(initial.position)
+                            ensureAutoScroll(initial.position)
+
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointerId } ?: continue
+                                if (!change.pressed) {
+                                    stopAutoScroll()
+                                    resetDragState()
+                                    onSelectionGestureFinish?.invoke()
+                                    break
+                                }
+                                processOffset(change.position)
+                                ensureAutoScroll(change.position)
                             }
                         }
                     }
-                    else -> Unit
+                }
+            } else {
+                Modifier
+            }
+
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { coordinates -> containerCoordinates.value = coordinates }
+                    .then(pointerModifier)
+                    .semantics { contentDescription = gridContentDescription }
+            ) {
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = 108.dp),
+                    contentPadding = PaddingValues(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(
+                        count = items.itemCount,
+                        key = items.itemKey { it.id }
+                    ) { index ->
+                        val item = items[index]
+                        if (item != null) {
+                            val isItemSelected = selectionEnabled && selectedIds.contains(item.id)
+                            DisposableEffect(index, item.id) {
+                                indexToMediaId[index] = item.id
+                                onDispose {
+                                    indexToMediaId.remove(index)
+                                    itemBounds.remove(index)
+                                }
+                            }
+                            ThumbnailItem(
+                                item = item,
+                                isSelected = isItemSelected,
+                                isSelecting = selectionEnabled && isSelecting,
+                                onClick = {
+                                    if (selectionEnabled && isSelecting) {
+                                        onSelectionToggle?.invoke(item.id, !isItemSelected)
+                                    } else {
+                                        onThumbnailClick(index)
+                                    }
+                                },
+                                onLongClick = if (selectionEnabled) {
+                                    {
+                                        if (!isSelecting) {
+                                            onRequestSelectionMode?.invoke(item.id)
+                                            onSelectionToggle?.invoke(item.id, true)
+                                            Log.d(GRID_LOG_TAG, "enter selection via longClick id=${item.id}")
+                                        }
+                                    }
+                                } else null,
+                                modifier = Modifier.onGloballyPositioned { coordinates ->
+                                    if (coordinates.isAttached) {
+                                        val rect = coordinates.boundsInRoot()
+                                        itemBounds[index] = rect
+                                        Log.v(GRID_LOG_TAG, "update bounds index=$index id=${item.id} rect=$rect")
+                                    } else {
+                                        itemBounds.remove(index)
+                                    }
+                                }
+                            )
+                        } else {
+                            DisposableEffect(index) {
+                                indexToMediaId.remove(index)
+                                itemBounds.remove(index)
+                                onDispose {
+                                    indexToMediaId.remove(index)
+                                    itemBounds.remove(index)
+                                }
+                            }
+                            Box(modifier = Modifier.aspectRatio(1f))
+                        }
+                    }
+
+                    when (items.loadState.append) {
+                        is LoadState.Loading -> {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) { CircularProgressIndicator() }
+                            }
+                        }
+
+                        is LoadState.Error -> {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Button(onClick = { items.retry() }) {
+                                        Text("加载更多失败，点击重试")
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> Unit
+                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ThumbnailItem(item: MediaItem, onClick: () -> Unit) {
+private fun ThumbnailItem(
+    item: MediaItem,
+    isSelected: Boolean,
+    isSelecting: Boolean,
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
     Card(
-        onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .aspectRatio(1f)
-            .semantics { contentDescription = "Thumbnail Item" },
+            .semantics { contentDescription = "Thumbnail Item" }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                onClick = onClick,
+                onLongClick = null
+            ),
         shape = MaterialTheme.shapes.small
     ) {
-        ThumbnailImage(
-            data = item.thumbnailUrl.takeUnless { it.isNullOrBlank() } ?: item.resourceUrl,
-            contentDescription = item.filename,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            targetSize = 108.dp
-        )
+        Box {
+            ThumbnailImage(
+                data = item.thumbnailUrl.takeUnless { it.isNullOrBlank() } ?: item.resourceUrl,
+                contentDescription = item.filename,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                targetSize = 108.dp
+            )
+            SelectionIndicator(isSelected = isSelected, isSelecting = isSelecting)
+        }
     }
+}
+
+@Composable
+private fun BoxScope.SelectionIndicator(isSelected: Boolean, isSelecting: Boolean) {
+    if (!isSelected) {
+        if (isSelecting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.1f))
+            )
+        }
+        return
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+    )
+    Icon(
+        imageVector = Icons.Filled.CheckCircle,
+        contentDescription = "已选中",
+        tint = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .padding(8.dp)
+            .align(Alignment.TopEnd)
+    )
 }

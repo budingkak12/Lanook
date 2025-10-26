@@ -9,6 +9,8 @@ import com.example.androidclient.data.model.MediaItem
 import com.example.androidclient.data.paging.SearchPagingSource
 import com.example.androidclient.data.remote.ApiService
 import com.example.androidclient.data.model.TagOption
+import com.example.androidclient.data.model.BulkDeleteResult
+import com.example.androidclient.data.repository.MediaRepository
 import kotlinx.coroutines.flow.Flow
 import androidx.paging.cachedIn
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +24,8 @@ class SearchViewModel(
     private val api: ApiService,
     private val translate: Map<String, String> = emptyMap()
 ) : ViewModel() {
+
+    private val mediaRepository = MediaRepository(api)
 
     private val _selectedTag = MutableStateFlow<String?>(null)
     val selectedTag = _selectedTag.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -69,4 +73,15 @@ class SearchViewModel(
             }
         }
         .cachedIn(viewModelScope)
+
+    fun deleteMedia(
+        mediaIds: Set<Int>,
+        deleteFile: Boolean = true,
+        onResult: (BulkDeleteResult) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = mediaRepository.deleteMedia(mediaIds, deleteFile)
+            onResult(result)
+        }
+    }
 }

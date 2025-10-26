@@ -6,6 +6,8 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.example.androidclient.data.model.MediaItem
 import com.example.androidclient.data.paging.ThumbnailRepository
+import com.example.androidclient.data.model.BulkDeleteResult
+import com.example.androidclient.data.repository.MediaRepository
 import com.example.androidclient.data.repository.SessionRepository
 import com.example.androidclient.data.repository.TagRepository
 import com.example.androidclient.di.NetworkModule
@@ -20,6 +22,7 @@ class MainViewModel : ViewModel() {
 
     private val sessionRepository = SessionRepository(NetworkModule.api)
     private val thumbnailRepository = ThumbnailRepository(NetworkModule.api, sessionRepository)
+    private val mediaRepository = MediaRepository(NetworkModule.api)
     private val tagRepository = TagRepository(NetworkModule.api)
 
     private val _tagOverrides = MutableStateFlow<Map<Int, TagState>>(emptyMap())
@@ -27,6 +30,17 @@ class MainViewModel : ViewModel() {
 
     val thumbnails: Flow<PagingData<MediaItem>> =
         thumbnailRepository.thumbnailPager().cachedIn(viewModelScope)
+
+    fun deleteMedia(
+        mediaIds: Set<Int>,
+        deleteFile: Boolean = true,
+        onResult: (BulkDeleteResult) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = mediaRepository.deleteMedia(mediaIds, deleteFile)
+            onResult(result)
+        }
+    }
 
     fun setLike(mediaId: Int, target: Boolean, onResult: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
