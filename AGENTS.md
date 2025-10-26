@@ -1,27 +1,19 @@
 # Repository Guidelines
 ## 正在做的事情
 - 正在开发一个局域网相册，支持媒体浏览/管理，
-- 前端 React19，rn0.80+， 仅需考虑支持安卓 原生 和 pc-web 即可，需要最好的性能，暂不开发 ios。后端 python fastapi
-- androidclient/为前端项目参考代码和初步实现逻辑
+- 前端：androidclient/
 ## 你必须做的事情
-- 完成前端代码修改后 请构建 web
-- 请不要让用户构建安装 apk 你可以执行 /Users/wang/Documents/mytikt/rnapp && npx react-native run-android
+- 请不要让用户构建安装 apk 
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据与初始化在 `初始化数据库.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。
 - 工具脚本：`generate_test_videos.py`、`api_flow_test.py`。
-- 前端 Web：`webapp/`（Vite + React + TS），源码在 `webapp/src/pages/`、`webapp/src/store/`、`webapp/src/lib/api.ts`。
-- React Native：`rnapp/`（开启 Fabric）。
 
 ## 构建、测试与本地开发
 - 安装后端依赖：`uv pip install fastapi "uvicorn[standard]" sqlalchemy pydantic`。
 - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
 - 启动后端：`uv run main.py`。
 - 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
-- RN 开发：
-  - Metro：`cd rnapp && npm start`
-  - 设备端口：`adb reverse tcp:8081 tcp:8081 && adb reverse tcp:8000 tcp:8000`
-  - Web 预览：`cd rnapp && npm run web`（Vite，默认 5174）
 - 构建调试 APK：`cd rnapp/android && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
 
 ## 编码风格与命名规范
