@@ -26,7 +26,7 @@ import androidx.navigation.navArgument
 import com.example.androidclient.ui.DetailViewScreen
 import com.example.androidclient.ui.MainScreen
 import com.example.androidclient.ui.MainViewModel
-import com.example.androidclient.ui.ThumbnailGridScreen
+import com.example.androidclient.ui.SearchViewModel
 import com.example.androidclient.ui.theme.AndroidclientTheme
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
 
                 val vm: MainViewModel = viewModel()
                 val translate = remember { TagTranslator.load(applicationContext) }
-                val searchVm = remember { com.example.androidclient.ui.SearchViewModel(com.example.androidclient.di.NetworkModule.api, translate) }
+                val searchVm = remember { SearchViewModel(com.example.androidclient.di.NetworkModule.api, translate) }
                 val navController = rememberNavController()
                 
                 NavHost(

@@ -25,8 +25,8 @@ class SearchPagingSource(
             LoadResult.Page(
                 data = response.items.map { item ->
                     item.copy(
-                        thumbnailUrl = item.thumbnailUrl.toAbsoluteUrl() ?: "",
-                        resourceUrl = item.resourceUrl.toAbsoluteUrl() ?: "",
+                        thumbnailUrl = item.thumbnailUrl.toAbsoluteUrl(),
+                        resourceUrl = item.resourceUrl.toAbsoluteUrl() ?: item.resourceUrl,
                         liked = item.liked == true,
                         favorited = item.favorited == true
                     )
@@ -47,4 +47,3 @@ class SearchPagingSource(
         }
     }
 }
-

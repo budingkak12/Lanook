@@ -92,7 +92,6 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: Se
             composable(Screen.Search.route) {
                 SearchScreen(
                     navController = mainNavController,
-                    mainViewModel = vm,
                     searchViewModel = searchVm
                 )
             }
