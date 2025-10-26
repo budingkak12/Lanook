@@ -16,11 +16,11 @@
 - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
 - 启动后端：`uv run main.py`。
 - 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
-- 构建调试 APK：`cd rnapp/android && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
+- 构建调试 APK：`cd androidclient && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r androidclient/app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
 
 ## 编码风格与命名规范
 - Python：PEP 8、4 空格、尽量类型标注；函数/变量 `snake_case`，类 `PascalCase`；保持既有路由命名（如 `/session`、`/thumbnail-list`）。推荐 Black。
-- TypeScript/React：严格 TS；变量/函数 `camelCase`，组件 `PascalCase`；HTTP 统一经 `src/lib/api.ts`；使用 Prettier/编辑器默认格式化。
+- Android（Kotlin + Jetpack Compose）：统一使用 Kotlin + Compose；ViewModel 与 Repository 走 `com.example.androidclient` 既有包结构；`@Composable` 函数命名用 `PascalCase`，普通函数用 `camelCase`；网络层通过 `NetworkModule` 提供的单例接口；保持 ktlint/Android Studio 默认格式化配置。
 
 ### Python 模块拆分规则
 - `main.py` 仅保留应用创建、全局中间件与路由注册，不直接承载业务逻辑。

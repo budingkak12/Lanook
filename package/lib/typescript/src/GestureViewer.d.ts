@@ -1,3 +1,0 @@
-import type { GestureViewerProps } from './types';
-export declare function GestureViewer<ItemT, LC>({ id, data, renderItem: renderItemProp, renderContainer, ListComponent, width: customWidth, height: customHeight, listProps, backdropStyle: backdropStyleProps, containerStyle, initialIndex, itemSpacing, useSnap, enableLoop, ...props }: GestureViewerProps<ItemT, LC>): import("react/jsx-runtime").JSX.Element;
-//# sourceMappingURL=GestureViewer.d.ts.map
