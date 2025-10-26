@@ -264,6 +264,17 @@ fun MediaGrid(
                             var dragStarted = false
                             var startPosition = down.position
 
+                            // 在选择模式下，先设置一个短按停留阈值，避免与滚动手势冲突
+                            var heldEnough = !selectionModeActive
+                            var holdJob: Job? = null
+
+                            if (selectionModeActive) {
+                                holdJob = launch {
+                                    delay(120)
+                                    heldEnough = true
+                                }
+                            }
+
                             if (!selectionModeActive) {
                                 val longPress = awaitLongPressOrCancellation(pointerId)
                                 if (longPress == null) {
@@ -294,13 +305,34 @@ fun MediaGrid(
                                     val dx = change.position.x - startPosition.x
                                     val dy = change.position.y - startPosition.y
                                     val dist2 = dx * dx + dy * dy
-                                    if (dist2 >= dragStartSlopPx * dragStartSlopPx) {
-                                        dragStarted = true
-                                        processOffset(startPosition)
-                                        change.consume()
-                                    } else {
+                                    val slop2 = dragStartSlopPx * dragStartSlopPx
+
+                                    if (selectionModeActive && !heldEnough) {
+                                        if (dist2 < slop2) {
+                                            // 小幅移动，继续等待
+                                            continue
+                                        }
+                                        // 判断方向：明显纵向 -> 交给滚动；否则立即进入拖选
+                                        val absDx = kotlin.math.abs(dx)
+                                        val absDy = kotlin.math.abs(dy)
+                                        val verticalDominant = absDy > absDx * 1.5f
+                                        if (verticalDominant) {
+                                            stopAutoScroll()
+                                            resetDragState()
+                                            holdJob?.cancel()
+                                            return@awaitEachGesture
+                                        }
+                                        // 侧向/斜向：立即开始拖选
+                                    } else if (dist2 < slop2 && selectionModeActive) {
+                                        // 已达到停留阈值但还未明显移动：继续等下一帧
                                         continue
                                     }
+
+                                    // 满足开始条件：启动拖选
+                                    dragStarted = true
+                                    processOffset(startPosition)
+                                    ensureAutoScroll(startPosition)
+                                    change.consume()
                                 }
 
                                 processOffset(change.position)
