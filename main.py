@@ -10,9 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import mimetypes
 import time
-import subprocess
 from pathlib import Path
 import socket
+
+from PIL import Image
+import av  # type: ignore
 
 import uvicorn
 
@@ -113,6 +115,12 @@ def _ensure_db_initialized():
 # 缩略图目录（项目根目录下）
 THUMBNAILS_DIR = Path(__file__).parent / "thumbnails"
 THUMBNAILS_DIR.mkdir(exist_ok=True)
+MAX_THUMB_SIZE = (480, 480)
+
+if hasattr(Image, "Resampling"):
+    _LANCZOS = Image.Resampling.LANCZOS  # Pillow >= 9.1
+else:  # pragma: no cover - 兼容旧版本 Pillow
+    _LANCZOS = Image.LANCZOS
 
 def _thumb_path_for(media: Media) -> Path:
     # 统一生成 jpg 缩略图，文件名为 <id>.jpg
@@ -133,12 +141,63 @@ def _should_regenerate(src_path: str, thumb_path: Path) -> bool:
     except Exception:
         return True
 
+
+def _save_image_thumbnail(img: Image.Image, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    # Pillow 会就地缩放，因此复制一份避免影响原图对象
+    thumb_img = img.copy()
+    thumb_img.thumbnail(MAX_THUMB_SIZE, _LANCZOS)
+    # 视频帧往往是 YUV，需要转为 RGB
+    if thumb_img.mode not in {"RGB", "L"}:
+        thumb_img = thumb_img.convert("RGB")
+    thumb_img.save(dest, format="JPEG", quality=85)
+
+
+def _generate_image_thumbnail(src: str, dest: Path) -> bool:
+    try:
+        with Image.open(src) as img:
+            _save_image_thumbnail(img, dest)
+        return True
+    except Exception:
+        return False
+
+
+def _generate_video_thumbnail(src: str, dest: Path, target_seconds: float = 1.0) -> bool:
+    try:
+        with av.open(src) as container:
+            video_stream = next((stream for stream in container.streams if stream.type == "video"), None)
+            if video_stream is None:
+                return False
+            video_stream.thread_type = "AUTO"
+
+            seek_pts = None
+            if video_stream.time_base:
+                # time_base 是每个 pts 单位的秒数
+                seek_pts = int(max(target_seconds / float(video_stream.time_base), 0))
+            if seek_pts is not None and seek_pts > 0:
+                try:
+                    container.seek(seek_pts, stream=video_stream, any_frame=False, backward=True)
+                except av.AVError:
+                    container.seek(0)
+
+            frame = None
+            for decoded in container.decode(video_stream):
+                frame = decoded
+                break
+            if frame is None:
+                return False
+            pil_image = frame.to_image()  # PIL.Image
+            _save_image_thumbnail(pil_image, dest)
+            return True
+    except Exception:
+        return False
+
+
 def get_or_generate_thumbnail(media: Media) -> Path | None:
     """生成并返回缩略图路径；失败时返回 None（由调用方回退到原文件）。
 
     - 图片：等比缩放到不超过 480x480
-    - 视频：抽取 1s 处关键帧，缩放不超过 480x480
-    - 依赖系统 ffmpeg；未安装时回退 None
+    - 视频：使用 python-av 抽帧（默认 1s 处），缩放不超过 480x480
     """
     if not media.absolute_path or not isinstance(media.absolute_path, str):
         return None
@@ -147,51 +206,12 @@ def get_or_generate_thumbnail(media: Media) -> Path | None:
     if not _should_regenerate(src, thumb):
         return thumb
 
-    # 需要 ffmpeg 支持
-    ffmpeg = "ffmpeg"
     try:
-        # 检查 ffmpeg 可用性
-        subprocess.run([ffmpeg, "-version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
-        return None
-
-    # 构造缩放过滤参数
-    vf_scale = "scale=w=480:h=480:force_original_aspect_ratio=decrease"
-
-    try:
-        THUMBNAILS_DIR.mkdir(exist_ok=True)
         if media.media_type == "image":
-            # 等比缩放输出为 jpg
-            cmd = [
-                ffmpeg,
-                "-y",
-                "-i",
-                src,
-                "-vf",
-                vf_scale,
-                "-q:v",
-                "3",
-                str(thumb),
-            ]
+            success = _generate_image_thumbnail(src, thumb)
         else:
-            # 视频抽帧（1s），等比缩放输出为 jpg
-            cmd = [
-                ffmpeg,
-                "-y",
-                "-ss",
-                "00:00:01",
-                "-i",
-                src,
-                "-vframes",
-                "1",
-                "-vf",
-                vf_scale,
-                "-q:v",
-                "3",
-                str(thumb),
-            ]
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if thumb.exists() and thumb.stat().st_size > 0:
+            success = _generate_video_thumbnail(src, thumb)
+        if success and thumb.exists() and thumb.stat().st_size > 0:
             return thumb
         return None
     except Exception:

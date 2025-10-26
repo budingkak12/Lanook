@@ -4,6 +4,8 @@
 - 前端：androidclient/
 ## 你必须做的事情
 - 请不要让用户构建安装 apk 
+- 不要写回退兼容性代码
+- 避免 Python “巨无霸”文件：新增或重构功能时需拆分模块
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据与初始化在 `初始化数据库.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。
@@ -20,6 +22,12 @@
 - Python：PEP 8、4 空格、尽量类型标注；函数/变量 `snake_case`，类 `PascalCase`；保持既有路由命名（如 `/session`、`/thumbnail-list`）。推荐 Black。
 - TypeScript/React：严格 TS；变量/函数 `camelCase`，组件 `PascalCase`；HTTP 统一经 `src/lib/api.ts`；使用 Prettier/编辑器默认格式化。
 
+### Python 模块拆分规则
+- `main.py` 仅保留应用创建、全局中间件与路由注册，不直接承载业务逻辑。
+- 业务逻辑与数据访问拆分到 `app/services/`、`app/db/` 等子模块；公共工具放入 `app/utils/`。
+- 若单个 Python 文件超过约 300 行或职责超过一个模块，必须拆分为多个文件后再提交。
+- 评审与 CI 应检查拆分规则（建议在 lint 配置中启用模块行数限制）。
+
 ## 测试指南
 - 后端流程测试：`uv run python api_flow_test.py`（覆盖冷启动、分页、缩略图、标签、Range）。
 - 可选单测：在 `tests/` 下新增 `test_*.py`，运行 `pytest -q`。
@@ -33,4 +41,3 @@
 ## 其他建议（安全与代理说明）
 - 不要提交 `thumbnails/`、私密密钥或本地路径；如需配置，使用环境变量或 `.env`（私下分发）。
 - 自动化代理/机器人请优先使用 `uv run` 与 `uv pip`，勿擅自更改数据库结构或路由名称；多文件修改前后请运行 `api_flow_test.py` 验证。
-
