@@ -60,6 +60,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.max
+import kotlin.math.min
 
 private val AutoScrollTrigger: Dp = 40.dp
 private const val GRID_LOG_TAG = "MediaGrid"
@@ -113,20 +115,24 @@ fun MediaGrid(
             val selectedIdsState = rememberUpdatedState(selectedIds)
             val density = LocalDensity.current
             val autoScrollTriggerPx = remember(density) { with(density) { AutoScrollTrigger.toPx() } }
+            val dragStartSlopPx = remember(density) { with(density) { 10.dp.toPx() } }
 
             val pointerModifier = if (selectionEnabled) {
                 Modifier.pointerInput(selectionEnabled, items.itemCount, isSelecting) {
                     coroutineScope {
                         awaitEachGesture {
                             var selectionModeActive = isSelecting
+                            val gestureStartedWithSelection = selectionModeActive
                             var dragAction: DragSelectionAction? = null
-                            var lastProcessedIndex: Int? = null
+                            var initialDragPosition: Offset? = null
+                            val processedIndices = mutableSetOf<Int>()
                             var autoScrollJob: Job? = null
                             var autoScrollDirection = 0
 
                             fun resetDragState() {
                                 dragAction = null
-                                lastProcessedIndex = null
+                                initialDragPosition = null
+                                processedIndices.clear()
                             }
 
                             fun stopAutoScroll() {
@@ -178,49 +184,101 @@ fun MediaGrid(
                                 }
                             }
 
+                            fun rectIntersectsSelection(target: Rect, selection: Rect): Boolean {
+                                return target.left <= selection.right &&
+                                    target.right >= selection.left &&
+                                    target.top <= selection.bottom &&
+                                    target.bottom >= selection.top
+                            }
+
                             fun processOffset(offset: Offset) {
                                 val container = containerCoordinates.value ?: return
                                 val positionInRoot = container.localToRoot(offset)
-                                val hit = itemBounds.entries.firstOrNull { (_, rect) -> rect.contains(positionInRoot) }?.key
-                                if (hit == null || hit == lastProcessedIndex) return
-                                lastProcessedIndex = hit
-                                val mediaId = indexToMediaId[hit] ?: return
-                                val currentlySelected = selectedIdsState.value.contains(mediaId)
+                                val dragStart = initialDragPosition ?: positionInRoot.also { initialDragPosition = it }
+                                val selectionRect = Rect(
+                                    left = min(dragStart.x, positionInRoot.x),
+                                    top = min(dragStart.y, positionInRoot.y),
+                                    right = max(dragStart.x, positionInRoot.x),
+                                    bottom = max(dragStart.y, positionInRoot.y)
+                                )
+
+                                val candidateIndices = buildList {
+                                    itemBounds.entries.forEach { (index, rect) ->
+                                        if (rectIntersectsSelection(rect, selectionRect)) {
+                                            add(index)
+                                        }
+                                    }
+                                }.sorted()
+                                if (candidateIndices.isEmpty()) return
+
+                                val indexForAction = candidateIndices.firstOrNull { it !in processedIndices }
+                                    ?: candidateIndices.first()
+                                val mediaIdForAction = indexToMediaId[indexForAction] ?: return
+                                val isFirstHit = processedIndices.isEmpty()
+
                                 if (dragAction == null) {
                                     if (!selectionModeActive) {
-                                        onRequestSelectionMode?.invoke(mediaId)
+                                        onRequestSelectionMode?.invoke(mediaIdForAction)
                                         selectionModeActive = true
+                                    }
+                                    val currentlySelectedRaw = selectedIdsState.value.contains(mediaIdForAction)
+                                    val currentlySelected = if (!gestureStartedWithSelection && isFirstHit) {
+                                        false
+                                    } else {
+                                        currentlySelectedRaw
                                     }
                                     dragAction = when {
                                         !selectionModeActive -> DragSelectionAction.Select
                                         currentlySelected -> DragSelectionAction.Deselect
                                         else -> DragSelectionAction.Select
                                     }
-                                    Log.d(GRID_LOG_TAG, "drag init action=$dragAction index=$hit id=$mediaId")
+                                    Log.d(
+                                        GRID_LOG_TAG,
+                                        "drag init action=$dragAction index=$indexForAction id=$mediaIdForAction"
+                                    )
                                 }
+
                                 val targetSelect = dragAction == DragSelectionAction.Select
-                                Log.v(GRID_LOG_TAG, "drag hit index=$hit id=$mediaId target=$targetSelect current=$currentlySelected")
-                                if (currentlySelected != targetSelect) {
-                                    onSelectionToggle?.invoke(mediaId, targetSelect)
+                                candidateIndices.forEach { index ->
+                                    if (!processedIndices.add(index)) return@forEach
+                                    val mediaId = indexToMediaId[index] ?: return@forEach
+                                    val currentlySelectedRaw = selectedIdsState.value.contains(mediaId)
+                                    val currentlySelected = if (!gestureStartedWithSelection && index == indexForAction && isFirstHit) {
+                                        false
+                                    } else {
+                                        currentlySelectedRaw
+                                    }
+                                    Log.v(
+                                        GRID_LOG_TAG,
+                                        "drag hit index=$index id=$mediaId target=$targetSelect current=$currentlySelected"
+                                    )
+                                    if (currentlySelected != targetSelect) {
+                                        onSelectionToggle?.invoke(mediaId, targetSelect)
+                                    }
                                 }
                             }
 
                             val down = awaitFirstDown(requireUnconsumed = false)
                             val pointerId = down.id
-                            val initial = if (selectionModeActive) {
-                                down
-                            } else {
+
+                            var dragStarted = false
+                            var startPosition = down.position
+
+                            if (!selectionModeActive) {
                                 val longPress = awaitLongPressOrCancellation(pointerId)
                                 if (longPress == null) {
+                                    resetDragState()
                                     return@awaitEachGesture
-                                } else {
-                                    longPress
                                 }
+                                dragStarted = true
+                                startPosition = longPress.position
                             }
 
                             resetDragState()
-                            processOffset(initial.position)
-                            ensureAutoScroll(initial.position)
+                            if (dragStarted) {
+                                processOffset(startPosition)
+                                ensureAutoScroll(startPosition)
+                            }
 
                             while (true) {
                                 val event = awaitPointerEvent()
@@ -231,8 +289,23 @@ fun MediaGrid(
                                     onSelectionGestureFinish?.invoke()
                                     break
                                 }
+
+                                if (!dragStarted) {
+                                    val dx = change.position.x - startPosition.x
+                                    val dy = change.position.y - startPosition.y
+                                    val dist2 = dx * dx + dy * dy
+                                    if (dist2 >= dragStartSlopPx * dragStartSlopPx) {
+                                        dragStarted = true
+                                        processOffset(startPosition)
+                                        change.consume()
+                                    } else {
+                                        continue
+                                    }
+                                }
+
                                 processOffset(change.position)
                                 ensureAutoScroll(change.position)
+                                change.consume()
                             }
                         }
                     }
