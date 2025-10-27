@@ -12,7 +12,7 @@ object NetworkModule {
 
     // 备选服务器地址（优先公司网，其次家庭网）
     internal val candidateBaseUrls: List<String> = listOf(
-        "http://10.175.87.159:8000",
+        "http://10.175.87.74:8000",
         "http://192.168.31.58:8000",
     )
 

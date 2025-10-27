@@ -129,6 +129,8 @@ fun MediaGrid(
                             val originSelectedIds = selectedIdsState.value.toSet()
                             var autoScrollJob: Job? = null
                             var autoScrollDirection = 0
+                            var lastPointerPosition: Offset? = null
+                            var onAutoScrollTick: ((Offset) -> Unit)? = null
 
                             fun resetDragState() {
                                 dragAction = null
@@ -167,20 +169,46 @@ fun MediaGrid(
                                 autoScrollJob?.cancel()
                                 autoScrollDirection = direction
                                 autoScrollJob = launch {
+                                    // 平滑滚动参数
+                                    val minSpeed = 300f    // px/s
+                                    val maxSpeed = 2200f   // px/s
+                                    val frameMs = 16L
                                     while (isActive) {
-                                        val layoutInfo = gridState.layoutInfo
-                                        val targetIndex = if (direction < 0) {
-                                            (layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) - 1
+                                        val yNow = lastPointerPosition?.y ?: position.y
+                                        val ratio = if (direction < 0) {
+                                            ((autoScrollTriggerPx - yNow).coerceAtLeast(0f) / autoScrollTriggerPx)
                                         } else {
-                                            (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) + 1
+                                            ((yNow - (height - autoScrollTriggerPx)).coerceAtLeast(0f) / autoScrollTriggerPx)
+                                        }.coerceIn(0f, 1f)
+                                        val speed = minSpeed + (maxSpeed - minSpeed) * ratio * ratio
+                                        val stepPx = speed * (frameMs / 1000f) * direction
+
+                                        // 使用按像素滚动，失败则尝试到相邻项
+                                        var scrolled = false
+                                        try {
+                                            gridState.scroll { scrollBy(stepPx) }
+                                            scrolled = true
+                                        } catch (_: Throwable) {}
+
+                                        if (!scrolled) {
+                                            val layoutInfo = gridState.layoutInfo
+                                            val fallbackIndex = if (direction < 0) {
+                                                (layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: 0) - 1
+                                            } else {
+                                                (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) + 1
+                                            }
+                                            if (fallbackIndex in 0 until items.itemCount) {
+                                                gridState.animateScrollToItem(fallbackIndex)
+                                            } else {
+                                                stopAutoScroll()
+                                                break
+                                            }
                                         }
-                                        if (targetIndex in 0 until items.itemCount) {
-                                            gridState.scrollToItem(targetIndex)
-                                        } else {
-                                            stopAutoScroll()
-                                            break
-                                        }
-                                        delay(32)
+
+                                        // 等待一帧，确保 bounds 更新后再扩展选择
+                                        try { androidx.compose.runtime.withFrameNanos { } } catch (_: Throwable) {}
+                                        lastPointerPosition?.let { lp -> onAutoScrollTick?.invoke(lp) }
+                                        delay(frameMs)
                                     }
                                 }
                             }
@@ -225,6 +253,7 @@ fun MediaGrid(
                                 }
                                 applyRangeTo(hit)
                             }
+                            onAutoScrollTick = { offset -> processOffset(offset) }
 
                             val down = awaitFirstDown(requireUnconsumed = false)
                             val pointerId = down.id
@@ -255,6 +284,7 @@ fun MediaGrid(
 
                             resetDragState()
                             if (dragStarted) {
+                                lastPointerPosition = startPosition
                                 processOffset(startPosition)
                                 ensureAutoScroll(startPosition)
                             }
@@ -298,11 +328,13 @@ fun MediaGrid(
 
                                     // 满足开始条件：启动拖选
                                     dragStarted = true
+                                    lastPointerPosition = startPosition
                                     processOffset(startPosition)
                                     ensureAutoScroll(startPosition)
                                     change.consume()
                                 }
 
+                                lastPointerPosition = change.position
                                 processOffset(change.position)
                                 ensureAutoScroll(change.position)
                                 change.consume()
