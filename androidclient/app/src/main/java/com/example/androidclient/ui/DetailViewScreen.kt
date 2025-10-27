@@ -15,11 +15,15 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -71,6 +75,8 @@ fun DetailViewScreen(
     }
     val overrides by viewModel.tagOverrides.collectAsState()
     val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -193,6 +199,88 @@ fun DetailViewScreen(
                 contentDescription = "Back",
                 tint = Color.White
             )
+        }
+
+        // 右上角删除按钮
+        IconButton(
+            onClick = { if (!deleting) showDeleteDialog = true },
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopEnd)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.5f))
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = "删除",
+                tint = Color.White
+            )
+        }
+
+        if (showDeleteDialog) {
+            val currentIndex = pagerState.currentPage
+            val currentItem = items[currentIndex]
+            AlertDialog(
+                onDismissRequest = { if (!deleting) showDeleteDialog = false },
+                title = { Text("删除确认") },
+                text = { Text("确定删除当前媒体吗？此操作不可恢复。") },
+                confirmButton = {
+                    TextButton(
+                        enabled = !deleting,
+                        onClick = {
+                            val id = currentItem?.id ?: return@TextButton
+                            deleting = true
+                            showDeleteDialog = false
+                            viewModel.deleteMedia(setOf(id)) { result ->
+                                deleting = false
+                                if (result.successIds.contains(id)) {
+                                    Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show()
+                                    // 不再调用 refresh；由上游过滤删除项，当前索引将显示下一项
+                                } else {
+                                    val reason = result.failed.firstOrNull()?.second?.message?.lowercase()
+                                    val friendly = when {
+                                        reason?.contains("read-only") == true || reason?.contains("readonly") == true ->
+                                            "删除失败：后端数据库只读，请检查服务器目录写权限"
+                                        reason?.contains("commit_failed") == true ->
+                                            "删除失败：后端数据库提交失败，可能被占用或无写权限"
+                                        else -> null
+                                    }
+                                    Toast.makeText(context, friendly ?: "删除失败", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    ) { Text("删除") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { if (!deleting) showDeleteDialog = false }) { Text("取消") }
+                }
+            )
+        }
+    }
+
+    // 监听跨页面删除事件：若当前展示项被删，刷新并保持页号不变；若无可显示项则返回上一页
+    LaunchedEffect(Unit) {
+        viewModel.deletionEvents.collect { ids ->
+            val currentIndex = pagerState.currentPage
+            val currentItem = items[currentIndex]
+            if (currentItem != null && ids.contains(currentItem.id)) {
+                items.refresh()
+                // 等待刷新完成（最多 ~5s），并在无内容时退出
+                var tries = 0
+                while (tries < 50) {
+                    if (items.loadState.refresh !is androidx.paging.LoadState.Loading) break
+                    kotlinx.coroutines.delay(100)
+                    tries++
+                }
+                if (items.itemCount == 0) {
+                    onBack()
+                } else {
+                    val maxIndex = items.itemCount - 1
+                    if (pagerState.currentPage > maxIndex) {
+                        try { pagerState.scrollToPage(maxIndex) } catch (_: Throwable) {}
+                    }
+                }
+            }
         }
     }
 }

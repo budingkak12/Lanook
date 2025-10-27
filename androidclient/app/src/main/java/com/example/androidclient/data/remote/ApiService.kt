@@ -4,6 +4,8 @@ import com.example.androidclient.data.model.SessionResponse
 import com.example.androidclient.data.model.TagRequest
 import com.example.androidclient.data.model.TagResponse
 import com.example.androidclient.data.model.ThumbnailListResponse
+import com.example.androidclient.data.model.DeleteBatchRequest
+import com.example.androidclient.data.model.DeleteBatchResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -56,6 +58,12 @@ interface ApiService {
         @Path("media_id") mediaId: Int,
         @Query("delete_file") deleteFile: Boolean = true
     )
+
+    /**
+     * 批量删除媒体（亦可用于单个删除以获得幂等行为）。
+     */
+    @POST("media/batch-delete")
+    suspend fun batchDelete(@Body req: DeleteBatchRequest): DeleteBatchResponse
 
     /**
      * 获取全部标签名（英文原名数组）

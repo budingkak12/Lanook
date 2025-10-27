@@ -25,8 +25,13 @@ object NetworkModule {
         OkHttpClient.Builder()
             .addInterceptor(
                 HttpLoggingInterceptor().apply {
-                    // 统一降低日志级别，避免 BODY 级日志影响流畅度
-                    level = HttpLoggingInterceptor.Level.BASIC
+                    // Debug 模式打印 BODY，便于定位返回体解析问题；Release 降级为 BASIC
+                    val isDebug = try {
+                        val cls = Class.forName("com.example.androidclient.BuildConfig")
+                        val f = cls.getField("DEBUG")
+                        f.getBoolean(null)
+                    } catch (_: Throwable) { false }
+                    level = if (isDebug) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.BASIC
                 }
             )
             .build()

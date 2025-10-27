@@ -328,6 +328,11 @@ def batch_delete_media(req: DeleteBatchReq, db=Depends(get_db)):
     - 返回已删除与失败清单；原文件/缩略图删除失败不作为失败判定（DB 已删）。
     """
     deleted, failed = svc_batch_delete(db, req.ids, delete_file=req.delete_file)
+    # 若疑似数据库处于只读/提交失败：将其提升为 503，便于客户端清晰提示
+    if not deleted and failed and len(failed) == len(req.ids):
+        reasons = " ".join([f.reason or "" for f in failed]).lower()
+        if ("commit_failed" in reasons) or ("readonly" in reasons) or ("read-only" in reasons):
+            raise HTTPException(status_code=503, detail="database is read-only; check file permissions or restart backend")
     return DeleteBatchResp(
         deleted=deleted,
         failed=[FailedItemModel(id=f.id, reason=f.reason) for f in failed],

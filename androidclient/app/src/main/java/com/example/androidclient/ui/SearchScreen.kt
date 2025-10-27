@@ -75,10 +75,16 @@ fun SearchScreen(
             result.successIds.forEach { selectedMap.remove(it) }
             pagingItems.refresh()
         }
+        fun friendlyError(): String? {
+            val reasons = result.failed.mapNotNull { it.second.message?.lowercase() }
+            if (reasons.any { it.contains("read-only") || it.contains("readonly") }) return "删除失败：后端数据库只读，请检查服务器目录写权限"
+            if (reasons.any { it.contains("commit_failed") }) return "删除失败：后端数据库提交失败，可能被占用或无写权限"
+            return null
+        }
         when {
             result.isSuccessful -> snackbarHostState.showSnackbar("已删除 ${result.successCount} 项")
-            result.successCount == 0 -> snackbarHostState.showSnackbar("删除失败，${result.failureCount} 项未删除")
-            else -> snackbarHostState.showSnackbar("部分删除成功：成功 ${result.successCount} 项，失败 ${result.failureCount} 项")
+            result.successCount == 0 -> snackbarHostState.showSnackbar(friendlyError() ?: "删除失败，${result.failureCount} 项未删除")
+            else -> snackbarHostState.showSnackbar(friendlyError() ?: "部分删除成功：成功 ${result.successCount} 项，失败 ${result.failureCount} 项")
         }
         pendingDelete = null
         isDeleting = false

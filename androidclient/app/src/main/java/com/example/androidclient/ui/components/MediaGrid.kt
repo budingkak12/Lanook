@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -478,10 +479,15 @@ fun MediaGrid(
                         else -> Unit
                     }
                 }
+
+                // 不在网格内部触发 refresh；由上游过滤已删除项后自然补位
             }
         }
     }
+
 }
+
+// RefreshCommand 已移除：由 ViewModel 层过滤 PagingData 实现补位
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

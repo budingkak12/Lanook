@@ -44,7 +44,12 @@ fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Uni
         val result = pendingResult ?: return@LaunchedEffect
         if (result.successIds.isNotEmpty()) {
             result.successIds.forEach { selectedMap.remove(it) }
-            items.refresh()
+        }
+        fun friendlyError(): String? {
+            val reasons = result.failed.mapNotNull { it.second.message?.lowercase() }
+            if (reasons.any { it.contains("read-only") || it.contains("readonly") }) return "删除失败：后端数据库只读，请检查服务器目录写权限"
+            if (reasons.any { it.contains("commit_failed") }) return "删除失败：后端数据库提交失败，可能被占用或无写权限"
+            return null
         }
         when {
             result.isSuccessful -> {
@@ -54,10 +59,10 @@ fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Uni
                 exitSelection()
             }
             result.successCount == 0 -> {
-                snackbarHostState.showSnackbar("删除失败，${result.failureCount} 项未能删除")
+                snackbarHostState.showSnackbar(friendlyError() ?: "删除失败，${result.failureCount} 项未能删除")
             }
             else -> {
-                snackbarHostState.showSnackbar("部分删除成功：成功 ${result.successCount} 项，失败 ${result.failureCount} 项")
+                snackbarHostState.showSnackbar(friendlyError() ?: "部分删除成功：成功 ${result.successCount} 项，失败 ${result.failureCount} 项")
             }
         }
         pendingResult = null
@@ -98,6 +103,8 @@ fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Uni
             onSelectionGestureFinish = {}
         )
     }
+
+    // 列表不再显式触发 refresh；删除的 ID 会在 ViewModel 层被“隐藏”，网格自然补位
 
     if (showDeleteDialog) {
         val count = selectedIds.size

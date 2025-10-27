@@ -20,7 +20,9 @@ class ThumbnailPagingSource(
 ) : PagingSource<Int, MediaItem>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MediaItem> {
-        val offset = params.key ?: 0
+        // 防御：避免出现负偏移导致后端 422
+        val raw = params.key ?: 0
+        val offset = if (raw < 0) 0 else raw
         return try {
             val seed = sessionRepository.seed()
             val response = api.getMediaList(seed = seed, offset = offset, limit = params.loadSize)
@@ -42,10 +44,15 @@ class ThumbnailPagingSource(
     }
 
     override fun getRefreshKey(state: PagingState<Int, MediaItem>): Int? {
-        return state.anchorPosition?.let { anchor ->
-            val anchorPage = state.closestPageToPosition(anchor)
-            anchorPage?.prevKey?.plus(state.config.pageSize)
-                ?: anchorPage?.nextKey?.minus(state.config.pageSize)
+        val anchor = state.anchorPosition ?: return null
+        val anchorPage = state.closestPageToPosition(anchor) ?: return null
+        val prev = anchorPage.prevKey
+        val next = anchorPage.nextKey
+        val key = when {
+            prev != null -> prev + state.config.pageSize
+            next != null -> next - state.config.pageSize
+            else -> 0
         }
+        return if (key < 0) 0 else key
     }
 }
