@@ -127,10 +127,39 @@ fun MediaGrid(
                             var anchorIndex: Int? = null
                             var lastRange: IntRange? = null
                             val originSelectedIds = selectedIdsState.value.toSet()
+                            val localSelection = mutableMapOf<Int, Boolean>()
                             var autoScrollJob: Job? = null
                             var autoScrollDirection = 0
                             var lastPointerPosition: Offset? = null
                             var onAutoScrollTick: ((Offset) -> Unit)? = null
+
+                            fun hitIndexAt(offset: Offset): Int? {
+                                val container = containerCoordinates.value ?: return null
+                                val positionInRoot = container.localToRoot(offset)
+                                return itemBounds.entries.firstOrNull { (_, rect) -> rect.contains(positionInRoot) }?.key
+                            }
+
+                            fun applyRangeTo(currentIndex: Int) {
+                                val anchor = anchorIndex ?: return
+                                val newRange = if (currentIndex >= anchor) anchor..currentIndex else currentIndex..anchor
+                                val prevRange = lastRange
+                                val minIdx = min(newRange.first, prevRange?.first ?: newRange.first)
+                                val maxIdx = max(newRange.last, prevRange?.last ?: newRange.last)
+                                val targetSelect = dragAction == DragSelectionAction.Select
+
+                                for (i in minIdx..maxIdx) {
+                                    val id = indexToMediaId[i] ?: continue
+                                    val baseline = localSelection[id] ?: originSelectedIds.contains(id)
+                                    val shouldBeSelected = if (i in newRange) targetSelect else originSelectedIds.contains(id)
+                                    if (baseline != shouldBeSelected) {
+                                        onSelectionToggle?.invoke(id, shouldBeSelected)
+                                        localSelection[id] = shouldBeSelected
+                                    }
+                                }
+                                lastRange = newRange
+                            }
+
+                            
 
                             fun resetDragState() {
                                 dragAction = null
@@ -143,6 +172,10 @@ fun MediaGrid(
                                 autoScrollJob = null
                                 autoScrollDirection = 0
                             }
+
+                            
+
+                            
 
                             fun ensureAutoScroll(position: Offset) {
                                 val container = containerCoordinates.value ?: run {
@@ -205,38 +238,24 @@ fun MediaGrid(
                                             }
                                         }
 
-                                        // 等待一帧，确保 bounds 更新后再扩展选择
+                                        // 等待一帧，确保 bounds 更新
                                         try { androidx.compose.runtime.withFrameNanos { } } catch (_: Throwable) {}
-                                        lastPointerPosition?.let { lp -> onAutoScrollTick?.invoke(lp) }
+                                        // 优先使用边缘可见项索引扩展范围，保证新出现项被纳入
+                                        val edgeIndex = try {
+                                            val vis = gridState.layoutInfo.visibleItemsInfo
+                                            if (direction > 0) vis.lastOrNull()?.index else vis.firstOrNull()?.index
+                                        } catch (_: Throwable) { null }
+                                        if (edgeIndex != null && anchorIndex != null && dragAction != null) {
+                                            applyRangeTo(edgeIndex)
+                                        } else {
+                                            lastPointerPosition?.let { lp -> onAutoScrollTick?.invoke(lp) }
+                                        }
                                         delay(frameMs)
                                     }
                                 }
                             }
 
-                            fun hitIndexAt(offset: Offset): Int? {
-                                val container = containerCoordinates.value ?: return null
-                                val positionInRoot = container.localToRoot(offset)
-                                return itemBounds.entries.firstOrNull { (_, rect) -> rect.contains(positionInRoot) }?.key
-                            }
-
-                            fun applyRangeTo(currentIndex: Int) {
-                                val anchor = anchorIndex ?: return
-                                val newRange = if (currentIndex >= anchor) anchor..currentIndex else currentIndex..anchor
-                                val prevRange = lastRange
-                                val minIdx = min(newRange.first, prevRange?.first ?: newRange.first)
-                                val maxIdx = max(newRange.last, prevRange?.last ?: newRange.last)
-                                val targetSelect = dragAction == DragSelectionAction.Select
-
-                                for (i in minIdx..maxIdx) {
-                                    val id = indexToMediaId[i] ?: continue
-                                    val shouldBeSelected = if (i in newRange) targetSelect else originSelectedIds.contains(id)
-                                    val isSelectedNow = selectedIdsState.value.contains(id)
-                                    if (isSelectedNow != shouldBeSelected) {
-                                        onSelectionToggle?.invoke(id, shouldBeSelected)
-                                    }
-                                }
-                                lastRange = newRange
-                            }
+                            
 
                             fun processOffset(offset: Offset) {
                                 val hit = hitIndexAt(offset) ?: return
