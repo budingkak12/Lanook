@@ -490,7 +490,7 @@ private fun ThumbnailItem(
             .combinedClickable(
                 interactionSource = interactionSource,
                 onClick = onClick,
-                onLongClick = null
+                onLongClick = onLongClick
             ),
         shape = MaterialTheme.shapes.small
     ) {
