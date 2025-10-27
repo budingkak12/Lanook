@@ -23,7 +23,12 @@ object NetworkModule {
 
     private fun newOkHttp(): OkHttpClient =
         OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
+            .addInterceptor(
+                HttpLoggingInterceptor().apply {
+                    // 统一降低日志级别，避免 BODY 级日志影响流畅度
+                    level = HttpLoggingInterceptor.Level.BASIC
+                }
+            )
             .build()
 
     @Volatile
@@ -54,4 +59,7 @@ object NetworkModule {
     }
 
     fun currentBaseUrl(): String = baseUrl
+
+    // 暴露 OkHttp 供图片加载器等共用连接池/缓存，避免重复初始化带来的抖动
+    fun okHttpClient(): OkHttpClient = okHttp
 }

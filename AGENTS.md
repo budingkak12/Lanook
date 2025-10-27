@@ -19,7 +19,7 @@
 - 构建调试 APK：`cd androidclient && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r androidclient/app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
 
 ## 编码风格与命名规范
-- Python：PEP 8、4 空格、尽量类型标注；函数/变量 `snake_case`，类 `PascalCase`；保持既有路由命名（如 `/session`、`/thumbnail-list`）。推荐 Black。
+- Python：PEP 8、4 空格、尽量类型标注；函数/变量 `snake_case`，类 `PascalCase`；保持既有路由命名（如 `/session`、`/media-list`）。推荐 Black。
 - Android（Kotlin + Jetpack Compose）：统一使用 Kotlin + Compose；ViewModel 与 Repository 走 `com.example.androidclient` 既有包结构；`@Composable` 函数命名用 `PascalCase`，普通函数用 `camelCase`；网络层通过 `NetworkModule` 提供的单例接口；保持 ktlint/Android Studio 默认格式化配置。
 
 ### Python 模块拆分规则
@@ -34,7 +34,7 @@
 - 提交前确保后端可启动且关键接口可用。
 
 ## 提交与 Pull Request
-- 提交信息建议使用 Conventional Commits，例如：`feat(api): 支持 /thumbnail-list 分页`。
+- 提交信息建议使用 Conventional Commits，例如：`feat(api): 支持 /media-list 分页`。
 - PR 要求：明确变更说明、关联 Issue、必要的截图/录屏（UI 变更）、本地验证步骤与影响范围；避免无关改动。
 - 分支命名：`feat/...`、`fix/...`、`chore/...`、`docs/...`。
 

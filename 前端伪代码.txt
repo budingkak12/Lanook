@@ -63,12 +63,12 @@ function loadMoreMediaFor(workspaceId):
 
     api_path = null
     if workspaceId == 'feed':
-        # 首页播放器数据源：原资源信息列表
-        api_path = `/media-resource-list?seed=${sessionSeed}&offset=${ws.offset}&limit=PAGE_SIZE&order=seeded`
+        # 首页播放器数据源：统一使用 media-list（可不含缩略图字段）
+        api_path = `/media-list?seed=${sessionSeed}&offset=${ws.offset}&limit=PAGE_SIZE&order=seeded`
     else if workspaceId.startsWith('tag_'):
         tag = workspaceId.split('_')[1]
         # 标签页缩略图数据源：唯一列表端点
-        api_path = `/thumbnail-list?tag=${tag}&offset=${ws.offset}&limit=PAGE_SIZE`
+        api_path = `/media-list?tag=${tag}&offset=${ws.offset}&limit=PAGE_SIZE`
 
     newMediaItems = GET api_path
 
@@ -82,7 +82,7 @@ function loadMoreMediaFor(workspaceId):
 
 # 应用冷启动：获取随机种子并进入推荐流
 function onAppColdStart():
-    resp = POST /session { optional_seed }
+    resp = GET /session { optional_seed }
     sessionSeed = resp.session_seed
     switchToWorkspace('feed')
 
@@ -130,7 +130,7 @@ function navigateToHomeTab():
 
 function openTagGrid(tag, scrollToIndex = null): # tag 为 'favorite' 或 'like'
     switchToWorkspace(`tag_${tag}`)
-    # UI 渲染为“网格缩略图”，数据来源 GET /thumbnail-list?tag=<tag>
+    # UI 渲染为“网格缩略图”，数据来源 GET /media-list?tag=<tag>
     if scrollToIndex != null:
         # 将网格滚动定位到指定索引（保持浏览位置）
         # grid.scrollToIndex(scrollToIndex)

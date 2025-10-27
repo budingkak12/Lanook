@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.size.Precision
 import coil3.size.Size
 import kotlin.math.roundToInt
 
@@ -37,10 +38,12 @@ fun ThumbnailImage(
     val heightPx = px
 
     val request = remember(data, widthPx, heightPx, context) {
-        val source = data?.takeIf { it.isNotBlank() }
+        val source = data?.ifBlank { null }
         ImageRequest.Builder(context)
             .data(source)
             .size(Size(widthPx, heightPx))
+            // 放宽精度，避免为像素级匹配而做额外解码成本
+            .precision(Precision.INEXACT)
             .build()
     }
 

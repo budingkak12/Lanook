@@ -25,21 +25,21 @@ interface ApiService {
     suspend fun getSession(): SessionResponse
 
     /**
-     * 获取缩略图列表，支持分页
+     * 获取媒体列表，支持分页
      * 首次加载或下滑时调用，offset 由 PagingSource 管理
      */
-    @GET("thumbnail-list")
-    suspend fun getThumbnailList(
+    @GET("media-list")
+    suspend fun getMediaList(
         @Query("seed") seed: String,
         @Query("offset") offset: Int = 0,
         @Query("limit") limit: Int = 20
     ): ThumbnailListResponse
 
     /**
-     * 按标签获取缩略图列表（不使用 seed）
+     * 按标签获取媒体列表（不使用 seed）
      */
-    @GET("thumbnail-list")
-    suspend fun getThumbnailListByTag(
+    @GET("media-list")
+    suspend fun getMediaListByTag(
         @Query("tag") tag: String,
         @Query("offset") offset: Int = 0,
         @Query("limit") limit: Int = 20

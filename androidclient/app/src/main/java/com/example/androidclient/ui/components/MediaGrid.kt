@@ -65,6 +65,8 @@ import kotlin.math.min
 
 private val AutoScrollTrigger: Dp = 40.dp
 private const val GRID_LOG_TAG = "MediaGrid"
+// 统一控制网格调试日志，默认关闭以避免主线程日志导致掉帧
+private const val GRID_DEBUG_LOG = false
 
 private enum class DragSelectionAction { Select, Deselect }
 
@@ -382,7 +384,8 @@ fun MediaGrid(
                 ) {
                     items(
                         count = items.itemCount,
-                        key = items.itemKey { it.id }
+                        key = items.itemKey { it.id },
+                        contentType = { _ -> "thumb" }
                     ) { index ->
                         val item = items[index]
                         if (item != null) {
@@ -410,15 +413,23 @@ fun MediaGrid(
                                         if (!isSelecting) {
                                             onRequestSelectionMode?.invoke(item.id)
                                             onSelectionToggle?.invoke(item.id, true)
-                                            Log.d(GRID_LOG_TAG, "enter selection via longClick id=${item.id}")
+                                    if (GRID_DEBUG_LOG) {
+                                        Log.d(GRID_LOG_TAG, "enter selection via longClick id=${item.id}")
+                                    }
                                         }
                                     }
                                 } else null,
                                 modifier = Modifier.onGloballyPositioned { coordinates ->
                                     if (coordinates.isAttached) {
                                         val rect = coordinates.boundsInRoot()
-                                        itemBounds[index] = rect
-                                        Log.v(GRID_LOG_TAG, "update bounds index=$index id=${item.id} rect=$rect")
+                                        // 仅在矩形发生变化时更新，减少 map 写入与无意义日志
+                                        val prev = itemBounds[index]
+                                        if (prev != rect) {
+                                            itemBounds[index] = rect
+                                            if (GRID_DEBUG_LOG) {
+                                                Log.v(GRID_LOG_TAG, "update bounds index=$index id=${item.id} rect=$rect")
+                                            }
+                                        }
                                     } else {
                                         itemBounds.remove(index)
                                     }
@@ -489,6 +500,7 @@ private fun ThumbnailItem(
             .semantics { contentDescription = "Thumbnail Item" }
             .combinedClickable(
                 interactionSource = interactionSource,
+                indication = null,
                 onClick = onClick,
                 onLongClick = onLongClick
             ),

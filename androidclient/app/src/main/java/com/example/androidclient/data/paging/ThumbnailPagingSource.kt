@@ -23,7 +23,7 @@ class ThumbnailPagingSource(
         val offset = params.key ?: 0
         return try {
             val seed = sessionRepository.seed()
-            val response = api.getThumbnailList(seed = seed, offset = offset, limit = params.loadSize)
+            val response = api.getMediaList(seed = seed, offset = offset, limit = params.loadSize)
             LoadResult.Page(
                 data = response.items.map { item ->
                     item.copy(

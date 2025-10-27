@@ -1,7 +1,7 @@
 概述
 - 无“用户”概念；`session` 仅表示一次会话的随机种子（`session_seed`）。
-- 接口按六大类设计：种子、媒体JSON、媒体文件、缩略图文件、缩略图列表JSON、标签管理JSON。
- - 首页使用原资源展示（播放器），不使用缩略图列表作为首页数据源。
+- 接口按六大类设计：种子、媒体 JSON、媒体文件、缩略图文件、媒体列表 JSON、标签管理 JSON。
+ - 首页使用原资源展示（播放器），数据来自统一的媒体列表接口。
  - 播放器交互：采用上下滑切换（上滑下一条、下滑上一条）；桌面端滚轮下=下一条、滚轮上=上一条；键盘 `ArrowUp`=下一条、`ArrowDown`=上一条。
 
 通用数据结构
@@ -20,21 +20,10 @@
  
 
 获取种子（会话）JSON
-- `POST /session`
+- `GET /session`
   - 用途：生成会话随机种子（非用户概念）。
-  - 请求体：`{ seed?: string | number }`（可选，不传则后端生成）
+  - 查询参数：`seed?: string | number`（可选，不传则后端生成）
   - 响应：`{ session_seed: string }`
-
-媒体JSON（根据种子）
-- `GET /media-resource-list`
-  - 用途：基于 `seed` 稳定随机或按最新排序，返回“原文件图片/视频信息”列表（不含缩略图），直接包含源文件 URL。
-  - 查询参数：
-    - `seed: string`（必填）
-    - `offset?: number`（默认 0）
-    - `limit?: number`（默认 20）
-    - `order?: 'seeded' | 'recent'`（默认 `'seeded'`）
-  - 响应：`{ items: MediaItem[], offset, hasMore }`
-  - 说明：真实图片/视频资源通过 `items[*].resourceUrl`（或 `url` 兼容）请求，指向 `GET /media-resource/{id}`。
 
 
 
@@ -53,16 +42,16 @@
   - 响应：图片或视频二进制流（`Content-Type` 随文件类型而定，如 `image/jpeg`、`video/mp4` 等；后端会自动判定），支持字节范围请求 `Range: bytes=...`，当请求范围有效时返回 `206 Partial Content` 并附带 `Content-Range`、`Content-Length`、`Accept-Ranges`，配合 `ETag` 与 `Last-Modified` 进行缓存验证。
   - 错误：404（媒体不存在或文件缺失）
 
-缩略图列表JSON（唯一列表端点）
-- `GET /thumbnail-list`
-  - 用途：统一提供缩略图分页列表；当指定 `tag` 时返回标签缩略图列表，否则按 `seed/order` 返回通用缩略图列表。
+媒体列表JSON（统一列表端点）
+- `GET /media-list`
+  - 用途：统一提供媒体分页列表；当指定 `tag` 时返回标签列表，否则按 `seed/order` 返回推荐流列表。
   - 查询参数：
     - `tag?: 'like' | 'favorite'`（存在时走标签模式）
     - `seed?: string`（标签模式可不填；非标签模式必填）
     - `offset?: number`（默认 0）
     - `limit?: number`（默认 20）
     - `order?: 'seeded' | 'recent'`（默认 `'seeded'`，非标签模式有效）
-  - 响应：`{ items: MediaItem[], offset, hasMore }`（`items[*].thumbnailUrl` 必填，且包含 `resourceUrl` 便于点击后加载原文件）
+  - 响应：`{ items: MediaItem[], offset, hasMore }`（标签模式下 `items[*].thumbnailUrl` 必填；推荐流模式可为空，前端回退到 `resourceUrl`）
 
  
 

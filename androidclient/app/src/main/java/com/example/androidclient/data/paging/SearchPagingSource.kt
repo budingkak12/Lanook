@@ -21,7 +21,7 @@ class SearchPagingSource(
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MediaItem> {
         val offset = params.key ?: 0
         return try {
-            val response = api.getThumbnailListByTag(tag = tag, offset = offset, limit = params.loadSize)
+            val response = api.getMediaListByTag(tag = tag, offset = offset, limit = params.loadSize)
             LoadResult.Page(
                 data = response.items.map { item ->
                     item.copy(

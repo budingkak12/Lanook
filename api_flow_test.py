@@ -194,11 +194,11 @@ def main():
     session_seed2 = json.loads(body.decode("utf-8")).get("session_seed")
     assert_true(str(session_seed2) == "12345", "指定种子应被回显为字符串")
 
-    # 2) 首页播放器列表（原资源信息 JSON）
+    # 2) 首页播放器列表（统一媒体 JSON）
     r_list, body = http_call(
-        title="Media Resource List (seeded)",
+        title="Media List (seeded feed)",
         method="GET",
-        path="/media-resource-list",
+        path="/media-list",
         query={"seed": session_seed, "offset": 0, "limit": 5, "order": "seeded"},
     )
     page = json.loads(body.decode("utf-8"))
@@ -228,25 +228,25 @@ def main():
 
     # 4) 预取下一页（播放器）
     http_call(
-        title="Media Resource List (prefetch)",
+        title="Media List (prefetch)",
         method="GET",
-        path="/media-resource-list",
+        path="/media-list",
         query={"seed": session_seed, "offset": 5, "limit": 5, "order": "seeded"},
     )
 
     # 4.1 recent 排序
     http_call(
-        title="Media Resource List (recent)",
+        title="Media List (recent)",
         method="GET",
-        path="/media-resource-list",
+        path="/media-list",
         query={"seed": session_seed, "offset": 0, "limit": 3, "order": "recent"},
     )
 
-    # 5) 通用缩略图列表（非标签模式）
+    # 5) 通用媒体列表（非标签模式）
     _, body = http_call(
-        title="Thumbnail List (seeded)",
+        title="Media List (seeded)",
         method="GET",
-        path="/thumbnail-list",
+        path="/media-list",
         query={"seed": session_seed, "offset": 0, "limit": 5, "order": "seeded"},
     )
     thumb_page = json.loads(body.decode("utf-8"))
@@ -254,7 +254,7 @@ def main():
     if thumb_items:
         # 6) 单媒体缩略图（占位）
         r_thumb, thumb_bytes = http_call(
-            title="Media Thumbnail (first from thumbnail list)",
+            title="Media Thumbnail (first from media list)",
             method="GET",
             path=f"/media/{thumb_items[0]['id']}/thumbnail",
         )
@@ -265,9 +265,9 @@ def main():
 
     # 5.1 非标签模式缺 seed → 400
     r_bad, _ = http_call(
-        title="Thumbnail List (missing seed)",
+        title="Media List (missing seed)",
         method="GET",
-        path="/thumbnail-list",
+        path="/media-list",
         query={"offset": 0, "limit": 1},
         allow_error=True,
     )
@@ -303,11 +303,11 @@ def main():
     code = getattr(r_conflict, 'status_code', getattr(r_conflict, 'code', None)) or r_conflict.getcode()
     assert_true(int(code) == 409, f"重复添加标签应返回 409，实际 {code}")
 
-    # 9) 标签缩略图列表
+    # 9) 标签媒体列表
     http_call(
-        title="Thumbnail List (tag=like)",
+        title="Media List (tag=like)",
         method="GET",
-        path="/thumbnail-list",
+        path="/media-list",
         query={"tag": chosen_tag, "offset": 0, "limit": 5},
     )
 

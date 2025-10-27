@@ -296,39 +296,16 @@ def delete_media_item(
 
 
 
-@app.get("/media-resource-list", response_model=PageResponse)
-def get_media_resource_list(
-    seed: str = Query(..., description="会话随机种子"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=200),
-    order: str = Query("seeded", regex="^(seeded|recent)$"),
-    db=Depends(get_db),
-):
-    # 根据种子获取“原文件信息”媒体 JSON（不含缩略图），用于播放器数据源
-    if order == "recent":
-        q = db.query(Media).order_by(Media.created_at.desc())
-        total_items = q.all()
-        sliced = total_items[offset : offset + limit]
-    else:
-        all_items = db.query(Media).all()
-        all_items.sort(key=lambda m: seeded_key(seed, m.id))
-        sliced = all_items[offset : offset + limit]
-
-    items = [to_media_item(m, db, include_thumb=False, include_tag_state=True) for m in sliced]
-    has_more = (offset + len(items)) < (len(all_items) if order == "seeded" else len(total_items))
-    return PageResponse(items=items, offset=offset, hasMore=has_more)
-
-
-@app.get("/thumbnail-list", response_model=PageResponse)
-def get_thumbnail_list(
+@app.get("/media-list", response_model=PageResponse)
+def get_media_list(
     seed: Optional[str] = Query(None, description="会话随机种子（当未指定 tag 时必填）"),
-    tag: Optional[str] = Query(None, description="标签名，指定时返回该标签的缩略图列表"),
+    tag: Optional[str] = Query(None, description="标签名，指定时返回该标签的列表"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=200),
     order: str = Query("seeded", regex="^(seeded|recent)$"),
     db=Depends(get_db),
 ):
-    # 统一的缩略图列表：当指定 tag 时按标签过滤，否则按 seed/order 返回通用缩略图列表
+    # 统一的媒体列表：当指定 tag 时按标签过滤，否则按 seed/order 返回推荐流
     if tag:
         # 校验标签是否存在
         if not db.query(TagDefinition).filter(TagDefinition.name == tag).first():

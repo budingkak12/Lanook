@@ -38,6 +38,11 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // 注册自定义 Application 以启用全局 ImageLoader
+    namespace?.let { ns ->
+        // no-op here; manifest already uses package name. Ensure manifest has android:name
+    }
 }
 
 dependencies {
