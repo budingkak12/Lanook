@@ -18,10 +18,10 @@ __pycache__/
 *.log
 
 # Local database and media
-sample_media
+sample_media/
 media_app.db
 thumbnails/
-media_snapshots
+media_snapshots/
 
 # uv caches
 .uv_cache/
