@@ -53,6 +53,19 @@
     - `order?: 'seeded' | 'recent'`（默认 `'seeded'`，非标签模式有效）
   - 响应：`{ items: MediaItem[], offset, hasMore }`（标签模式下 `items[*].thumbnailUrl` 必填；推荐流模式可为空，前端回退到 `resourceUrl`）
 
+媒体删除
+- `DELETE /media/{id}`
+  - 用途：删除单个媒体。
+  - 查询参数：`delete_file?: boolean`（默认 `true`，是否同时删除原文件）
+  - 响应：`204 No Content`
+  - 错误：`404 Not Found`（媒体不存在）
+
+- `POST /media/batch-delete`
+  - 用途：批量删除媒体。
+  - 请求体：`{ ids: number[], delete_file?: boolean }`
+  - 响应：`{ deleted: number[], failed: { id: number, reason: string }[] }`
+  - 约定：请求中不存在的 `id` 视为已删除（幂等），计入 `deleted`；原文件/缩略图删除失败不影响 DB 删除与响应成功。
+
  
 
 标签操作

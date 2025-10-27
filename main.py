@@ -19,7 +19,18 @@ import av  # type: ignore
 import uvicorn
 
 # 复用数据库与模型（无用户概念）
-from 初始化数据库 import SessionLocal, Media, TagDefinition, MediaTag, create_database_and_tables, seed_initial_data
+from 初始化数据库 import (
+    SessionLocal,
+    Media,
+    TagDefinition,
+    MediaTag,
+    create_database_and_tables,
+    seed_initial_data,
+)
+
+# 业务拆分：批量删除服务
+from app.services.deletion_service import batch_delete as svc_batch_delete
+from sqlalchemy.exc import OperationalError
 
 
 # =============================
@@ -57,6 +68,22 @@ class PageResponse(BaseModel):
 class TagRequest(BaseModel):
     media_id: int
     tag: str
+
+
+# 批量删除模型
+class DeleteBatchReq(BaseModel):
+    ids: List[int]
+    delete_file: bool = True
+
+
+class FailedItemModel(BaseModel):
+    id: int
+    reason: str
+
+
+class DeleteBatchResp(BaseModel):
+    deleted: List[int]
+    failed: List[FailedItemModel] = []
 
 
 # =============================
@@ -294,6 +321,19 @@ def delete_media_item(
             pass
 
 
+@app.post("/media/batch-delete", response_model=DeleteBatchResp)
+def batch_delete_media(req: DeleteBatchReq, db=Depends(get_db)):
+    """批量删除媒体：
+    - 不存在的 id 视为已删除（幂等）。
+    - 返回已删除与失败清单；原文件/缩略图删除失败不作为失败判定（DB 已删）。
+    """
+    deleted, failed = svc_batch_delete(db, req.ids, delete_file=req.delete_file)
+    return DeleteBatchResp(
+        deleted=deleted,
+        failed=[FailedItemModel(id=f.id, reason=f.reason) for f in failed],
+    )
+
+
 
 
 @app.get("/media-list", response_model=PageResponse)
@@ -368,7 +408,14 @@ def add_tag(req: TagRequest, db=Depends(get_db)):
         raise HTTPException(status_code=409, detail="tag already exists for media")
 
     db.add(MediaTag(media_id=req.media_id, tag_name=req.tag))
-    db.commit()
+    try:
+        db.commit()
+    except OperationalError as e:
+        msg = str(e).lower()
+        if "readonly" in msg:
+            # 更友好的错误：数据库当前只读（可能因快照恢复/权限），提示用户检查
+            raise HTTPException(status_code=503, detail="database is read-only; check file permissions or restart backend")
+        raise
     return {"success": True}
 
 
@@ -383,8 +430,14 @@ def remove_tag(req: TagRequest, db=Depends(get_db)):
     if not mt:
         raise HTTPException(status_code=404, detail="tag not set for media")
 
-    db.delete(mt)
-    db.commit()
+    try:
+        db.delete(mt)
+        db.commit()
+    except OperationalError as e:
+        msg = str(e).lower()
+        if "readonly" in msg:
+            raise HTTPException(status_code=503, detail="database is read-only; check file permissions or restart backend")
+        raise
     return None
 
 
@@ -404,9 +457,11 @@ def get_media_thumbnail(media_id: int, db=Depends(get_db)):
     # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
     if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
         raise HTTPException(status_code=404, detail="file not found")
-    # 优先使用生成的真实缩略图；失败时回退原文件
+    # 仅提供真实缩略图；不再回退原文件（项目现已具备稳定的视频缩略图能力）
     thumb_path = get_or_generate_thumbnail(media)
-    serve_path = str(thumb_path) if thumb_path is not None else media.absolute_path
+    if thumb_path is None or not thumb_path.exists():
+        raise HTTPException(status_code=404, detail="thumbnail not available")
+    serve_path = str(thumb_path)
 
     guessed, _ = mimetypes.guess_type(serve_path)
     mime = guessed or "image/jpeg"

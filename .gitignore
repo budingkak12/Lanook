@@ -1,6 +1,8 @@
 # --- Python / FastAPI ---
 __pycache__/
 *.py[cod]
+media_snapshots
+thumbnails
 *.pyo
 .pytest_cache/
 .mypy_cache/
