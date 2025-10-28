@@ -140,6 +140,13 @@ fun ChooseMediaPathScreen(
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            // 固定的"当前目录"标题，不随文件夹切换而刷新
+            Text(
+                text = "当前目录",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             if (uiState.isLoading) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -150,22 +157,16 @@ fun ChooseMediaPathScreen(
             }
 
             if (currentPath != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "当前目录",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = currentPath,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text(
+                    text = currentPath,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
             } else {
                 Text(
                     text = "可选根目录",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

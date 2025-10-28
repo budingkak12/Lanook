@@ -77,10 +77,24 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 
                 NavHost(
-                    navController = navController, 
+                    navController = navController,
                     startDestination = "connect"
                 ) {
-                    composable("connect") {
+                    composable(
+                        "connect",
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        }
+                    ) {
                         ConnectionScreen(
                             viewModel = connectionViewModel,
                             onConnected = { _, requiresSetup ->
@@ -94,7 +108,33 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                    composable("setup") {
+                    composable(
+                        "setup",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        }
+                    ) {
                         val setupViewModel: SetupViewModel = viewModel(
                             factory = SetupViewModel.Factory(SetupRepository(NetworkModule.api))
                         )
@@ -108,7 +148,15 @@ class MainActivity : ComponentActivity() {
                             onBack = { navController.popBackStack() }
                         )
                     }
-                    composable("main") {
+                    composable(
+                        "main",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            )
+                        }
+                    ) {
                         val mainViewModel: MainViewModel = viewModel()
                         val searchViewModel: SearchViewModel = viewModel(factory = searchViewModelFactory)
                         MainScreen(navController, mainViewModel, searchViewModel)
