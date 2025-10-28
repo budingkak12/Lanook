@@ -50,14 +50,6 @@ fun ChooseMediaPathScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val isBlocking = uiState.isSubmitting
-    val blockingMessage = when {
-        !isBlocking -> null
-        uiState.statusMessage?.isNotBlank() == true -> uiState.statusMessage
-        uiState.initializationState == InitializationState.RUNNING -> "正在初始化，请稍候…"
-        else -> null
-    }
-
     LaunchedEffect(Unit) {
         viewModel.loadInitial()
         viewModel.events.collect { event ->
@@ -77,11 +69,6 @@ fun ChooseMediaPathScreen(
 
     val currentPath = uiState.currentPath
     val parentPath = uiState.parentPath
-
-    if (isBlocking) {
-        BlockingScreen(message = blockingMessage)
-        return
-    }
 
     Scaffold(
         modifier = modifier,
@@ -124,10 +111,18 @@ fun ChooseMediaPathScreen(
                     }
                     Button(
                         onClick = { viewModel.confirmSelection() },
-                        enabled = currentPath != null,
+                        enabled = currentPath != null && !uiState.isSubmitting,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("选择当前文件夹")
+                        if (uiState.isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text("选择当前文件夹")
+                        }
                     }
                 }
             }
@@ -144,14 +139,6 @@ fun ChooseMediaPathScreen(
                 text = "请选择电脑上的媒体文件夹，初始化完成后才能进入首页。",
                 style = MaterialTheme.typography.bodyMedium
             )
-
-            uiState.statusMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
 
             if (uiState.isLoading) {
                 Row(
@@ -220,22 +207,4 @@ private fun DirectoryRow(entry: DirectoryEntry, onClick: () -> Unit) {
             .clickable { onClick() }
     )
     Divider(modifier = Modifier.padding(horizontal = 16.dp))
-}
-
-@Composable
-private fun BlockingScreen(message: String?) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            CircularProgressIndicator()
-            if (!message.isNullOrBlank()) {
-                Text(text = message)
-            }
-        }
-    }
 }

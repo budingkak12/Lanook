@@ -180,11 +180,12 @@ class SetupViewModel(
     private fun applyStatus(status: InitializationStatusResponse) {
         val message = when (status.state) {
             InitializationState.COMPLETED -> null
+            InitializationState.RUNNING -> null  // 运行中不显示消息，避免界面闪烁
             else -> status.message
         }
         val submitting = when (status.state) {
             InitializationState.RUNNING -> true
-            InitializationState.COMPLETED -> true
+            InitializationState.COMPLETED -> true   // 保持转圈状态，直到跳转完成
             else -> false
         }
         _uiState.update {

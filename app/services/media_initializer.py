@@ -40,17 +40,19 @@ def _ensure_directory_accessible(path: Path) -> Path:
     return resolved
 
 
-INITIAL_PREVIEW_BATCH_SIZE = 40
+INITIAL_PREVIEW_BATCH_SIZE = 100
 
 
 def run_full_initialization(target_path: Path, *, preview_batch_size: int = INITIAL_PREVIEW_BATCH_SIZE) -> InitializationResult:
-    """执行完整的媒体库初始化流程。
+    """执行快速的媒体库初始化流程。
 
     1. 校验路径可达；
     2. 创建表并确保标签设置；
     3. 清空既有索引数据；
-    4. 扫描目标目录写入数据库；
+    4. 扫描目标目录前100个文件写入数据库；
     5. 更新媒体根路径设置。
+
+    注意：为了快速响应，只扫描前100个文件就返回，剩余文件在后续处理。
     """
     resolved = _ensure_directory_accessible(target_path)
     create_database_and_tables()
@@ -63,11 +65,11 @@ def run_full_initialization(target_path: Path, *, preview_batch_size: int = INIT
         # 清空旧数据，避免重复
         clear_media_library(session)
 
+        # 只扫描前100个文件，快速响应用户
         preview_count = scan_and_populate_media(session, str(resolved), limit=preview_batch_size)
-        remaining_count = 0
-        # 当达到预览数量上限时，继续扫描剩余文件
-        if preview_count >= preview_batch_size:
-            remaining_count = scan_and_populate_media(session, str(resolved))
+
+        # 暂时不扫描剩余文件，让用户快速进入应用
+        # TODO: 后续可以添加后台任务扫描剩余文件
 
         # 扫描成功后再更新配置，避免失败时覆盖已有设置
         set_setting(session, MEDIA_ROOT_KEY, str(resolved))
@@ -75,7 +77,7 @@ def run_full_initialization(target_path: Path, *, preview_batch_size: int = INIT
         session.commit()
         return InitializationResult(
             media_root=resolved,
-            new_media_count=preview_count + remaining_count,
+            new_media_count=preview_count,
             total_media_count=total_count,
         )
     except MediaInitializationError:
