@@ -40,7 +40,10 @@ def _ensure_directory_accessible(path: Path) -> Path:
     return resolved
 
 
-def run_full_initialization(target_path: Path) -> InitializationResult:
+INITIAL_PREVIEW_BATCH_SIZE = 40
+
+
+def run_full_initialization(target_path: Path, *, preview_batch_size: int = INITIAL_PREVIEW_BATCH_SIZE) -> InitializationResult:
     """执行完整的媒体库初始化流程。
 
     1. 校验路径可达；
@@ -60,14 +63,19 @@ def run_full_initialization(target_path: Path) -> InitializationResult:
         # 清空旧数据，避免重复
         clear_media_library(session)
 
-        new_count = scan_and_populate_media(session, str(resolved))
+        preview_count = scan_and_populate_media(session, str(resolved), limit=preview_batch_size)
+        remaining_count = 0
+        # 当达到预览数量上限时，继续扫描剩余文件
+        if preview_count >= preview_batch_size:
+            remaining_count = scan_and_populate_media(session, str(resolved))
+
         # 扫描成功后再更新配置，避免失败时覆盖已有设置
         set_setting(session, MEDIA_ROOT_KEY, str(resolved))
         total_count = session.query(Media).count()
         session.commit()
         return InitializationResult(
             media_root=resolved,
-            new_media_count=new_count,
+            new_media_count=preview_count + remaining_count,
             total_media_count=total_count,
         )
     except MediaInitializationError:

@@ -55,7 +55,7 @@ class InitializationCoordinator:
             self._status = InitializationStatus(
                 state=InitializationState.RUNNING,
                 media_root_path=str(media_root),
-                message=None,
+                message="持续扫描文件中...",
             )
         background_tasks.add_task(self._run_task, media_root)
 
@@ -78,7 +78,7 @@ class InitializationCoordinator:
             self._update_status(
                 state=InitializationState.COMPLETED,
                 media_root=str(result.media_root),
-                message=f"初始化完成，新增 {result.new_media_count} 个媒体文件（共 {result.total_media_count} 个）。",
+                message="初始化完成。",
             )
 
     def _update_status(self, *, state: InitializationState, media_root: Optional[str], message: Optional[str]) -> None:

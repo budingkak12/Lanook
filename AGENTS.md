@@ -29,7 +29,7 @@
 - 评审与 CI 应检查拆分规则（建议在 lint 配置中启用模块行数限制）。
 
 ## 测试指南
-- 后端流程测试：`uv run python api_flow_test.py`（覆盖冷启动、分页、缩略图、标签、Range）。
+- 后端流程测试：先杀掉 8000 端口，然后启动 main.py，然后执行`uv run python api_flow_test.py`（覆盖冷启动、分页、缩略图、标签、Range）。
 - 可选单测：在 `tests/` 下新增 `test_*.py`，运行 `pytest -q`。
 - 提交前确保后端可启动且关键接口可用。
 

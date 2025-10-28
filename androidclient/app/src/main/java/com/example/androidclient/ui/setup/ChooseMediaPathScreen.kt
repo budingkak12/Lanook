@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +50,13 @@ fun ChooseMediaPathScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isBlocking = uiState.isSubmitting
+    val blockingMessage = when {
+        !isBlocking -> null
+        uiState.statusMessage?.isNotBlank() == true -> uiState.statusMessage
+        uiState.initializationState == InitializationState.RUNNING -> "正在初始化，请稍候…"
+        else -> null
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadInitial()
@@ -68,6 +75,14 @@ fun ChooseMediaPathScreen(
         }
     }
 
+    val currentPath = uiState.currentPath
+    val parentPath = uiState.parentPath
+
+    if (isBlocking) {
+        BlockingScreen(message = blockingMessage)
+        return
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -80,7 +95,43 @@ fun ChooseMediaPathScreen(
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            Surface(shadowElevation = 8.dp) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            if (currentPath != null) {
+                                parentPath?.let { viewModel.goParent() } ?: viewModel.openRoots()
+                            } else {
+                                viewModel.openRoots()
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = currentPath != null || uiState.roots.isNotEmpty()
+                    ) {
+                        val label = when {
+                            currentPath == null -> "返回根目录"
+                            parentPath != null -> "返回上一级"
+                            else -> "返回根目录"
+                        }
+                        Text(text = label)
+                    }
+                    Button(
+                        onClick = { viewModel.confirmSelection() },
+                        enabled = currentPath != null,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("选择当前文件夹")
+                    }
+                }
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -102,17 +153,15 @@ fun ChooseMediaPathScreen(
                 )
             }
 
-    if (uiState.initializationState == InitializationState.RUNNING) {
+            if (uiState.isLoading) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                    Text(text = "正在初始化，请稍候…")
+                    CircularProgressIndicator()
                 }
             }
 
-            val currentPath = uiState.currentPath
             if (currentPath != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -134,15 +183,6 @@ fun ChooseMediaPathScreen(
                 )
             }
 
-            if (uiState.isLoading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
             val entries: List<DirectoryEntry> =
                 if (currentPath == null) uiState.roots else uiState.entries
 
@@ -157,32 +197,6 @@ fun ChooseMediaPathScreen(
                         viewModel.enterDirectory(entry.path)
                     }
                 }
-            }
-
-            if (currentPath != null) {
-                val parentPath = uiState.parentPath
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            parentPath?.let { viewModel.goParent() } ?: viewModel.openRoots()
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(text = if (parentPath != null) "返回上一级" else "返回根目录")
-                    }
-                    Button(
-                        onClick = { viewModel.confirmSelection() },
-                        enabled = !uiState.isSubmitting,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("选择当前文件夹")
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.size(0.dp))
             }
         }
     }
@@ -206,4 +220,22 @@ private fun DirectoryRow(entry: DirectoryEntry, onClick: () -> Unit) {
             .clickable { onClick() }
     )
     Divider(modifier = Modifier.padding(horizontal = 16.dp))
+}
+
+@Composable
+private fun BlockingScreen(message: String?) {
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator()
+            if (!message.isNullOrBlank()) {
+                Text(text = message)
+            }
+        }
+    }
 }

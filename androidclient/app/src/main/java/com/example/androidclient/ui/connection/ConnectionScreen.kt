@@ -41,7 +41,7 @@ import io.github.g00fy2.quickie.ScanQRCode
 @Composable
 fun ConnectionScreen(
     viewModel: ConnectionViewModel,
-    onConnected: (String) -> Unit,
+    onConnected: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -81,7 +81,7 @@ fun ConnectionScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is ConnectionEvent.Connected -> onConnected(event.baseUrl)
+                is ConnectionEvent.Connected -> onConnected(event.baseUrl, event.requiresSetup)
             }
         }
     }

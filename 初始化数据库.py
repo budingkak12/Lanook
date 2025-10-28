@@ -136,8 +136,12 @@ def seed_initial_data(db_session):
     print("✅ 初始数据填充完毕。")
 
 
-def scan_and_populate_media(db_session, media_path: str) -> int:
-    """扫描指定目录并将媒体信息存入数据库"""
+def scan_and_populate_media(db_session, media_path: str, *, limit: Optional[int] = None) -> int:
+    """扫描指定目录并将媒体信息存入数据库。
+
+    :param limit: 当设置时，最多入库指定数量的新媒体后立即返回，
+                  以便调用方可以先行提交供前端使用，再继续后续扫描。
+    """
     print(f"\n正在扫描目录: {media_path}")
 
     # 检查目录是否存在
@@ -149,6 +153,7 @@ def scan_and_populate_media(db_session, media_path: str) -> int:
     print(f"数据库中已存在 {len(existing_paths)} 个媒体记录。")
 
     new_files_count = 0
+    limit_reached = False
     for root, _, files in os.walk(media_path):
         for filename in files:
             file_ext = os.path.splitext(filename)[1].lower()
@@ -173,11 +178,19 @@ def scan_and_populate_media(db_session, media_path: str) -> int:
                     db_session.add(new_media)
                     new_files_count += 1
                     print(f"  - [发现新文件] 类型: {media_type}, 路径: {filename}")
+                    existing_paths.add(absolute_path)
+                    if limit is not None and new_files_count >= limit:
+                        limit_reached = True
+                        break
+        if limit_reached:
+            break
 
     if new_files_count > 0:
         print(f"正在将 {new_files_count} 个新媒体文件信息提交到数据库...")
         db_session.commit()
         print("✅ 新媒体文件入库成功。")
+        if limit_reached:
+            print("⚡️ 首批媒体已准备，后台将继续扫描剩余文件。")
     else:
         print("✅ 没有发现新的媒体文件。")
     return new_files_count

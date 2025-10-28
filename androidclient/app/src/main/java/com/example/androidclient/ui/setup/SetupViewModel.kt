@@ -156,7 +156,6 @@ class SetupViewModel(
             result.onSuccess { status ->
                 applyStatus(status)
                 if (status.state == InitializationState.COMPLETED) {
-                    _uiState.update { it.copy(isSubmitting = false) }
                     _events.emit(SetupEvent.Initialized)
                 } else if (status.state == InitializationState.RUNNING) {
                     startPolling()
@@ -179,11 +178,20 @@ class SetupViewModel(
     }
 
     private fun applyStatus(status: InitializationStatusResponse) {
+        val message = when (status.state) {
+            InitializationState.COMPLETED -> null
+            else -> status.message
+        }
+        val submitting = when (status.state) {
+            InitializationState.RUNNING -> true
+            InitializationState.COMPLETED -> true
+            else -> false
+        }
         _uiState.update {
             it.copy(
                 initializationState = status.state,
-                statusMessage = status.message,
-                isSubmitting = status.state == InitializationState.RUNNING,
+                statusMessage = message,
+                isSubmitting = submitting,
                 currentPath = status.mediaRootPath ?: it.currentPath
             )
         }
@@ -207,7 +215,6 @@ class SetupViewModel(
                 applyStatus(status)
                 when (status.state) {
                     InitializationState.COMPLETED -> {
-                        _uiState.update { it.copy(isSubmitting = false) }
                         _events.emit(SetupEvent.Initialized)
                         return@launch
                     }

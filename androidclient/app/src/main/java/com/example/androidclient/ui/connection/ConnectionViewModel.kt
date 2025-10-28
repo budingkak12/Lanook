@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.androidclient.data.connection.ConnectionRepository
+import com.example.androidclient.data.model.setup.InitializationState
+import com.example.androidclient.data.setup.SetupRepository
+import com.example.androidclient.di.NetworkModule
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -22,7 +25,7 @@ data class ConnectionUiState(
 )
 
 sealed interface ConnectionEvent {
-    data class Connected(val baseUrl: String) : ConnectionEvent
+    data class Connected(val baseUrl: String, val requiresSetup: Boolean) : ConnectionEvent
 }
 
 class ConnectionViewModel(
@@ -51,7 +54,9 @@ class ConnectionViewModel(
                 }
                 if (!autoNavigated) {
                     autoNavigated = true
-                    _events.emit(ConnectionEvent.Connected(canonical))
+                    NetworkModule.updateBaseUrl(canonical)
+                    val requireSetup = determineRequiresSetup()
+                    _events.emit(ConnectionEvent.Connected(canonical, requireSetup))
                 }
             }
         }
@@ -107,12 +112,21 @@ class ConnectionViewModel(
             _uiState.update { it.copy(isChecking = true, errorMessage = null) }
             val result = repository.verifyAndPersist(raw)
             result.onSuccess { url ->
+                val requiresSetup = determineRequiresSetup()
                 _uiState.update { it.copy(isChecking = false, lastSuccessUrl = url) }
-                _events.emit(ConnectionEvent.Connected(url))
+                _events.emit(ConnectionEvent.Connected(url, requiresSetup))
             }.onFailure { err ->
                 _uiState.update { it.copy(isChecking = false, errorMessage = err.message ?: "连接失败") }
             }
         }
+    }
+
+    private suspend fun determineRequiresSetup(): Boolean {
+        // 确保网络层指向最新服务器
+        val repo = SetupRepository(NetworkModule.api)
+        val statusResult = runCatching { repo.fetchStatus() }
+        val status = statusResult.getOrNull() ?: return true
+        return status.state != InitializationState.COMPLETED || status.mediaRootPath.isNullOrBlank()
     }
 
     class Factory(private val repository: ConnectionRepository) : ViewModelProvider.Factory {

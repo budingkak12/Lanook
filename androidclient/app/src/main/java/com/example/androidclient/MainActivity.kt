@@ -83,8 +83,14 @@ class MainActivity : ComponentActivity() {
                     composable("connect") {
                         ConnectionScreen(
                             viewModel = connectionViewModel,
-                            onConnected = {
-                                navController.navigate("setup")
+                            onConnected = { _, requiresSetup ->
+                                if (requiresSetup) {
+                                    navController.navigate("setup")
+                                } else {
+                                    navController.navigate("main") {
+                                        popUpTo("connect") { inclusive = true }
+                                    }
+                                }
                             }
                         )
                     }
