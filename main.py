@@ -4,7 +4,7 @@ import hashlib
 import random
 
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -31,6 +31,13 @@ from 初始化数据库 import (
 # 业务拆分：批量删除服务
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from sqlalchemy.exc import OperationalError
+from app.utils.connect_display import (
+    ConnectionAdvert,
+    ascii_banner,
+    prepare_advertised_endpoints,
+    render_connect_page,
+    schedule_browser_open,
+)
 
 
 # =============================
@@ -91,6 +98,7 @@ class DeleteBatchResp(BaseModel):
 # =============================
 
 app = FastAPI(title="Media App API", version="1.0.0")
+app.state.connection_advert: ConnectionAdvert | None = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -104,6 +112,23 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/connect-info", response_class=HTMLResponse)
+def connect_info_page(request: Request):
+    advert: ConnectionAdvert | None = getattr(app.state, "connection_advert", None)
+    preferred = f"{request.url.scheme}://{request.url.netloc}"
+    if advert is None:
+        try:
+            preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
+        except Exception:
+            preferred_port = 8000
+        advert = prepare_advertised_endpoints(preferred_port, extra_hosts=[preferred])
+        app.state.connection_advert = advert
+    else:
+        if preferred not in advert.base_urls:
+            advert.base_urls.insert(0, preferred)
+    return HTMLResponse(render_connect_page(advert, preferred=preferred))
 
 
 def get_db():
@@ -133,6 +158,26 @@ def _ensure_db_initialized():
     except Exception as e:
         # 不阻断服务启动，但打印警告以便诊断
         print("[startup] Database init warning:", e)
+
+
+@app.on_event("startup")
+def _display_connection_advert():
+    try:
+        preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
+    except Exception:
+        preferred_port = 8000
+    advert = prepare_advertised_endpoints(preferred_port)
+    app.state.connection_advert = advert
+    print(ascii_banner(advert))
+
+    auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()
+    should_open = auto_open_flag in {"1", "true", "yes", "on"}
+    if should_open:
+        # 避免热重载子进程重复打开浏览器
+        if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
+            os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")
+        ):
+            schedule_browser_open(f"http://127.0.0.1:{advert.port}/connect-info", delay=1.5)
 
 
 # =============================
@@ -591,8 +636,12 @@ def _get_local_ip() -> str:
 
 
 if __name__ == "__main__":
-    host = "0.0.0.0"
-    port = 8000
+    host = os.environ.get("MEDIA_APP_HOST", "0.0.0.0")
+    try:
+        port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
+    except Exception:
+        port = 8000
+    os.environ.setdefault("MEDIA_APP_PORT", str(port))
     lan_ip = _get_local_ip()
     print(f"[boot] Media App API 即将启动: http://{lan_ip}:{port}  (本机: http://localhost:{port})")
     uvicorn.run(app, host=host, port=port)

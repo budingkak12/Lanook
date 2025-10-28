@@ -1,6 +1,7 @@
 package com.example.androidclient.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -83,5 +84,18 @@ class SearchViewModel(
             val result = mediaRepository.deleteMedia(mediaIds, deleteFile)
             onResult(result)
         }
+    }
+}
+
+class SearchViewModelFactory(
+    private val api: ApiService,
+    private val translate: Map<String, String>
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(SearchViewModel::class.java)) {
+            return SearchViewModel(api, translate) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }

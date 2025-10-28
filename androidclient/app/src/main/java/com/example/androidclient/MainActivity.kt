@@ -6,8 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.DisposableEffect
@@ -23,15 +23,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.androidclient.data.connection.ConnectionRepository
+import com.example.androidclient.di.NetworkModule
 import com.example.androidclient.ui.DetailViewScreen
 import com.example.androidclient.ui.MainScreen
 import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.SearchViewModel
+import com.example.androidclient.ui.SearchViewModelFactory
+import com.example.androidclient.ui.connection.ConnectionScreen
+import com.example.androidclient.ui.connection.ConnectionViewModel
 import com.example.androidclient.ui.theme.AndroidclientTheme
-import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.example.androidclient.util.TagTranslator
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,17 +65,32 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                val vm: MainViewModel = viewModel()
                 val translate = remember { TagTranslator.load(applicationContext) }
-                val searchVm = remember { SearchViewModel(com.example.androidclient.di.NetworkModule.api, translate) }
+                val searchViewModelFactory = remember(translate) { SearchViewModelFactory(NetworkModule.api, translate) }
+                val connectionRepository = remember { ConnectionRepository(applicationContext) }
+                val connectionViewModel: ConnectionViewModel = viewModel(
+                    factory = ConnectionViewModel.Factory(connectionRepository)
+                )
                 val navController = rememberNavController()
                 
                 NavHost(
                     navController = navController, 
-                    startDestination = "main"
+                    startDestination = "connect"
                 ) {
+                    composable("connect") {
+                        ConnectionScreen(
+                            viewModel = connectionViewModel,
+                            onConnected = {
+                                navController.navigate("main") {
+                                    popUpTo("connect") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                     composable("main") {
-                        MainScreen(navController, vm, searchVm)
+                        val mainViewModel: MainViewModel = viewModel()
+                        val searchViewModel: SearchViewModel = viewModel(factory = searchViewModelFactory)
+                        MainScreen(navController, mainViewModel, searchViewModel)
                     }
                     composable(
                         "details/{index}",
@@ -104,9 +124,11 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { backStackEntry ->
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
-                        val items = vm.thumbnails.collectAsLazyPagingItems()
+                        val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("main") }
+                        val sharedViewModel: MainViewModel = viewModel(parentEntry)
+                        val items = sharedViewModel.thumbnails.collectAsLazyPagingItems()
                         DetailViewScreen(
-                            viewModel = vm,
+                            viewModel = sharedViewModel,
                             items = items,
                             initialIndex = index,
                             onBack = { navController.popBackStack() }
@@ -146,9 +168,12 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { backStackEntry ->
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
-                        val items = searchVm.thumbnails.collectAsLazyPagingItems()
+                        val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("main") }
+                        val sharedViewModel: MainViewModel = viewModel(parentEntry)
+                        val searchViewModel: SearchViewModel = viewModel(parentEntry, factory = searchViewModelFactory)
+                        val items = searchViewModel.thumbnails.collectAsLazyPagingItems()
                         DetailViewScreen(
-                            viewModel = vm, // 复用同一个 MainViewModel 做点赞/收藏
+                            viewModel = sharedViewModel, // 复用同一个 MainViewModel 做点赞/收藏
                             items = items,
                             initialIndex = index,
                             onBack = { navController.popBackStack() }
