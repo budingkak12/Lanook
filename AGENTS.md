@@ -9,13 +9,12 @@
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据与初始化在 `初始化数据库.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。
-- 工具脚本：`generate_test_videos.py`、`api_flow_test.py`。
+- 工具脚本：`api_flow_test.py`。
 
 ## 构建、测试与本地开发
-- 安装后端依赖：`uv pip install fastapi "uvicorn[standard]" sqlalchemy pydantic`。
+- 安装后端依赖：`uv pip install -r requirements.txt`。
 - 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
 - 启动后端：`uv run main.py`。
-- 生成示例媒体（需 ffmpeg）：`uv run python generate_test_videos.py`。
 - 构建调试 APK：`cd androidclient && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r androidclient/app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
 
 ## 编码风格与命名规范
@@ -29,8 +28,7 @@
 - 评审与 CI 应检查拆分规则（建议在 lint 配置中启用模块行数限制）。
 
 ## 测试指南
-- 后端流程测试：先杀掉 8000 端口，然后启动 main.py，然后执行`uv run python api_flow_test.py`（覆盖冷启动、分页、缩略图、标签、Range）。
-- 可选单测：在 `tests/` 下新增 `test_*.py`，运行 `pytest -q`。
+- 后端流程测试：先杀掉 8000 端口，然后启动 main.py，然后执行`uv run python api_flow_test.py`
 - 提交前确保后端可启动且关键接口可用。
 
 ## 提交与 Pull Request
