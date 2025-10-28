@@ -3,6 +3,9 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 
 from sqlalchemy import (
     create_engine,

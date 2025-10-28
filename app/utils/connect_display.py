@@ -254,13 +254,11 @@ def schedule_browser_open(url: str, delay: float = 1.5) -> None:
 def ascii_banner(advert: ConnectionAdvert) -> str:
     """返回启动时用于终端展示的信息文本。"""
     line = "=" * 56
-    urls = "\n".join(f"  - {url}" for url in advert.base_urls[:5])
-    extra = ""
-    if len(advert.base_urls) > 5:
-        extra = f"\n  (+{len(advert.base_urls) - 5} 个更多地址)"
+    # 只显示第一个地址
+    urls = f"  - {advert.base_urls[0]}"
     qr = advert.ascii_qr or "（安装 `pip install qrcode[pil]` 可显示终端二维码）"
     return (
         f"{line}\nMedia App 已准备就绪。\n"
-        f"建议在手机中使用以下任一地址：\n{urls}{extra}\n\n"
+        f"建议在手机中使用以下地址：\n{urls}\n\n"
         f"二维码：\n{qr}\n{line}"
     )
