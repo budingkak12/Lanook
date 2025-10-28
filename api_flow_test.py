@@ -178,6 +178,15 @@ def header_contains(resp, key: str, substr: str) -> bool:
 
 
 def main():
+    # 0) 恢复数据到快照（在最开始执行）
+    try:
+        import restore_from_snapshots as _rfs
+        rc = _rfs.main()
+        if VERBOSE:
+            print(f"[restore_from_snapshots] exit={rc}")
+    except Exception as e:
+        print(f"[restore_from_snapshots] 忽略错误: {e}")
+
     global BASE_URL
     BASE_URL = _select_base_url(BASE_URL)
     if VERBOSE:
