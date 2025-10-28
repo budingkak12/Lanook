@@ -27,6 +27,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.androidclient.data.connection.ConnectionRepository
 import com.example.androidclient.di.NetworkModule
+import com.example.androidclient.data.setup.SetupRepository
 import com.example.androidclient.ui.DetailViewScreen
 import com.example.androidclient.ui.MainScreen
 import com.example.androidclient.ui.MainViewModel
@@ -35,6 +36,8 @@ import com.example.androidclient.ui.SearchViewModelFactory
 import com.example.androidclient.ui.connection.ConnectionScreen
 import com.example.androidclient.ui.connection.ConnectionViewModel
 import com.example.androidclient.ui.theme.AndroidclientTheme
+import com.example.androidclient.ui.setup.ChooseMediaPathScreen
+import com.example.androidclient.ui.setup.SetupViewModel
 import com.example.androidclient.util.TagTranslator
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
@@ -81,10 +84,22 @@ class MainActivity : ComponentActivity() {
                         ConnectionScreen(
                             viewModel = connectionViewModel,
                             onConnected = {
+                                navController.navigate("setup")
+                            }
+                        )
+                    }
+                    composable("setup") {
+                        val setupViewModel: SetupViewModel = viewModel(
+                            factory = SetupViewModel.Factory(SetupRepository(NetworkModule.api))
+                        )
+                        ChooseMediaPathScreen(
+                            viewModel = setupViewModel,
+                            onInitialized = {
                                 navController.navigate("main") {
                                     popUpTo("connect") { inclusive = true }
                                 }
-                            }
+                            },
+                            onBack = { navController.popBackStack() }
                         )
                     }
                     composable("main") {

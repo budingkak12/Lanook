@@ -1,0 +1,36 @@
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+
+class DirectoryEntryModel(BaseModel):
+    path: str = Field(..., description="目录的绝对路径")
+    name: str = Field(..., description="目录显示名称")
+    readable: bool = Field(..., description="是否具有读取权限")
+    writable: bool = Field(..., description="是否具有写入权限")
+    is_root: bool = Field(..., description="是否为顶级根目录")
+    is_symlink: bool = Field(False, description="是否为符号链接")
+
+
+class DirectoryListResponse(BaseModel):
+    current_path: str
+    parent_path: Optional[str] = None
+    entries: List[DirectoryEntryModel]
+
+
+class InitializationStateModel(str, Enum):
+    IDLE = "idle"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class MediaRootRequest(BaseModel):
+    path: str
+
+
+class InitializationStatusResponse(BaseModel):
+    state: InitializationStateModel
+    message: Optional[str] = None
+    media_root_path: Optional[str] = None

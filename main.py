@@ -38,6 +38,9 @@ from app.utils.connect_display import (
     render_connect_page,
     schedule_browser_open,
 )
+from app.api.setup_routes import router as setup_router
+from app.services.init_state import InitializationCoordinator, InitializationState
+from app.services.media_initializer import get_configured_media_root, has_indexed_media
 
 
 # =============================
@@ -108,6 +111,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(setup_router)
+
 # 轻量健康检查，供 Android 客户端自动探测可用服务地址
 @app.get("/health")
 def health():
@@ -158,6 +163,30 @@ def _ensure_db_initialized():
     except Exception as e:
         # 不阻断服务启动，但打印警告以便诊断
         print("[startup] Database init warning:", e)
+
+
+@app.on_event("startup")
+def _prepare_initialization_state():
+    # 确保新表结构可用（如 app_settings）
+    try:
+        create_database_and_tables(echo=False)
+    except Exception as exc:
+        print("[startup] Failed to ensure tables for initialization:", exc)
+    coordinator = InitializationCoordinator()
+    media_root = get_configured_media_root()
+    if media_root and has_indexed_media():
+        coordinator.reset(
+            state=InitializationState.COMPLETED,
+            media_root_path=str(media_root),
+            message="媒体库已初始化。",
+        )
+    else:
+        coordinator.reset(
+            state=InitializationState.IDLE,
+            media_root_path=str(media_root) if media_root else None,
+            message=None,
+        )
+    app.state.init_coordinator = coordinator
 
 
 @app.on_event("startup")
@@ -347,7 +376,14 @@ def delete_media_item(
     thumb_path = _thumb_path_for(media)
     # 从数据库删除记录（包含标签）
     db.delete(media)
-    db.commit()
+    try:
+        db.commit()
+    except OperationalError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="database is read-only; check file permissions or restart backend",
+        ) from exc
 
     # 删除缩略图文件（若存在）
     try:
@@ -426,9 +462,16 @@ def get_media_list(
     else:
         all_items = db.query(Media).all()
         all_items.sort(key=lambda m: seeded_key(seed, m.id))
-        sliced = all_items[offset : offset + limit]
+        liked_ids = {
+            media_id
+            for (media_id,) in db.query(MediaTag.media_id).filter(MediaTag.tag_name == "like")
+        }
+        ordered_items = [m for m in all_items if m.id not in liked_ids] + [
+            m for m in all_items if m.id in liked_ids
+        ]
+        sliced = ordered_items[offset : offset + limit]
         items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
-        has_more = (offset + len(items)) < len(all_items)
+        has_more = (offset + len(items)) < len(ordered_items)
         return PageResponse(items=items, offset=offset, hasMore=has_more)
 
 

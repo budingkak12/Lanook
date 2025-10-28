@@ -1,10 +1,20 @@
+import argparse
 import os
-import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.pool import NullPool
 
 # ===================================================================
 # 1. 配置 (Configuration)
@@ -23,13 +33,20 @@ DATABASE_URL = "sqlite:///./media_app.db"
 SUPPORTED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
 SUPPORTED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
 
+# 设置键：媒体根目录
+MEDIA_ROOT_KEY = "media_root_path"
+
 
 # ===================================================================
 # 2. SQLAlchemy ORM 设置 (SQLAlchemy ORM Setup)
 # ===================================================================
 
-# 创建数据库引擎
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# 创建数据库引擎（禁用连接池，避免快照恢复后持有陈旧连接导致只读错误）
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=NullPool,
+)
 
 # 创建一个数据库会话类
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -80,15 +97,28 @@ class MediaTag(Base):
     __table_args__ = (UniqueConstraint("media_id", "tag_name", name="_media_tag_uc"),)
 
 
+class AppSetting(Base):
+    """应用级配置表，存储系统设置，例如媒体根目录。"""
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String, nullable=False)
+
+
 # ===================================================================
 # 4. 核心功能函数 (Core Functions)
 # ===================================================================
 
-def create_database_and_tables():
-    """创建所有在Base中定义的表"""
-    print("正在创建数据库表...")
+def create_database_and_tables(echo: bool = True):
+    """创建所有在Base中定义的表
+
+    :param echo: 是否打印提示信息。用于服务端启动时减少重复日志。
+    """
+    if echo:
+        print("正在创建数据库表...")
     Base.metadata.create_all(bind=engine)
-    print("✅ 表结构创建成功。")
+    if echo:
+        print("✅ 表结构创建成功。")
 
 
 def seed_initial_data(db_session):
@@ -106,14 +136,13 @@ def seed_initial_data(db_session):
     print("✅ 初始数据填充完毕。")
 
 
-def scan_and_populate_media(db_session, media_path: str):
+def scan_and_populate_media(db_session, media_path: str) -> int:
     """扫描指定目录并将媒体信息存入数据库"""
     print(f"\n正在扫描目录: {media_path}")
 
     # 检查目录是否存在
     if not os.path.isdir(media_path):
-        print(f"❌ 错误: 目录 '{media_path}' 不存在。请检查 `MEDIA_DIRECTORY_TO_SCAN` 配置。")
-        sys.exit(1)
+        raise FileNotFoundError(f"目录 '{media_path}' 不存在。")
 
     # 获取数据库中已存在的所有路径，用于去重
     existing_paths = {path for (path,) in db_session.query(Media.absolute_path)}
@@ -151,6 +180,37 @@ def scan_and_populate_media(db_session, media_path: str):
         print("✅ 新媒体文件入库成功。")
     else:
         print("✅ 没有发现新的媒体文件。")
+    return new_files_count
+
+
+def clear_media_library(db_session) -> None:
+    """删除媒体相关表中的数据，为重新初始化做准备。"""
+    print("正在清空既有媒体索引...")
+    deleted_tags = db_session.query(MediaTag).delete(synchronize_session=False)
+    deleted_media = db_session.query(Media).delete(synchronize_session=False)
+    db_session.commit()
+    print(f"✅ 已清空媒体数据：删除媒体 {deleted_media} 条、关联标签 {deleted_tags} 条。")
+
+
+def get_setting(db_session, key: str) -> Optional[str]:
+    setting = (
+        db_session.query(AppSetting)
+        .filter(AppSetting.key == key)
+        .first()
+    )
+    return setting.value if setting else None
+
+
+def set_setting(db_session, key: str, value: str) -> None:
+    existing = (
+        db_session.query(AppSetting)
+        .filter(AppSetting.key == key)
+        .first()
+    )
+    if existing:
+        existing.value = value
+    else:
+        db_session.add(AppSetting(key=key, value=value))
 
 
 # ===================================================================
@@ -160,6 +220,22 @@ def scan_and_populate_media(db_session, media_path: str):
 if __name__ == "__main__":
     print("--- 数据库初始化脚本（无用户概念） ---")
 
+    parser = argparse.ArgumentParser(description="初始化媒体数据库，扫描指定目录。")
+    parser.add_argument(
+        "--media-path",
+        type=str,
+        default=None,
+        help="要扫描的媒体目录（绝对路径）。未指定时按环境变量 MEDIA_DIRECTORY_TO_SCAN 或默认示例目录。",
+    )
+    args = parser.parse_args()
+
+    candidate_path = (
+        args.media_path
+        or os.environ.get("MEDIA_DIRECTORY_TO_SCAN")
+        or MEDIA_DIRECTORY_TO_SCAN
+    )
+    resolved_media_path = Path(candidate_path).expanduser().resolve()
+
     # 1. 创建表结构
     create_database_and_tables()
 
@@ -167,14 +243,23 @@ if __name__ == "__main__":
     db = SessionLocal()
 
     try:
+        # 2.1 更新媒体根目录设置
+        set_setting(db, MEDIA_ROOT_KEY, str(resolved_media_path))
+
         # 3. 填充预定义标签
         seed_initial_data(db)
 
+        # 3.1 清空旧数据（避免重复记录）
+        clear_media_library(db)
+
         # 4. 扫描并入库媒体文件
-        scan_and_populate_media(db, MEDIA_DIRECTORY_TO_SCAN)
+        new_count = scan_and_populate_media(db, str(resolved_media_path))
+        db.commit()
+        print(f"✅ 初始化完成，共新增 {new_count} 个媒体文件。")
     finally:
         # 5. 关闭会话
         db.close()
 
     print("\n--- 初始化完成 ---")
+    print(f"媒体目录：{resolved_media_path}")
     print("数据库文件 'media_app.db' 已在当前目录生成或更新。")

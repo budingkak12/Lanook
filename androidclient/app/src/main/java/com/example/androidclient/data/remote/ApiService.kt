@@ -6,6 +6,10 @@ import com.example.androidclient.data.model.TagResponse
 import com.example.androidclient.data.model.ThumbnailListResponse
 import com.example.androidclient.data.model.DeleteBatchRequest
 import com.example.androidclient.data.model.DeleteBatchResponse
+import com.example.androidclient.data.model.setup.DirectoryEntry
+import com.example.androidclient.data.model.setup.DirectoryListResponse
+import com.example.androidclient.data.model.setup.InitializationStatusResponse
+import com.example.androidclient.data.model.setup.MediaRootRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -71,4 +75,20 @@ interface ApiService {
      */
     @GET("tags")
     suspend fun getAllTags(): com.example.androidclient.data.model.TagListResponse
+
+    @GET("filesystem/roots")
+    suspend fun getFilesystemRoots(): List<DirectoryEntry>
+
+    @GET("filesystem/list")
+    suspend fun getDirectoryListing(
+        @Query("path") path: String
+    ): DirectoryListResponse
+
+    @GET("init-status")
+    suspend fun getInitializationStatus(): InitializationStatusResponse
+
+    @POST("media-root")
+    suspend fun setMediaRoot(
+        @Body req: MediaRootRequest
+    ): InitializationStatusResponse
 }
