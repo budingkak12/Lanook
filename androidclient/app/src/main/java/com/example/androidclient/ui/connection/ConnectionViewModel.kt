@@ -55,7 +55,7 @@ class ConnectionViewModel(
                 if (!autoNavigated) {
                     autoNavigated = true
                     NetworkModule.updateBaseUrl(canonical)
-                    val requireSetup = determineRequiresSetup()
+                    val requireSetup = runCatching { determineRequiresSetup() }.getOrElse { true }
                     _events.emit(ConnectionEvent.Connected(canonical, requireSetup))
                 }
             }

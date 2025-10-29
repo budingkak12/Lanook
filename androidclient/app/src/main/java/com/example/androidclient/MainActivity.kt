@@ -18,11 +18,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.androidclient.data.connection.ConnectionRepository
-import com.example.androidclient.di.NetworkModule
+import com.example.androidclient.data.model.setup.InitializationState
 import com.example.androidclient.data.setup.SetupRepository
+import com.example.androidclient.di.NetworkModule
 import com.example.androidclient.ui.DetailViewScreen
 import com.example.androidclient.ui.MainScreen
 import com.example.androidclient.ui.MainViewModel
@@ -36,10 +37,16 @@ import com.example.androidclient.ui.setup.ChooseMediaPathScreen
 import com.example.androidclient.ui.setup.SetupViewModel
 import com.example.androidclient.util.TagTranslator
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val connectionRepository = ConnectionRepository(applicationContext)
+        val startupConfig = resolveStartupConfig(connectionRepository)
         enableEdgeToEdge()
         setContent {
             AndroidclientTheme {
@@ -65,15 +72,15 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val translate = remember { TagTranslator.load(applicationContext) }
-                val connectionRepository = remember { ConnectionRepository(applicationContext) }
                 val connectionViewModel: ConnectionViewModel = viewModel(
                     factory = ConnectionViewModel.Factory(connectionRepository)
                 )
                 val navController = rememberNavController()
+                val startDestination = remember { startupConfig.startDestination }
                 
                 NavHost(
                     navController = navController,
-                    startDestination = "connect"
+                    startDestination = startDestination
                 ) {
                     composable(
                         "connect",
@@ -174,4 +181,33 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun resolveStartupConfig(repository: ConnectionRepository): StartupConfig = runBlocking {
+        val stored = withContext(Dispatchers.IO) { repository.storedBaseUrl().firstOrNull() }
+        val canonical = stored?.let { repository.canonicalize(it) }
+        if (canonical.isNullOrBlank()) {
+            StartupConfig(
+                baseUrl = null,
+                startDestination = "connect"
+            )
+        } else {
+            NetworkModule.updateBaseUrl(canonical)
+            val requiresSetup = withContext(Dispatchers.IO) {
+                runCatching {
+                    val repo = SetupRepository(NetworkModule.api)
+                    val status = repo.fetchStatus()
+                    status.state != InitializationState.COMPLETED || status.mediaRootPath.isNullOrBlank()
+                }.getOrDefault(false)
+            }
+            StartupConfig(
+                baseUrl = canonical,
+                startDestination = if (requiresSetup) "setup" else "main"
+            )
+        }
+    }
+
+    private data class StartupConfig(
+        val baseUrl: String?,
+        val startDestination: String
+    )
 }
