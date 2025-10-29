@@ -32,6 +32,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.androidclient.ui.DetailViewScreen
 import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.ThumbnailGridScreen
+import com.example.androidclient.ui.settings.SettingsScreen
 
 sealed class Screen(val route: String, val icon: ImageVector, val title: String) {
     object Random : Screen("random", Icons.Filled.Home, "随机")
@@ -96,8 +97,11 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: Se
                 )
             }
             composable(Screen.Settings.route) {
-                // TODO: Replace with actual Settings screen
-                Text("Settings Screen")
+                SettingsScreen(
+                    onViewTasks = {
+                        mainNavController.navigate("tasks")
+                    }
+                )
             }
         }
     }

@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.androidclient.data.connection.ConnectionRepository
 import com.example.androidclient.data.model.setup.InitializationState
+import com.example.androidclient.data.repository.TasksRepository
 import com.example.androidclient.data.setup.SetupRepository
 import com.example.androidclient.di.NetworkModule
 import com.example.androidclient.ui.DetailViewScreen
@@ -35,6 +36,9 @@ import com.example.androidclient.ui.connection.ConnectionScreen
 import com.example.androidclient.ui.connection.ConnectionViewModel
 import com.example.androidclient.ui.navigation.NavigationTransitions
 import com.example.androidclient.ui.theme.AndroidclientTheme
+import com.example.androidclient.ui.settings.TasksScreen
+import com.example.androidclient.ui.settings.TasksViewModel
+import com.example.androidclient.ui.settings.TasksViewModelFactory
 import com.example.androidclient.ui.setup.ChooseMediaPathScreen
 import com.example.androidclient.ui.setup.SetupViewModel
 import com.example.androidclient.util.TagTranslator
@@ -200,6 +204,21 @@ class MainActivity : ComponentActivity() {
                         val mainViewModel: MainViewModel = viewModel()
                         val searchViewModel: SearchViewModel = viewModel(factory = searchViewModelFactory)
                         MainScreen(navController, mainViewModel, searchViewModel)
+                    }
+                    composable(
+                        "tasks",
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
+                    ) {
+                        val tasksViewModel: TasksViewModel = viewModel(
+                            factory = TasksViewModelFactory(TasksRepository(NetworkModule.api))
+                        )
+                        TasksScreen(
+                            viewModel = tasksViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable(
                         "details/{index}",

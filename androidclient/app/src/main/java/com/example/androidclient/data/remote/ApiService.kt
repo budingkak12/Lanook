@@ -10,6 +10,7 @@ import com.example.androidclient.data.model.setup.DirectoryEntry
 import com.example.androidclient.data.model.setup.DirectoryListResponse
 import com.example.androidclient.data.model.setup.InitializationStatusResponse
 import com.example.androidclient.data.model.setup.MediaRootRequest
+import com.example.androidclient.data.model.tasks.ScanTaskStatusResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -91,4 +92,9 @@ interface ApiService {
     suspend fun setMediaRoot(
         @Body req: MediaRootRequest
     ): InitializationStatusResponse
+
+    @GET("tasks/scan-progress")
+    suspend fun getScanTaskStatus(
+        @Query("force_refresh") forceRefresh: Boolean = false
+    ): ScanTaskStatusResponse
 }
