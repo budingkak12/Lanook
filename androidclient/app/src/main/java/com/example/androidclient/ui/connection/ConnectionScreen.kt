@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -143,34 +142,22 @@ fun ConnectionScreen(
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = {
+                    val permissionStatus = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.CAMERA
+                    )
+                    if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
+                        qrLauncher.launch(null)
+                    } else if (!pendingScan) {
+                        pendingScan = true
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Button(
-                    onClick = {
-                        val permissionStatus = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.CAMERA
-                        )
-                        if (permissionStatus == PackageManager.PERMISSION_GRANTED) {
-                            qrLauncher.launch(null)
-                        } else if (!pendingScan) {
-                            pendingScan = true
-                            permissionLauncher.launch(Manifest.permission.CAMERA)
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("扫码填入")
-                }
-                OutlinedButton(
-                    onClick = { viewModel.autoDetect() },
-                    modifier = Modifier.weight(1f),
-                    enabled = !state.isChecking
-                ) {
-                    Text("自动探测")
-                }
+                Text("扫码填入")
             }
 
             Button(

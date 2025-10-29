@@ -92,21 +92,6 @@ class ConnectionViewModel(
         performConnect(candidate)
     }
 
-    fun autoDetect() {
-        if (_uiState.value.isChecking) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isChecking = true, errorMessage = null) }
-            val resolved = repository.autoResolve()
-            if (resolved.isNullOrBlank()) {
-                _uiState.update { it.copy(isChecking = false, errorMessage = "未探测到可用服务器") }
-                return@launch
-            }
-            val canonical = repository.canonicalize(resolved) ?: resolved
-            _uiState.update { it.copy(baseUrlInput = canonical) }
-            performConnect(canonical)
-        }
-    }
-
     private fun performConnect(raw: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isChecking = true, errorMessage = null) }

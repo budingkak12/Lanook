@@ -10,14 +10,8 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
 object NetworkModule {
 
-    // 备选服务器地址（优先公司网，其次家庭网）
-    internal val candidateBaseUrls: List<String> = listOf(
-        "http://10.175.87.74:8000",
-        "http://192.168.31.58:8000",
-    )
-
     @Volatile
-    private var baseUrl: String = candidateBaseUrls.first()
+    private var baseUrl: String? = null
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -47,23 +41,22 @@ object NetworkModule {
             .build()
 
     @Volatile
-    private var retrofit: Retrofit = buildRetrofit(baseUrl)
+    private var apiInstance: ApiService? = null
 
-    @Volatile
-    var api: ApiService = retrofit.create(ApiService::class.java)
-        private set
+    val api: ApiService
+        get() = apiInstance ?: throw IllegalStateException("服务器地址尚未初始化，请先在连接页完成配置")
 
     @Synchronized
     fun updateBaseUrl(newBaseUrl: String) {
         val normalized = if (newBaseUrl.endsWith('/')) newBaseUrl.dropLast(1) else newBaseUrl
-        if (normalized == baseUrl) return
+        if (baseUrl != null && normalized == baseUrl) return
         baseUrl = normalized
         // 复用同一个 OkHttpClient，重新构建 Retrofit 与 ApiService
-        retrofit = buildRetrofit(baseUrl)
-        api = retrofit.create(ApiService::class.java)
+        val newApi = buildRetrofit(normalized).create(ApiService::class.java)
+        apiInstance = newApi
     }
 
-    fun currentBaseUrl(): String = baseUrl
+    fun currentBaseUrl(): String? = baseUrl
 
     // 暴露 OkHttp 供图片加载器等共用连接池/缓存，避免重复初始化带来的抖动
     fun okHttpClient(): OkHttpClient = okHttp

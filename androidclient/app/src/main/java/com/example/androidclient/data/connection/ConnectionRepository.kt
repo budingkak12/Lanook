@@ -3,7 +3,6 @@ package com.example.androidclient.data.connection
 import android.content.Context
 import android.net.Uri
 import com.example.androidclient.di.NetworkModule
-import com.example.androidclient.di.ServerResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -27,12 +26,6 @@ class ConnectionRepository(context: Context) {
 
     suspend fun saveBaseUrl(baseUrl: String) {
         ConnectionPreferences.writeBaseUrl(appContext, baseUrl)
-    }
-
-    fun defaultCandidates(): List<String> = NetworkModule.candidateBaseUrls
-
-    suspend fun autoResolve(): String? = withContext(Dispatchers.IO) {
-        runCatching { ServerResolver.resolve() }.getOrNull()
     }
 
     fun canonicalize(raw: String): String? {

@@ -69,7 +69,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val translate = remember { TagTranslator.load(applicationContext) }
-                val searchViewModelFactory = remember(translate) { SearchViewModelFactory(NetworkModule.api, translate) }
                 val connectionRepository = remember { ConnectionRepository(applicationContext) }
                 val connectionViewModel: ConnectionViewModel = viewModel(
                     factory = ConnectionViewModel.Factory(connectionRepository)
@@ -157,6 +156,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     ) {
+                        val searchViewModelFactory = remember(NetworkModule.currentBaseUrl(), translate) {
+                            SearchViewModelFactory(NetworkModule.api, translate)
+                        }
                         val mainViewModel: MainViewModel = viewModel()
                         val searchViewModel: SearchViewModel = viewModel(factory = searchViewModelFactory)
                         MainScreen(navController, mainViewModel, searchViewModel)
@@ -239,7 +241,7 @@ class MainActivity : ComponentActivity() {
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
                         val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("main") }
                         val sharedViewModel: MainViewModel = viewModel(parentEntry)
-                        val searchViewModel: SearchViewModel = viewModel(parentEntry, factory = searchViewModelFactory)
+                        val searchViewModel: SearchViewModel = viewModel(parentEntry)
                         val items = searchViewModel.thumbnails.collectAsLazyPagingItems()
                         DetailViewScreen(
                             viewModel = sharedViewModel, // 复用同一个 MainViewModel 做点赞/收藏
