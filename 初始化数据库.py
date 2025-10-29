@@ -38,6 +38,8 @@ SUPPORTED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
 
 # 设置键：媒体根目录
 MEDIA_ROOT_KEY = "media_root_path"
+# 设置键：自动扫描开关（"1" / "0"）
+AUTO_SCAN_ENABLED_KEY = "auto_scan_enabled"
 
 
 # ===================================================================
