@@ -2,6 +2,7 @@
 ## 正在做的事情
 - 正在开发一个无用户概念的局域网相册，支持媒体浏览/管理，
 - 前端：androidclient/
+- web 前端 ：webclient，请使用 yarn install 或者 yarn dev 启动
 ## 你必须做的事情
 - 你需要完成构建安装 apk 
 - 不要写回退兼容性代码
