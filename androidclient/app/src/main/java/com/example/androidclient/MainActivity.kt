@@ -5,11 +5,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
@@ -35,6 +30,7 @@ import com.example.androidclient.ui.SearchViewModel
 import com.example.androidclient.ui.SearchViewModelFactory
 import com.example.androidclient.ui.connection.ConnectionScreen
 import com.example.androidclient.ui.connection.ConnectionViewModel
+import com.example.androidclient.ui.navigation.NavigationTransitions
 import com.example.androidclient.ui.theme.AndroidclientTheme
 import com.example.androidclient.ui.setup.ChooseMediaPathScreen
 import com.example.androidclient.ui.setup.SetupViewModel
@@ -81,18 +77,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable(
                         "connect",
-                        exitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popEnterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        }
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
                     ) {
                         ConnectionScreen(
                             viewModel = connectionViewModel,
@@ -109,30 +97,10 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(
                         "setup",
-                        enterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        exitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popEnterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        }
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
                     ) {
                         val setupViewModel: SetupViewModel = viewModel(
                             factory = SetupViewModel.Factory(SetupRepository(NetworkModule.api))
@@ -149,12 +117,10 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(
                         "main",
-                        enterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            )
-                        }
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
                     ) {
                         val searchViewModelFactory = remember(NetworkModule.currentBaseUrl(), translate) {
                             SearchViewModelFactory(NetworkModule.api, translate)
@@ -166,33 +132,10 @@ class MainActivity : ComponentActivity() {
                     composable(
                         "details/{index}",
                         arguments = listOf(navArgument("index") { type = NavType.IntType }),
-                        enterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ) + scaleIn(
-                                initialScale = 0.92f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        exitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ) + scaleOut(
-                                targetScale = 0.92f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ) + scaleOut(
-                                targetScale = 0.92f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        }
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
                     ) { backStackEntry ->
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
                         val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("main") }
@@ -210,33 +153,10 @@ class MainActivity : ComponentActivity() {
                     composable(
                         "search-details/{index}",
                         arguments = listOf(navArgument("index") { type = NavType.IntType }),
-                        enterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ) + scaleIn(
-                                initialScale = 0.92f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        exitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ) + scaleOut(
-                                targetScale = 0.92f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        },
-                        popExitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ) + scaleOut(
-                                targetScale = 0.92f,
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            )
-                        }
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
                     ) { backStackEntry ->
                         val index = backStackEntry.arguments?.getInt("index") ?: 0
                         val parentEntry = remember(backStackEntry) { navController.getBackStackEntry("main") }
