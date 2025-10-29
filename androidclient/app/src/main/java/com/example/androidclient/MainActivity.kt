@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
@@ -84,10 +86,23 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable(
                         "connect",
-                        enterTransition = NavigationTransitions.enter,
-                        exitTransition = NavigationTransitions.exit,
-                        popEnterTransition = NavigationTransitions.popEnter,
-                        popExitTransition = NavigationTransitions.popExit
+                        enterTransition = {
+                            NavigationTransitions.enter(this)
+                        },
+                        exitTransition = {
+                            val target = targetState.destination.route
+                            if (target == "main" || target == "setup") {
+                                ExitTransition.None
+                            } else {
+                                NavigationTransitions.exit(this)
+                            }
+                        },
+                        popEnterTransition = {
+                            NavigationTransitions.popEnter(this)
+                        },
+                        popExitTransition = {
+                            NavigationTransitions.popExit(this)
+                        }
                     ) {
                         ConnectionScreen(
                             viewModel = connectionViewModel,
@@ -104,10 +119,35 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(
                         "setup",
-                        enterTransition = NavigationTransitions.enter,
-                        exitTransition = NavigationTransitions.exit,
-                        popEnterTransition = NavigationTransitions.popEnter,
-                        popExitTransition = NavigationTransitions.popExit
+                        enterTransition = {
+                            if (initialState.destination.route == "connect") {
+                                EnterTransition.None
+                            } else {
+                                NavigationTransitions.enter(this)
+                            }
+                        },
+                        exitTransition = {
+                            val target = targetState.destination.route
+                            if (target == "connect") {
+                                ExitTransition.None
+                            } else {
+                                NavigationTransitions.exit(this)
+                            }
+                        },
+                        popEnterTransition = {
+                            if (initialState.destination.route == "connect") {
+                                EnterTransition.None
+                            } else {
+                                NavigationTransitions.popEnter(this)
+                            }
+                        },
+                        popExitTransition = {
+                            if (targetState.destination.route == "connect") {
+                                ExitTransition.None
+                            } else {
+                                NavigationTransitions.popExit(this)
+                            }
+                        }
                     ) {
                         val setupViewModel: SetupViewModel = viewModel(
                             factory = SetupViewModel.Factory(SetupRepository(NetworkModule.api))
@@ -124,10 +164,35 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(
                         "main",
-                        enterTransition = NavigationTransitions.enter,
-                        exitTransition = NavigationTransitions.exit,
-                        popEnterTransition = NavigationTransitions.popEnter,
-                        popExitTransition = NavigationTransitions.popExit
+                        enterTransition = {
+                            if (initialState.destination.route == "connect") {
+                                EnterTransition.None
+                            } else {
+                                NavigationTransitions.enter(this)
+                            }
+                        },
+                        exitTransition = {
+                            val target = targetState.destination.route
+                            if (target == "connect") {
+                                ExitTransition.None
+                            } else {
+                                NavigationTransitions.exit(this)
+                            }
+                        },
+                        popEnterTransition = {
+                            if (initialState.destination.route == "connect") {
+                                EnterTransition.None
+                            } else {
+                                NavigationTransitions.popEnter(this)
+                            }
+                        },
+                        popExitTransition = {
+                            if (targetState.destination.route == "connect") {
+                                ExitTransition.None
+                            } else {
+                                NavigationTransitions.popExit(this)
+                            }
+                        }
                     ) {
                         val searchViewModelFactory = remember(NetworkModule.currentBaseUrl(), translate) {
                             SearchViewModelFactory(NetworkModule.api, translate)
