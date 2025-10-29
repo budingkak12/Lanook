@@ -112,7 +112,6 @@ dependencies {
     // Media3 (ExoPlayer)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
-    implementation(libs.zoomable)
 
     // Preferences & 扫码
     implementation(libs.androidx.datastore)
