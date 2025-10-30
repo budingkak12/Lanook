@@ -26,6 +26,19 @@ export type MediaItem = {
 
 export default function Home() {
   const [activeView, setActiveView] = useState<"feed" | "albums" | "search" | "settings">("feed")
+
+  // 在客户端检查是否应该显示设置页面
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const autoShowSettings = urlParams.get('autoShowSettings')
+      const defaultView = urlParams.get('default')
+
+      if (autoShowSettings === 'true' || defaultView === 'settings') {
+        setActiveView('settings')
+      }
+    }
+  }, [])
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [sessionId, setSessionId] = useState<string | null>(null)

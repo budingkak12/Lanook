@@ -119,19 +119,6 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/settings", response_class=HTMLResponse)
-def settings_page():
-    """处理SPA路由，返回settings.html"""
-    target_dir = _resolve_frontend_dist()
-    settings_file = target_dir / "settings.html"
-
-    if settings_file.exists():
-        return FileResponse(settings_file)
-
-    # 如果文件不存在，返回404页面
-    return FileResponse(target_dir / "404.html", status_code=404)
-
-
 @app.get("/server-info")
 def get_server_info(request: Request):
     """获取服务器连接信息，用于生成二维码"""
@@ -285,7 +272,7 @@ def _display_connection_advert():
         preferred_port = 8000
     print(f"[boot] Media App API 即将启动: http://10.175.87.74:{preferred_port}  (本机: http://localhost:{preferred_port})")
 
-    # 自动打开前端设置页面
+    # 自动打开前端（默认显示设置）
     auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()
     should_open = auto_open_flag in {"1", "true", "yes", "on"}
     if should_open:
@@ -293,18 +280,17 @@ def _display_connection_advert():
         if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
             os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")
         ):
-            base_url = f"http://localhost:{preferred_port}"
-            # 直接打开设置页面
-            settings_url = f"{base_url}/settings"
-            print(f"[startup] 自动打开前端设置页面: {settings_url}")
+            # 打开前端首页，传递参数让它显示设置页面
+            frontend_url = f"http://localhost:3000/?autoShowSettings=true"
+            print(f"[startup] 自动打开前端页面: {frontend_url}")
 
             import webbrowser
             import time
             import threading
 
             def open_browser():
-                time.sleep(1.5)  # 等待服务器完全启动
-                webbrowser.open(settings_url)
+                time.sleep(1.5)  # 等待前端开发服务器启动
+                webbrowser.open(frontend_url)
 
             threading.Thread(target=open_browser, daemon=True).start()
 

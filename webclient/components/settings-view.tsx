@@ -105,7 +105,7 @@ export function SettingsView() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wifi className="w-5 h-5" />
-                <CardTitle>网络连接</CardTitle>
+                <CardTitle>手机连接二维码</CardTitle>
               </div>
               <div className="flex items-center gap-2">
                 {isNetworkExpanded && (
