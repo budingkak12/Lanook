@@ -5,6 +5,7 @@ import random
 
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import os
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -105,6 +106,8 @@ class DeleteBatchResp(BaseModel):
 
 app = FastAPI(title="Media App API", version="1.0.0")
 app.state.connection_advert: ConnectionAdvert | None = None
+app.state.frontend_available = False
+app.state.frontend_dist: Path | None = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -139,6 +142,41 @@ def connect_info_page(request: Request):
         if preferred not in advert.base_urls:
             advert.base_urls.insert(0, preferred)
     return HTMLResponse(render_connect_page(advert, preferred=preferred))
+
+
+def _resolve_frontend_dist() -> Path:
+    custom = os.environ.get("MEDIA_APP_FRONTEND_DIST")
+    if custom:
+        return Path(custom).expanduser().resolve()
+    return (Path(__file__).parent / "webclient" / "out").resolve()
+
+
+@app.on_event("startup")
+def _mount_static_frontend():
+    target_dir = _resolve_frontend_dist()
+    app.state.frontend_dist = target_dir
+    index_file = target_dir / "index.html"
+
+    if not target_dir.exists():
+        print(f"[startup] 前端静态目录不存在，跳过自动托管: {target_dir}")
+        app.state.frontend_available = False
+        return
+    if not index_file.exists():
+        print(f"[startup] 未找到前端入口文件 index.html，跳过托管: {index_file}")
+        app.state.frontend_available = False
+        return
+
+    # 避免重复挂载（热重载等场景）
+    already_mounted = any(
+        getattr(route, "path", None) == "/" and isinstance(getattr(route, "app", None), StaticFiles)
+        for route in app.routes
+    )
+    if not already_mounted:
+        app.mount("/", StaticFiles(directory=target_dir, html=True), name="frontend-static")
+        print(f"[startup] 前端静态资源已托管: {target_dir}")
+
+    app.state.frontend_available = True
+    app.state.frontend_index = index_file
 
 
 def get_db():
@@ -232,7 +270,9 @@ def _display_connection_advert():
         if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
             os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")
         ):
-            schedule_browser_open(f"http://127.0.0.1:{advert.port}/connect-info", delay=1.5)
+            base_local = f"http://127.0.0.1:{advert.port}"
+            target_path = "/" if getattr(app.state, "frontend_available", False) else "/connect-info"
+            schedule_browser_open(f"{base_local}{target_path}", delay=1.5)
 
 
 # =============================

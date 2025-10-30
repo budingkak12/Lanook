@@ -1,7 +1,10 @@
 # Repository Guidelines
 ## 正在做的事情
-- 正在开发一个局域网相册，支持媒体浏览/管理，
-- 前端：androidclient/
+- 正在开发一个无用户概念的局域网相册，支持媒体浏览/管理，
+- 安卓前端：androidclient/
+- web前端 ：webclient，项目使用 yarn管理的项目，使用 yarn dev 启动前端
+## web前端
+- 使用http://localhost:3000/开发/调试功能
 ## 你必须做的事情
 - 你需要完成构建安装 apk 
 - 不要写回退兼容性代码
