@@ -32,13 +32,6 @@ from 初始化数据库 import (
 # 业务拆分：批量删除服务
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from sqlalchemy.exc import OperationalError
-from app.utils.connect_display import (
-    ConnectionAdvert,
-    ascii_banner,
-    prepare_advertised_endpoints,
-    render_connect_page,
-    schedule_browser_open,
-)
 from app.api.setup_routes import router as setup_router
 from app.api.settings_routes import router as settings_router
 from app.api.task_routes import router as task_router
@@ -105,7 +98,6 @@ class DeleteBatchResp(BaseModel):
 # =============================
 
 app = FastAPI(title="Media App API", version="1.0.0")
-app.state.connection_advert: ConnectionAdvert | None = None
 app.state.frontend_available = False
 app.state.frontend_dist: Path | None = None
 
@@ -127,21 +119,6 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/connect-info", response_class=HTMLResponse)
-def connect_info_page(request: Request):
-    advert: ConnectionAdvert | None = getattr(app.state, "connection_advert", None)
-    preferred = f"{request.url.scheme}://{request.url.netloc}"
-    if advert is None:
-        try:
-            preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
-        except Exception:
-            preferred_port = 8000
-        advert = prepare_advertised_endpoints(preferred_port, extra_hosts=[preferred])
-        app.state.connection_advert = advert
-    else:
-        if preferred not in advert.base_urls:
-            advert.base_urls.insert(0, preferred)
-    return HTMLResponse(render_connect_page(advert, preferred=preferred))
 
 
 def _resolve_frontend_dist() -> Path:
@@ -259,20 +236,7 @@ def _display_connection_advert():
         preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
     except Exception:
         preferred_port = 8000
-    advert = prepare_advertised_endpoints(preferred_port)
-    app.state.connection_advert = advert
-    print(ascii_banner(advert))
-
-    auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()
-    should_open = auto_open_flag in {"1", "true", "yes", "on"}
-    if should_open:
-        # 避免热重载子进程重复打开浏览器
-        if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
-            os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")
-        ):
-            base_local = f"http://127.0.0.1:{advert.port}"
-            target_path = "/" if getattr(app.state, "frontend_available", False) else "/connect-info"
-            schedule_browser_open(f"{base_local}{target_path}", delay=1.5)
+    print(f"[boot] Media App API 即将启动: http://10.175.87.74:{preferred_port}  (本机: http://localhost:{preferred_port})")
 
 
 # =============================
