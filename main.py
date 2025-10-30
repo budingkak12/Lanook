@@ -266,11 +266,18 @@ def _shutdown_auto_scan():
 
 @app.on_event("startup")
 def _display_connection_advert():
+    """启动提示与自动打开前端。
+
+    优先打开后端托管的前端（http://<本机IP>:<后端端口>/），
+    若未构建静态前端，则回落到开发服务器 http://localhost:3000/。
+    """
     try:
         preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
     except Exception:
         preferred_port = 8000
-    print(f"[boot] Media App API 即将启动: http://10.175.87.74:{preferred_port}  (本机: http://localhost:{preferred_port})")
+
+    lan_ip = _get_local_ip()
+    print(f"[boot] Media App API 即将启动: http://{lan_ip}:{preferred_port}  (本机: http://localhost:{preferred_port})")
 
     # 自动打开前端（默认显示设置）
     auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()
@@ -280,17 +287,28 @@ def _display_connection_advert():
         if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
             os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")
         ):
-            # 打开前端首页，传递参数让它显示设置页面
-            frontend_url = f"http://localhost:3000/?autoShowSettings=true"
-            print(f"[startup] 自动打开前端页面: {frontend_url}")
+            # 如果已托管静态前端，则打开后端端口；否则回退到本地开发端口 3000
+            if getattr(app.state, "frontend_available", False):
+                frontend_url = f"http://{lan_ip}:{preferred_port}/?autoShowSettings=true"
+                note = "static"
+            else:
+                # 注意：开发模式必须用 localhost（而非局域网 IP），以便前端的 API Base 解析为 http://localhost:8000
+                frontend_url = "http://localhost:3000/?autoShowSettings=true"
+                note = "dev"
+
+            print(f"[startup] 自动打开前端页面({note}): {frontend_url}")
 
             import webbrowser
             import time
             import threading
 
             def open_browser():
-                time.sleep(1.5)  # 等待前端开发服务器启动
-                webbrowser.open(frontend_url)
+                # 若是 dev 模式，留 1.5s 等待 yarn dev；静态托管可较快
+                time.sleep(1.5 if note == "dev" else 0.5)
+                try:
+                    webbrowser.open(frontend_url)
+                except Exception as exc:
+                    print("[startup] 打开浏览器失败:", exc)
 
             threading.Thread(target=open_browser, daemon=True).start()
 

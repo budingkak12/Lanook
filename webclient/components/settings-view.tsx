@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import QRCode from "qrcode"
-import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe } from "lucide-react"
+import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiFetch } from "@/lib/api"
@@ -25,6 +25,7 @@ export function SettingsView() {
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [isNetworkExpanded, setIsNetworkExpanded] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
   const { toast } = useToast()
 
   const fetchServerInfo = async () => {
@@ -80,6 +81,44 @@ export function SettingsView() {
         title: t("toast.clipboard.copyFailed.title"),
         description: t("toast.clipboard.copyFailed.description")
       })
+    }
+  }
+
+  const resetInitialization = async () => {
+    setIsResetting(true)
+    try {
+      const response = await apiFetch("/settings/reset-initialization", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      if (response.ok) {
+        toast({
+          title: "重置成功",
+          description: "初始化状态已重置，即将重新进入初始化页面"
+        })
+
+        // 等待2秒后刷新页面，让原始初始化逻辑处理
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "重置失败",
+          description: errorData.detail || "无法重置初始化状态"
+        })
+      }
+    } catch (error) {
+      console.error("重置初始化状态失败:", error)
+      toast({
+        title: "重置失败",
+        description: "网络错误，请稍后重试"
+      })
+    } finally {
+      setIsResetting(false)
     }
   }
 
@@ -308,9 +347,48 @@ export function SettingsView() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <HardDrive className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">{t("settings.storage.developing")}</p>
+            <div className="space-y-4">
+              {/* 媒体库重置 */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <RotateCcw className="w-4 h-4" />
+                      重置媒体库
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      清除当前媒体库设置，重新选择媒体文件夹
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={resetInitialization}
+                    disabled={isResetting}
+                  >
+                    {isResetting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        重置中...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        重置
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
+                  <strong>注意：</strong>重置后需要重新设置媒体文件夹路径，当前媒体库将被清空。
+                </div>
+              </div>
+
+              {/* 其他存储设置 */}
+              <div className="text-center py-8 text-muted-foreground">
+                <HardDrive className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">{t("settings.storage.developing")}</p>
+              </div>
             </div>
           </CardContent>
         </Card>

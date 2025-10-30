@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
 
 from app.schemas.setup import (
     DirectoryEntryModel,
@@ -70,6 +70,7 @@ def get_directory_listing(path: str = Query(..., description="要查看的目录
 @router.post("/media-root", response_model=InitializationStatusResponse, status_code=202)
 def set_media_root(
     request: Request,
+    response: Response,
     payload: MediaRootRequest,
     background_tasks: BackgroundTasks,
 ):
@@ -85,6 +86,11 @@ def set_media_root(
         raise HTTPException(status_code=409, detail="初始化已在进行中，请稍候。")
 
     status = coordinator.snapshot()
+    # 指示客户端可在该地址轮询状态
+    try:
+        response.headers["Location"] = "/init-status"
+    except Exception:
+        pass
     return InitializationStatusResponse(
         state=InitializationStateModel(status.state.value),
         message=status.message,
@@ -93,12 +99,16 @@ def set_media_root(
 
 
 @router.get("/init-status", response_model=InitializationStatusResponse)
-def get_initialization_status(request: Request):
+def get_initialization_status(request: Request, skip_auto_restore: bool = Query(False, description="跳过自动恢复状态")):
     coordinator = _ensure_coordinator(request)
     status = coordinator.snapshot()
 
     # 若初次访问时仍为默认状态，则根据数据库信息推断一次
-    if status.state == InitializationState.IDLE and status.media_root_path is None:
+    # 但只有在明确没有被手动重置的情况下才自动恢复
+    if (not skip_auto_restore and
+        status.state == InitializationState.IDLE and
+        status.media_root_path is None and
+        status.message != "初始化状态已重置，请重新设置媒体库路径。"):
         media_root = get_configured_media_root()
         if media_root and has_indexed_media():
             coordinator.reset(

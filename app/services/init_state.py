@@ -55,7 +55,8 @@ class InitializationCoordinator:
             self._status = InitializationStatus(
                 state=InitializationState.RUNNING,
                 media_root_path=str(media_root),
-                message="持续扫描文件中...",
+                # Web 端不等待扫描，返回简洁的 OK 文案
+                message="ok",
             )
         background_tasks.add_task(self._run_task, media_root)
 

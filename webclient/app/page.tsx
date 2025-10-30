@@ -7,6 +7,7 @@ import { MediaViewer } from "@/components/media-viewer"
 import { SearchView } from "@/components/search-view"
 import { AlbumsView } from "@/components/albums-view"
 import { SettingsView } from "@/components/settings-view"
+import { InitializationView } from "@/components/initialization-view"
 import { useToast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import { useTranslation } from "react-i18next"
@@ -25,22 +26,107 @@ export type MediaItem = {
   tags?: string[]
 }
 
+interface InitializationStatus {
+  state: "idle" | "running" | "completed"
+  message: string | null
+  media_root_path: string | null
+}
+
 export default function Home() {
   const { t } = useTranslation()
   const [activeView, setActiveView] = useState<"feed" | "albums" | "search" | "settings">("feed")
+  const [isInitialized, setIsInitialized] = useState<boolean | null>(null)
+  const [isCheckingInit, setIsCheckingInit] = useState(true)
+  
+  // 工具：清理 URL 上的 forceInit 标记，避免热重载/二次挂载又回到初始化页
+  const clearForceInitFromUrl = () => {
+    if (typeof window === 'undefined') return
+    try {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('forceInit')) {
+        url.searchParams.delete('forceInit')
+        window.history.replaceState({}, document.title, url.pathname + (url.search ? '?' + url.searchParams.toString() : '') + url.hash)
+      }
+    } catch {}
+  }
 
-  // 在客户端检查是否应该显示设置页面
+  // 检查初始化状态
+  const checkInitializationStatus = useCallback(async () => {
+    try {
+      // 如果URL中有forceInit参数或localStorage中有标记，强制显示初始化页面
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const forceInit = urlParams.get('forceInit')
+        const localStorageForceInit = localStorage.getItem('forceInit')
+
+        // 清除localStorage标记（只使用一次），但不拦截后续正常检查
+        if (localStorageForceInit === 'true') {
+          localStorage.removeItem('forceInit')
+        }
+
+        // 若 URL 带有 forceInit，但已完成一次页面内初始化跳转（sessionStorage 标记），忽略该参数
+        const initTransitionDone = sessionStorage.getItem('initTransitionDone') === 'true'
+        if (forceInit === 'true' && !initTransitionDone) {
+          setIsInitialized(false)
+          setIsCheckingInit(false)
+          return
+        }
+      }
+
+      console.log('[init] checking /init-status ...')
+      const response = await apiFetch("/init-status")
+      if (response.ok) {
+        const data: InitializationStatus = await response.json()
+        console.log('[init] /init-status:', data)
+        // Web 不等待扫描完成：running 也视为已初始化
+        const initialized = data.state === "completed" || data.state === "running"
+        setIsInitialized(initialized)
+        console.log('[init] setIsInitialized =', initialized)
+
+        // 如果未初始化，不需要继续执行其他逻辑
+        if (!initialized) {
+          setIsCheckingInit(false)
+          return
+        }
+      } else {
+        // 如果接口调用失败，默认认为已初始化
+        setIsInitialized(true)
+      }
+    } catch (error) {
+      console.error("检查初始化状态失败:", error)
+      // 如果无法获取状态，默认认为已初始化，避免阻塞用户
+      setIsInitialized(true)
+    } finally {
+      setIsCheckingInit(false)
+    }
+  }, [])
+
+  // 在客户端检查是否应该显示设置页面或强制初始化
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search)
       const autoShowSettings = urlParams.get('autoShowSettings')
       const defaultView = urlParams.get('default')
+      const forceInit = urlParams.get('forceInit')
 
-      if (autoShowSettings === 'true' || defaultView === 'settings') {
+      const initTransitionDone = sessionStorage.getItem('initTransitionDone') === 'true'
+      if (forceInit === 'true' && !initTransitionDone) {
+        // 强制显示初始化页面
+        setIsInitialized(false)
+        setIsCheckingInit(false)
+      } else if (autoShowSettings === 'true' || defaultView === 'settings') {
         setActiveView('settings')
       }
     }
   }, [])
+
+  // 检查初始化状态（StrictMode 下只执行一次）
+  const checkedOnceRef = useRef(false)
+  useEffect(() => {
+    if (checkedOnceRef.current) return
+    checkedOnceRef.current = true
+    checkInitializationStatus()
+  }, [checkInitializationStatus])
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -50,6 +136,10 @@ export default function Home() {
   const { toast } = useToast()
 
   useEffect(() => {
+    if (isCheckingInit || !isInitialized) {
+      return
+    }
+
     let cancelled = false
 
     const fetchSession = async () => {
@@ -87,7 +177,7 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [toast])
+  }, [isCheckingInit, isInitialized, t, toast])
 
   useEffect(() => {
     if (!selectedMedia) {
@@ -185,6 +275,35 @@ export default function Home() {
     }
     gridRef.current?.removeItems(mediaIds)
   }, [])
+
+  // 如果无法获取状态，显示加载中
+  if (isCheckingInit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">正在检查系统状态...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 如果未初始化，显示初始化页面
+  if (isInitialized === false) {
+    return <InitializationView onInitialized={() => {
+      console.log('[init] onInitialized fired: entering app view')
+      try {
+        sessionStorage.setItem('initTransitionDone', 'true')
+      } catch {}
+      clearForceInitFromUrl()
+      setIsInitialized(true)
+      // 避免立即请求仍返回 idle 把状态又置回 false，延迟校验
+      setTimeout(() => {
+        console.log('[init] delayed checkInitializationStatus triggered')
+        checkInitializationStatus()
+      }, 1000)
+    }} />
+  }
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">

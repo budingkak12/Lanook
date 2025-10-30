@@ -6,6 +6,9 @@ from app.services.auto_scan_service import (
     gather_runtime_status,
     set_auto_scan_enabled,
 )
+from app.services.init_state import InitializationCoordinator, InitializationState
+from app.services.media_initializer import get_configured_media_root, has_indexed_media
+from 初始化数据库 import SessionLocal, Media, MediaTag
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -47,3 +50,37 @@ def update_auto_scan_setting(payload: AutoScanUpdateRequest, request: Request):
         active=runtime.active,
         message=runtime.message,
     )
+
+
+@router.post("/reset-initialization", status_code=status.HTTP_200_OK)
+def reset_initialization(request: Request):
+    """重置初始化状态，让用户重新设置媒体库"""
+    coordinator = getattr(request.app.state, "init_coordinator", None)
+    if coordinator is None:
+        coordinator = InitializationCoordinator()
+        request.app.state.init_coordinator = coordinator
+
+    # 重置为空闲状态
+    coordinator.reset(
+        state=InitializationState.IDLE,
+        media_root_path=None,
+        message="初始化状态已重置，请重新设置媒体库路径。"
+    )
+
+    # 直接清除数据库中的媒体数据
+    db = SessionLocal()
+    try:
+        # 删除所有媒体标签记录
+        deleted_tags = db.query(MediaTag).delete(synchronize_session=False)
+        # 删除所有媒体文件记录
+        deleted_media = db.query(Media).delete(synchronize_session=False)
+
+        db.commit()
+        print(f"清除数据库完成：删除媒体 {deleted_media} 条、关联标签 {deleted_tags} 条。")
+    except Exception as e:
+        print(f"清除数据库时出错: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+    return {"message": "初始化状态已重置"}
