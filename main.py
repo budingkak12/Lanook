@@ -119,6 +119,53 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page():
+    """处理SPA路由，返回settings.html"""
+    target_dir = _resolve_frontend_dist()
+    settings_file = target_dir / "settings.html"
+
+    if settings_file.exists():
+        return FileResponse(settings_file)
+
+    # 如果文件不存在，返回404页面
+    return FileResponse(target_dir / "404.html", status_code=404)
+
+
+@app.get("/server-info")
+def get_server_info(request: Request):
+    """获取服务器连接信息，用于生成二维码"""
+    try:
+        preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
+    except Exception:
+        preferred_port = 8000
+
+    # 获取本机IP地址
+    import socket
+    try:
+        # 创建一个UDP socket连接到外部地址来获取本机IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        # 备用方案：获取主机名对应的IP
+        local_ip = "127.0.0.1"
+
+    # 构建连接URL
+    scheme = request.url.scheme
+    netloc = request.url.netloc
+
+    return {
+        "local_ip": local_ip,
+        "port": preferred_port,
+        "url": f"{scheme}://{local_ip}:{preferred_port}",
+        "display_url": f"http://{local_ip}:{preferred_port}",
+        "host": request.headers.get("host", netloc),
+        "scheme": scheme
+    }
+
+
 
 
 def _resolve_frontend_dist() -> Path:
@@ -237,6 +284,29 @@ def _display_connection_advert():
     except Exception:
         preferred_port = 8000
     print(f"[boot] Media App API 即将启动: http://10.175.87.74:{preferred_port}  (本机: http://localhost:{preferred_port})")
+
+    # 自动打开前端设置页面
+    auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()
+    should_open = auto_open_flag in {"1", "true", "yes", "on"}
+    if should_open:
+        # 避免热重载子进程重复打开浏览器
+        if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
+            os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")
+        ):
+            base_url = f"http://localhost:{preferred_port}"
+            # 直接打开设置页面
+            settings_url = f"{base_url}/settings"
+            print(f"[startup] 自动打开前端设置页面: {settings_url}")
+
+            import webbrowser
+            import time
+            import threading
+
+            def open_browser():
+                time.sleep(1.5)  # 等待服务器完全启动
+                webbrowser.open(settings_url)
+
+            threading.Thread(target=open_browser, daemon=True).start()
 
 
 # =============================
