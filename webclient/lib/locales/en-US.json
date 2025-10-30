@@ -1,0 +1,95 @@
+{
+  "app": {
+    "title": "Photo Management"
+  },
+  "sidebar": {
+    "feed": "Random Feed",
+    "albums": "Albums",
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "session": {
+    "established": "Session established",
+    "failed": "Session initialization failed",
+    "description": "session_seed={{seed}}",
+    "getting": "Getting session...",
+    "failedMessage": "Session failed: {{error}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage app configuration and feature settings",
+    "language": {
+      "title": "Language",
+      "current": "Current Language",
+      "chinese": "中文",
+      "english": "English"
+    },
+    "network": {
+      "title": "Phone Connection QR Code",
+      "description": "Manage device connections and network configuration",
+      "refresh": "Refresh",
+      "qrCode": {
+        "alt": "Connection QR Code",
+        "scanning": "Generating QR code...",
+        "description": "Scan this QR code to connect to backend"
+      },
+      "connection": {
+        "ip": "IP Address",
+        "port": "Port",
+        "fullAddress": "Full Connection Address",
+        "getting": "Getting connection info...",
+        "clickToExpand": "Click to expand network connection settings",
+        "viewDetails": "View QR code and connection info"
+      },
+      "usage": {
+        "title": "Usage Instructions",
+        "step1": "Ensure phone and computer are on the same local network",
+        "step2": "Scan the QR code above with your phone, or manually enter the connection address",
+        "step3": "Open the link on your phone to access the backend service"
+      }
+    },
+    "storage": {
+      "title": "Storage Settings",
+      "description": "Manage media storage and cache configuration",
+      "developing": "Storage settings feature is under development..."
+    },
+    "appearance": {
+      "title": "Appearance Settings",
+      "description": "Customize interface theme and display preferences",
+      "developing": "Appearance settings feature is under development..."
+    },
+    "security": {
+      "title": "Security Settings",
+      "description": "Manage access permissions and security configuration",
+      "developing": "Security settings feature is under development..."
+    }
+  },
+  "toast": {
+    "qrCode": {
+      "generateFailed": {
+        "title": "Failed to generate QR code",
+        "description": "Unable to generate connection QR code"
+      }
+    },
+    "serverInfo": {
+      "fetchFailed": {
+        "title": "Failed to get server info",
+        "description": "Unable to get server connection information"
+      }
+    },
+    "clipboard": {
+      "copied": {
+        "title": "Copied",
+        "description": "Connection address copied to clipboard"
+      },
+      "copyFailed": {
+        "title": "Copy failed",
+        "description": "Unable to copy to clipboard"
+      }
+    }
+  },
+  "errors": {
+    "requestFailed": "Request failed: {{status}}",
+    "unknownError": "Unknown error"
+  }
+}

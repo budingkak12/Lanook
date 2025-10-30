@@ -9,6 +9,7 @@ import { AlbumsView } from "@/components/albums-view"
 import { SettingsView } from "@/components/settings-view"
 import { useToast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
+import { useTranslation } from "react-i18next"
 
 export type MediaItem = {
   id: string
@@ -25,6 +26,7 @@ export type MediaItem = {
 }
 
 export default function Home() {
+  const { t } = useTranslation()
   const [activeView, setActiveView] = useState<"feed" | "albums" | "search" | "settings">("feed")
 
   // 在客户端检查是否应该显示设置页面
@@ -54,7 +56,7 @@ export default function Home() {
       try {
         const response = await apiFetch("/session", { credentials: "omit" })
         if (!response.ok) {
-          throw new Error(`请求失败: ${response.status}`)
+          throw new Error(t("errors.requestFailed", { status: response.status }))
         }
         const data = (await response.json()) as { session_seed?: string }
         if (cancelled) {
@@ -64,17 +66,17 @@ export default function Home() {
         setSessionId(seed)
         setSessionError(null)
         toast({
-          title: "会话已建立",
-          description: `session_seed=${seed}`,
+          title: t("session.established"),
+          description: t("session.description", { seed }),
         })
       } catch (err) {
-        const message = err instanceof Error ? err.message : "未知错误"
+        const message = err instanceof Error ? err.message : t("errors.unknownError")
         if (cancelled) {
           return
         }
         setSessionError(message)
         toast({
-          title: "会话初始化失败",
+          title: t("session.failed"),
           description: message,
         })
       }
@@ -191,9 +193,9 @@ export default function Home() {
           {sessionId ? (
             <span className="font-mono text-muted-foreground">session: {sessionId}</span>
           ) : sessionError ? (
-            <span className="text-destructive">会话失败：{sessionError}</span>
+            <span className="text-destructive">{t("session.failedMessage", { error: sessionError })}</span>
           ) : (
-            <span className="text-muted-foreground">正在获取会话...</span>
+            <span className="text-muted-foreground">{t("session.getting")}</span>
           )}
         </div>
       </div>

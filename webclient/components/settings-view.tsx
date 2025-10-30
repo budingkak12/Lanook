@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react"
 import QRCode from "qrcode"
-import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield } from "lucide-react"
+import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { useTranslation } from "react-i18next"
 
 interface ServerInfo {
   local_ip: string
@@ -18,6 +19,7 @@ interface ServerInfo {
 }
 
 export function SettingsView() {
+  const { t, i18n } = useTranslation()
   const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
@@ -45,8 +47,8 @@ export function SettingsView() {
           if (err) {
             console.error("生成二维码失败:", err)
             toast({
-              title: "生成二维码失败",
-              description: "无法生成连接二维码"
+              title: t("toast.qrCode.generateFailed.title"),
+              description: t("toast.qrCode.generateFailed.description")
             })
           } else {
             setQrCodeUrl(url)
@@ -56,8 +58,8 @@ export function SettingsView() {
     } catch (error) {
       console.error("获取服务器信息失败:", error)
       toast({
-        title: "获取服务器信息失败",
-        description: "无法获取服务器连接信息"
+        title: t("toast.serverInfo.fetchFailed.title"),
+        description: t("toast.serverInfo.fetchFailed.description")
       })
     } finally {
       setIsLoading(false)
@@ -69,14 +71,14 @@ export function SettingsView() {
       await navigator.clipboard.writeText(text)
       setCopied(true)
       toast({
-        title: "已复制",
-        description: "连接地址已复制到剪贴板"
+        title: t("toast.clipboard.copied.title"),
+        description: t("toast.clipboard.copied.description")
       })
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
       toast({
-        title: "复制失败",
-        description: "无法复制到剪贴板"
+        title: t("toast.clipboard.copyFailed.title"),
+        description: t("toast.clipboard.copyFailed.description")
       })
     }
   }
@@ -92,9 +94,40 @@ export function SettingsView() {
     <div className="h-full overflow-y-auto p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">设置</h1>
-          <p className="text-muted-foreground">管理应用配置和功能设置</p>
+          <h1 className="text-2xl font-bold mb-2">{t("settings.title")}</h1>
+          <p className="text-muted-foreground">{t("settings.description")}</p>
         </div>
+
+        {/* 语言设置 - 放在第一位，默认展开 */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              <CardTitle>{t("settings.language.title")}</CardTitle>
+            </div>
+            <CardDescription>
+              {t("settings.language.current")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Button
+                variant={i18n.language === "zh-CN" ? "default" : "outline"}
+                className="w-full justify-start"
+                onClick={() => i18n.changeLanguage("zh-CN")}
+              >
+                {t("settings.language.chinese")}
+              </Button>
+              <Button
+                variant={i18n.language === "en-US" ? "default" : "outline"}
+                className="w-full justify-start"
+                onClick={() => i18n.changeLanguage("en-US")}
+              >
+                {t("settings.language.english")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 网络连接设置 */}
         <Card>
@@ -105,7 +138,7 @@ export function SettingsView() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Wifi className="w-5 h-5" />
-                <CardTitle>手机连接二维码</CardTitle>
+                <CardTitle>{t("settings.network.title")}</CardTitle>
               </div>
               <div className="flex items-center gap-2">
                 {isNetworkExpanded && (
@@ -119,7 +152,7 @@ export function SettingsView() {
                     disabled={isLoading}
                   >
                     <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                    刷新
+                    {t("settings.network.refresh")}
                   </Button>
                 )}
                 <div className={`transition-transform duration-200 ${isNetworkExpanded ? 'rotate-180' : ''}`}>
@@ -130,7 +163,7 @@ export function SettingsView() {
               </div>
             </div>
             <CardDescription>
-              管理设备连接和网络配置
+              {t("settings.network.description")}
             </CardDescription>
           </CardHeader>
 
@@ -144,18 +177,18 @@ export function SettingsView() {
                       <div className="text-center space-y-2">
                         <img
                           src={qrCodeUrl}
-                          alt="连接二维码"
+                          alt={t("settings.network.qrCode.alt")}
                           className="border rounded-lg shadow-sm"
                         />
                         <p className="text-sm text-muted-foreground">
-                          扫描此二维码连接后端
+                          {t("settings.network.qrCode.description")}
                         </p>
                       </div>
                     ) : (
                       <div className="w-64 h-64 border rounded-lg flex items-center justify-center bg-muted">
                         <div className="text-center text-muted-foreground">
                           <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">生成二维码中...</p>
+                          <p className="text-sm">{t("settings.network.qrCode.scanning")}</p>
                         </div>
                       </div>
                     )}
@@ -164,7 +197,7 @@ export function SettingsView() {
                   {/* 连接信息详情 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">IP地址</label>
+                      <label className="text-sm font-medium">{t("settings.network.connection.ip")}</label>
                       <div className="flex items-center gap-2">
                         <code className="flex-1 px-3 py-2 bg-muted rounded text-sm">
                           {serverInfo.local_ip}
@@ -180,7 +213,7 @@ export function SettingsView() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">端口</label>
+                      <label className="text-sm font-medium">{t("settings.network.connection.port")}</label>
                       <div className="flex items-center gap-2">
                         <code className="flex-1 px-3 py-2 bg-muted rounded text-sm">
                           {serverInfo.port}
@@ -197,7 +230,7 @@ export function SettingsView() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">完整连接地址</label>
+                    <label className="text-sm font-medium">{t("settings.network.connection.fullAddress")}</label>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 px-3 py-2 bg-muted rounded text-sm break-all">
                         {serverInfo.display_url}
@@ -217,13 +250,13 @@ export function SettingsView() {
                   {isLoading ? (
                     <div className="space-y-2">
                       <RefreshCw className="w-8 h-8 mx-auto animate-spin" />
-                      <p>正在获取连接信息...</p>
+                      <p>{t("settings.network.connection.getting")}</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <Wifi className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-sm">点击展开网络连接设置</p>
-                      <p className="text-xs text-muted-foreground">查看二维码和连接信息</p>
+                      <p className="text-sm">{t("settings.network.connection.clickToExpand")}</p>
+                      <p className="text-xs text-muted-foreground">{t("settings.network.connection.viewDetails")}</p>
                     </div>
                   )}
                 </div>
@@ -231,14 +264,14 @@ export function SettingsView() {
 
               {/* 使用说明 */}
               <div className="border-t pt-4">
-                <h4 className="text-sm font-medium mb-3">使用说明</h4>
+                <h4 className="text-sm font-medium mb-3">{t("settings.network.usage.title")}</h4>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                       1
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      确保手机和电脑在同一个局域网内
+                      {t("settings.network.usage.step1")}
                     </p>
                   </div>
                   <div className="flex items-start gap-3">
@@ -246,7 +279,7 @@ export function SettingsView() {
                       2
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      使用手机扫描上方二维码，或手动输入连接地址
+                      {t("settings.network.usage.step2")}
                     </p>
                   </div>
                   <div className="flex items-start gap-3">
@@ -254,7 +287,7 @@ export function SettingsView() {
                       3
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      在手机端打开链接即可访问后端服务
+                      {t("settings.network.usage.step3")}
                     </p>
                   </div>
                 </div>
@@ -268,16 +301,16 @@ export function SettingsView() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <HardDrive className="w-5 h-5" />
-              <CardTitle>存储设置</CardTitle>
+              <CardTitle>{t("settings.storage.title")}</CardTitle>
             </div>
             <CardDescription>
-              管理媒体存储和缓存配置
+              {t("settings.storage.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8 text-muted-foreground">
               <HardDrive className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">存储设置功能开发中...</p>
+              <p className="text-sm">{t("settings.storage.developing")}</p>
             </div>
           </CardContent>
         </Card>
@@ -287,16 +320,16 @@ export function SettingsView() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Palette className="w-5 h-5" />
-              <CardTitle>外观设置</CardTitle>
+              <CardTitle>{t("settings.appearance.title")}</CardTitle>
             </div>
             <CardDescription>
-              自定义界面主题和显示偏好
+              {t("settings.appearance.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8 text-muted-foreground">
               <Palette className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">外观设置功能开发中...</p>
+              <p className="text-sm">{t("settings.appearance.developing")}</p>
             </div>
           </CardContent>
         </Card>
@@ -306,16 +339,16 @@ export function SettingsView() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
-              <CardTitle>安全设置</CardTitle>
+              <CardTitle>{t("settings.security.title")}</CardTitle>
             </div>
             <CardDescription>
-              管理访问权限和安全配置
+              {t("settings.security.description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8 text-muted-foreground">
               <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">安全设置功能开发中...</p>
+              <p className="text-sm">{t("settings.security.developing")}</p>
             </div>
           </CardContent>
         </Card>
