@@ -25,7 +25,7 @@ export function StepNavigation({ steps, currentStep, onStepClick }: StepNavigati
             key={step.id}
             onClick={() => onStepClick(step.id)}
             className={cn(
-              "w-full flex items-start gap-2 px-2 pr-1 py-2 rounded-xl text-left transition-all duration-300 ease-in-out",
+              "w-full flex items-center gap-2 px-2 pr-1 py-2 rounded-xl text-left transition-all duration-300 ease-in-out",
               isActive && "bg-primary text-primary-foreground shadow-lg",
               !isActive && "bg-card/30 backdrop-blur-sm hover:bg-card/50 shadow-sm hover:shadow-md",
             )}
