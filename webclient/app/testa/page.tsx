@@ -184,8 +184,8 @@ export default function Page() {
       const root = document.documentElement
       root.style.setProperty('--dynamic-muted-foreground', 'oklch(0.75 0 0)')
       root.style.setProperty('--dynamic-background', 'oklch(0.42 0.005 264)')
-      root.style.setProperty('--dynamic-header-top', 'oklch(0.35 0 0)')
-      root.style.setProperty('--dynamic-header-bottom', 'oklch(0.50 0 0)')
+      root.style.setProperty('--dynamic-header-top', 'oklch(0.350 0 0)')
+      root.style.setProperty('--dynamic-header-bottom', 'oklch(0.15 0 0)')
     }
   }, [])
 
