@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { StepNavigation } from "@/components/testa/step-navigation"
 import { StepContent } from "@/components/testa/step-content"
 import { Button } from "@/components/ui/button"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Menu } from "lucide-react"
 
 const steps = [
   {
@@ -168,6 +168,7 @@ const steps = [
 
 export default function Page() {
   const [currentStep, setCurrentStep] = useState(1)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const handleNextStep = () => {
     if (currentStep < steps.length) {
@@ -194,7 +195,7 @@ export default function Page() {
       style={{ backgroundColor: 'var(--dynamic-background, oklch(0.42 0.005 264))' }}
     >
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-[9999] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed !important', top: '0px !important', left: '0px !important', right: '0px !important', transform: 'none !important' }}>
+      <header className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed !important', top: '0px !important', left: '0px !important', right: '0px !important', transform: 'none !important' }}>
         {/* 上半部分 */}
         <div
           className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm"
@@ -210,8 +211,17 @@ export default function Page() {
 
         {/* 内容 */}
         <div className="relative z-10 bg-background/20 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-4">
-            <h1 className="text-xl font-normal text-foreground">下載並安裝 Android Studio</h1>
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* 移动端菜单按钮 */}
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="lg:hidden p-2 rounded-lg bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-colors"
+              >
+                <Menu className="h-5 w-5 text-foreground" />
+              </button>
+              <h1 className="text-xl font-normal text-foreground">下載並安裝 Android Studio</h1>
+            </div>
           </div>
         </div>
 
@@ -224,20 +234,51 @@ export default function Page() {
         />
       </header>
 
-      <div className="flex py-8 pt-24">
+      <div className="flex py-2 pt-22">
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar Navigation - Fixed */}
-        <aside className="fixed left-0 top-24 w-64 h-[calc(100vh-6rem)] ml-0 pl-0 z-[9998]" style={{ position: 'fixed !important', left: '0.3cm !important', top: '6rem !important' }}>
-          <StepNavigation steps={steps} currentStep={currentStep} onStepClick={setCurrentStep} />
+        <aside
+          className={`
+            fixed top-24 h-[calc(100vh-5rem)] z-[9999] transition-transform duration-300 ease-in-out overflow-y-auto
+            lg:translate-x-0 lg:left-0 lg:ml-0 lg:pl-0
+            ${isSidebarOpen ? 'translate-x-2 left-0' : '-translate-x-full'}
+            w-44 bg-transparent
+          `}
+          style={{
+            position: 'fixed !important',
+            top: '4.8rem !important',
+            left: '0px !important',
+            boxShadow: 'none',
+            border: 'none'
+          }}
+          onClick={(e) => e.stopPropagation()} // 阻止事件冒泡
+        >
+          <StepNavigation
+            steps={steps}
+            currentStep={currentStep}
+            onStepClick={(stepId) => {
+              setCurrentStep(stepId)
+              setIsSidebarOpen(false) // 点击步骤后自动关闭侧边栏
+            }}
+          />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 ml-64 pl-8 pr-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-              <h2 className="text-4xl font-normal text-foreground mb-8 text-balance">下載並安裝 Android Studio</h2>
-
+        <main
+          className="flex-1 lg:ml-44 ml-0 lg:pl-1 pl-1 pr-1 lg:pr-1 lg:relative"
+          onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
+        >
+          <div className="max-w-2xl mx-auto">
+            <div className="mb-2">
               {/* Info Card */}
-              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 mb-8 shadow-lg">
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 mb-6 shadow-lg">
                 <h3 className="text-xl font-normal text-foreground mb-4">程式碼研究室簡介</h3>
                 <div className="space-y-3 text-sm" style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>
                   <div className="flex items-start gap-3">
