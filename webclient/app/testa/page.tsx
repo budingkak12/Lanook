@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { StepNavigation } from "@/components/testa/step-navigation"
 import { StepContent } from "@/components/testa/step-content"
 import { Button } from "@/components/ui/button"
@@ -178,13 +178,15 @@ export default function Page() {
   const currentStepData = steps.find((step) => step.id === currentStep)
 
   // 设置固定的CSS变量值（基于你满意的版本）
-  useState(() => {
-    const root = document.documentElement
-    root.style.setProperty('--dynamic-muted-foreground', 'oklch(0.75 0 0)')
-    root.style.setProperty('--dynamic-background', 'oklch(0.42 0.005 264)')
-    root.style.setProperty('--dynamic-header-top', 'oklch(0.35 0 0)')
-    root.style.setProperty('--dynamic-header-bottom', 'oklch(0.50 0 0)')
-  })
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = document.documentElement
+      root.style.setProperty('--dynamic-muted-foreground', 'oklch(0.75 0 0)')
+      root.style.setProperty('--dynamic-background', 'oklch(0.42 0.005 264)')
+      root.style.setProperty('--dynamic-header-top', 'oklch(0.35 0 0)')
+      root.style.setProperty('--dynamic-header-bottom', 'oklch(0.50 0 0)')
+    }
+  }, [])
 
   return (
     <div
@@ -192,7 +194,7 @@ export default function Page() {
       style={{ backgroundColor: 'var(--dynamic-background, oklch(0.42 0.005 264))' }}
     >
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 relative overflow-hidden">
+      <header className="fixed top-0 left-0 right-0 z-[9999] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed !important', top: '0px !important', left: '0px !important', right: '0px !important', transform: 'none !important' }}>
         {/* 上半部分 */}
         <div
           className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm"
@@ -222,15 +224,15 @@ export default function Page() {
         />
       </header>
 
-      <div className="container mx-auto flex gap-8 px-4 py-8">
-        {/* Sidebar Navigation */}
-        <aside className="w-64 shrink-0">
+      <div className="flex py-8 pt-24">
+        {/* Sidebar Navigation - Fixed */}
+        <aside className="fixed left-0 top-24 w-64 h-[calc(100vh-6rem)] ml-0 pl-0 z-[9998]" style={{ position: 'fixed !important', left: '0.3cm !important', top: '6rem !important' }}>
           <StepNavigation steps={steps} currentStep={currentStep} onStepClick={setCurrentStep} />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 max-w-4xl">
-          <div className="mb-8">
+        <main className="flex-1 max-w-4xl ml-64 pl-8">
+          <div className="mb-8 pr-8">
             <h2 className="text-4xl font-normal text-foreground mb-8 text-balance">下載並安裝 Android Studio</h2>
 
             {/* Info Card */}
