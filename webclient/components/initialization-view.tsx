@@ -1,23 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { FolderOpen, HardDrive, ArrowRight, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { HardDrive, Loader2, CheckCircle } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
-import { useTranslation } from "react-i18next"
 import { InitCommonFolders } from "@/components/init-common-folders"
-
-interface DirectoryEntry {
-  path: string
-  name: string
-  readable: boolean
-  writable: boolean
-  is_root: boolean
-  is_symlink: boolean
-}
 
 interface InitializationStatus {
   state: "idle" | "running" | "completed"
@@ -30,19 +17,10 @@ interface InitializationViewProps {
 }
 
 export function InitializationView({ onInitialized }: InitializationViewProps) {
-  const { t } = useTranslation()
   const [status, setStatus] = useState<InitializationStatus | null>(null)
   const [selectedPath, setSelectedPath] = useState<string>("")
-  const [roots, setRoots] = useState<DirectoryEntry[]>([])
-  const [currentDir, setCurrentDir] = useState<DirectoryEntry[]>([])
-  const [currentPath, setCurrentPath] = useState<string>("")
-  const [parentPath, setParentPath] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const { toast } = useToast()
-  const isRootView = !currentPath
-  const displayedEntries = isRootView ? roots : currentDir
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
   const hasCompletedRef = useRef(false)
@@ -73,53 +51,6 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
   // 不在初始化页请求 /init-status，避免刷新时重复请求
 
-  // 获取文件系统根目录
-  const fetchRoots = async () => {
-    try {
-      const response = await apiFetch("/filesystem/roots")
-      if (response.ok) {
-        const data = await response.json()
-        setRoots(data)
-      }
-    } catch (error) {
-      console.error("获取根目录失败:", error)
-      toast({
-        title: "错误",
-        description: "无法获取文件系统信息",
-      })
-    }
-  }
-
-  // 浏览目录
-  const browseDirectory = async (path: string) => {
-    console.log("browseDirectory called with path:", path)
-    setIsLoading(true)
-    try {
-      const response = await apiFetch(`/filesystem/list?path=${encodeURIComponent(path)}`)
-      if (response.ok) {
-        const data = await response.json()
-        console.log("API response:", data)
-        setCurrentDir(data.entries || [])
-        setCurrentPath(data.current_path)
-        setParentPath(data.parent_path)
-        console.log("States set - currentPath:", data.current_path, "entries:", data.entries)
-      }
-    } catch (error) {
-      console.error("浏览目录失败:", error)
-      toast({
-        title: "错误",
-        description: "无法浏览目录",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // 选择目录
-  const selectDirectory = (path: string) => {
-    setSelectedPath(path)
-  }
-
   const scheduleStatusPoll = () => {
     const poll = async () => {
       try {
@@ -136,8 +67,6 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         setIsInitializing(statusData.state === "running")
         if (statusData.media_root_path) {
           setSelectedPath(statusData.media_root_path)
-          setCurrentPath(statusData.media_root_path)
-          setParentPath(null)
         }
 
         if (statusData.state === "completed") {
@@ -252,12 +181,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
     }
   }
 
-  const loadedOnceRef = useRef(false)
-  useEffect(() => {
-    if (loadedOnceRef.current) return
-    loadedOnceRef.current = true
-    fetchRoots()
-  }, [])
+  // 无高级浏览时，无需预取文件系统根目录
 
   // 如果已经完成初始化，显示加载状态
   if (status?.state === "completed") {
@@ -294,123 +218,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
           isStarting={isInitializing}
         />
 
-        {/* 高级浏览（默认收起） */}
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => setShowAdvanced((v) => !v)}>
-            {showAdvanced ? "收起高级浏览" : "需要浏览任意位置？展开高级浏览"}
-          </Button>
-        </div>
-        {showAdvanced && (
-        <Card id="advanced-browser">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FolderOpen className="w-5 h-5" />
-              浏览其他位置（高级）
-            </CardTitle>
-            <CardDescription>
-              若需要选择非常规位置，可在此浏览/输入路径
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* 当前选择的路径 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">当前选择的路径:</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={selectedPath}
-                  onChange={(e) => setSelectedPath(e.target.value)}
-                  placeholder="点击下方目录进行选择"
-                  className="flex-1"
-                />
-              </div>
-            </div>
-
-            {/* 目录浏览 */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">选择文件夹:</label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (isRootView) {
-                        return
-                      }
-                      if (parentPath) {
-                        browseDirectory(parentPath)
-                      } else {
-                        setCurrentDir([])
-                        setCurrentPath("")
-                        setParentPath(null)
-                      }
-                    }}
-                    disabled={isRootView || isLoading}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    返回上级
-                  </Button>
-                  {currentPath && (
-                    <span className="text-xs text-muted-foreground truncate max-w-xs">
-                      {currentPath}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8 border rounded-lg">
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <div className="border rounded-lg max-h-64 overflow-y-auto">
-                  {displayedEntries.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      此目录为空或无法访问
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {displayedEntries.map((entry) => (
-                        <div
-                          key={entry.path}
-                          className={`flex items-center justify-between p-3 hover:bg-accent cursor-pointer transition-colors ${
-                            selectedPath === entry.path ? "bg-accent" : ""
-                          }`}
-                          onClick={() => {
-                            if (entry.readable) {
-                              selectDirectory(entry.path)
-                            }
-                          }}
-                          onDoubleClick={(e) => {
-                            e.preventDefault()
-                            if (entry.readable) {
-                              browseDirectory(entry.path)
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-sm">{entry.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {entry.writable && (
-                              <div className="w-2 h-2 bg-green-500 rounded-full" title="可写" />
-                            )}
-                            {!entry.readable && (
-                              <div className="w-2 h-2 bg-red-500 rounded-full" title="不可读" />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-              </CardContent>
-        </Card>
-        )}
+        {/* 已移除高级浏览模块，仅保留常用文件夹区域 */}
       </div>
     </div>
   )
