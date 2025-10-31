@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { StepNavigation } from "@/components/testa/step-navigation"
 import { StepContent } from "@/components/testa/step-content"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Menu } from "lucide-react"
 
 const steps = [
   {
@@ -184,7 +183,7 @@ export default function Page() {
       const root = document.documentElement
       root.style.setProperty('--dynamic-muted-foreground', 'oklch(0.75 0 0)')
       root.style.setProperty('--dynamic-background', 'oklch(0.42 0.005 264)')
-      root.style.setProperty('--dynamic-header-top', 'oklch(0.350 0 0)')
+      root.style.setProperty('--dynamic-header-top', 'oklch(0.47 0 0)')
       root.style.setProperty('--dynamic-header-bottom', 'oklch(0.15 0 0)')
     }
   }, [])
@@ -195,7 +194,7 @@ export default function Page() {
       style={{ backgroundColor: 'var(--dynamic-background, oklch(0.42 0.005 264))' }}
     >
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed !important', top: '0px !important', left: '0px !important', right: '0px !important', transform: 'none !important' }}>
+      <header className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, transform: 'translateZ(0)' }}>
         {/* 上半部分 */}
         <div
           className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm"
@@ -211,14 +210,18 @@ export default function Page() {
 
         {/* 内容 */}
         <div className="relative z-10 bg-background/20 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="container mx-auto px-4 py-2 flex items-center justify-between">
             <div className="flex items-center gap-4">
               {/* 移动端菜单按钮 */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden p-2 rounded-lg bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-colors"
+                className="lg:hidden hover:opacity-70 transition-opacity"
               >
-                <Menu className="h-5 w-5 text-foreground" />
+                <div className="flex flex-col justify-center items-center w-6 h-6">
+                  <div className="w-5 h-0.5 bg-foreground mb-1.5"></div>
+                  <div className="w-5 h-0.5 bg-foreground mb-1.5"></div>
+                  <div className="w-5 h-0.5 bg-foreground"></div>
+                </div>
               </button>
               <h1 className="text-xl font-normal text-foreground">下載並安裝 Android Studio</h1>
             </div>
@@ -234,7 +237,7 @@ export default function Page() {
         />
       </header>
 
-      <div className="flex py-2 pt-22">
+      <div className="flex py-2 pt-16">
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
           <div
@@ -246,17 +249,13 @@ export default function Page() {
         {/* Sidebar Navigation - Fixed */}
         <aside
           className={`
-            fixed top-24 h-[calc(100vh-5rem)] z-[9999] transition-transform duration-300 ease-in-out overflow-y-auto
+            fixed top-16 h-[calc(100vh-4rem)] z-[9999] transition-transform duration-300 ease-in-out overflow-y-auto
             lg:translate-x-0 lg:left-0 lg:ml-0 lg:pl-0
             ${isSidebarOpen ? 'translate-x-2 left-0' : '-translate-x-full'}
             w-44 bg-transparent
           `}
           style={{
-            position: 'fixed !important',
-            top: '4.8rem !important',
-            left: '0px !important',
-            boxShadow: 'none',
-            border: 'none'
+            top: '4rem'
           }}
           onClick={(e) => e.stopPropagation()} // 阻止事件冒泡
         >
@@ -313,13 +312,12 @@ export default function Page() {
 
       {/* Fixed Bottom Navigation Button */}
       {currentStep < steps.length && (
-        <div className="fixed bottom-8 right-8 z-[9999]">
+        <div className="fixed bottom-8 right-4 z-[9999]">
           <Button
             onClick={handleNextStep}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3 rounded-xl font-medium shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm"
+            className="bg-white hover:bg-gray-100 text-black px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300"
           >
             下一步
-            <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       )}
