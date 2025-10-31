@@ -5,22 +5,15 @@ import QRCode from "qrcode"
 import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { apiFetch } from "@/lib/api"
+import { apiFetch, getOSInfo } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "react-i18next"
 
-interface ServerInfo {
-  local_ip: string
-  port: number
-  url: string
-  display_url: string
-  host: string
-  scheme: string
-}
+interface ConnectionInfo { ip: string; port: number; display_url: string }
 
 export function SettingsView() {
   const { t, i18n } = useTranslation()
-  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null)
+  const [serverInfo, setServerInfo] = useState<ConnectionInfo | null>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -31,9 +24,11 @@ export function SettingsView() {
   const fetchServerInfo = async () => {
     setIsLoading(true)
     try {
-      const response = await apiFetch("/server-info")
-      if (response.ok) {
-        const data = await response.json()
+      const osinfo = await getOSInfo()
+      if (osinfo && Array.isArray(osinfo.lan_ips) && osinfo.lan_ips.length > 0) {
+        const ip = osinfo.lan_ips[0]
+        const port = osinfo.port
+        const data: ConnectionInfo = { ip, port, display_url: `http://${ip}:${port}` }
         setServerInfo(data)
 
         // 生成二维码
@@ -239,12 +234,12 @@ export function SettingsView() {
                       <label className="text-sm font-medium">{t("settings.network.connection.ip")}</label>
                       <div className="flex items-center gap-2">
                         <code className="flex-1 px-3 py-2 bg-muted rounded text-sm">
-                          {serverInfo.local_ip}
+                          {serverInfo.ip}
                         </code>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => copyToClipboard(serverInfo.local_ip)}
+                        onClick={() => copyToClipboard(serverInfo.ip)}
                         >
                           {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                         </Button>
@@ -260,7 +255,7 @@ export function SettingsView() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => copyToClipboard(serverInfo.port.toString())}
+                        onClick={() => copyToClipboard(serverInfo.port.toString())}
                         >
                           {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                         </Button>

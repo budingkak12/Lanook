@@ -357,6 +357,8 @@ export default function Home() {
           onMediaRemove={handleMediaRemove}
         />
       )}
+
+      {/* 已移除自动弹出二维码的逻辑与提示标记 */}
     </div>
   )
 }

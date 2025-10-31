@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import {
   type CommonFolderEntry,
   getCommonFolders,
-  getOSInfo,
   probePermissions,
   type ProbeResult,
 } from "@/lib/api"
@@ -26,7 +25,7 @@ export function InitCommonFolders({ selectedPath, onChangePath, onStart, isStart
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [entries, setEntries] = useState<CommonFolderEntry[]>([])
-  const [os, setOs] = useState<string>("")
+  // 不再请求 OS/IP 信息，减少初始化页的网络调用
   const [probing, setProbing] = useState<Record<string, boolean>>({})
   const [inputPath, setInputPath] = useState(selectedPath)
   useEffect(() => { setInputPath(selectedPath) }, [selectedPath])
@@ -53,14 +52,10 @@ export function InitCommonFolders({ selectedPath, onChangePath, onStart, isStart
     const load = async () => {
       setLoading(true)
       try {
-        // 优先加载文件夹，尽快呈现可操作内容；OS 信息异步填充
-        const foldersPromise = getCommonFolders()
-        const osPromise = getOSInfo()
-        const folders = await foldersPromise
+        // 仅加载常用文件夹，避免在初始化页请求 OS/IP 信息
+        const folders = await getCommonFolders()
         if (cancelled) return
         setEntries(folders)
-        // 不阻塞 UI：待 OS 信息返回后再更新（用于展示权限按钮与文案）
-        osPromise.then((osinfo) => { if (!cancelled) setOs(osinfo?.os || "") }).catch(() => {})
       } catch (e) {
         console.error("加载常用文件夹失败", e)
         toast({ title: "错误", description: "无法获取常用文件夹列表" })
@@ -95,11 +90,8 @@ export function InitCommonFolders({ selectedPath, onChangePath, onStart, isStart
         const fresh = await getCommonFolders()
         setEntries(fresh)
       } else if (r.status === "denied") {
-        if (os === "macos") {
-          toast({ title: "需要系统授权", description: "请在弹出的系统窗口选择允许，或前往系统设置→隐私与安全性→文件与文件夹为终端/应用授权。" })
-        } else {
-          toast({ title: "拒绝访问", description: "请检查系统权限或尝试其他目录" })
-        }
+        // 通用提示：具体平台差异由后续单独帮助文档/提示承担
+        toast({ title: "拒绝访问", description: "请在系统设置为应用授予该目录读写权限，或尝试其他目录" })
       } else if (r.status === "not_found") {
         toast({ title: "目录不存在", description: path })
       } else {
@@ -235,7 +227,7 @@ export function InitCommonFolders({ selectedPath, onChangePath, onStart, isStart
                 </div>
               )}
 
-              {os === "macos" && (
+              {entries.some((e) => !e.readable) && (
                 <div className="flex items-center justify-end">
                   <Button variant="outline" size="sm" onClick={probeAllDenied} disabled={probing.__all === true}>
                     {probing.__all ? <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Unlock className="w-3.5 h-3.5 mr-2" />}

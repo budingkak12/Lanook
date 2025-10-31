@@ -119,32 +119,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/server-info")
-def get_server_info(request: Request):
-    """获取服务器连接信息，用于生成二维码"""
-    try:
-        preferred_port = int(os.environ.get("MEDIA_APP_PORT", "8000"))
-    except Exception:
-        preferred_port = 8000
-
-    # 直接使用启动阶段保存的 LAN IP（禁止回落到 127.0.0.1）
-    local_ip = getattr(app.state, "lan_ip", "")
-
-    scheme = request.url.scheme
-    netloc = request.url.netloc
-
-    return {
-        "local_ip": local_ip,
-        "port": preferred_port,
-        "url": f"{scheme}://{local_ip}:{preferred_port}" if local_ip else "",
-        "display_url": f"http://{local_ip}:{preferred_port}" if local_ip else "",
-        "host": request.headers.get("host", netloc),
-        "scheme": scheme
-    }
-
-
-
-
+    
 def _resolve_frontend_dist() -> Path:
     custom = os.environ.get("MEDIA_APP_FRONTEND_DIST")
     if custom:
