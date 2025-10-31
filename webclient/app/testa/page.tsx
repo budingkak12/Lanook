@@ -231,54 +231,57 @@ export default function Page() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 max-w-4xl ml-64 pl-8">
-          <div className="mb-8 pr-8">
-            <h2 className="text-4xl font-normal text-foreground mb-8 text-balance">下載並安裝 Android Studio</h2>
+        <main className="flex-1 ml-64 pl-8 pr-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-8">
+              <h2 className="text-4xl font-normal text-foreground mb-8 text-balance">下載並安裝 Android Studio</h2>
 
-            {/* Info Card */}
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 mb-8 shadow-lg">
-              <h3 className="text-xl font-normal text-foreground mb-4">程式碼研究室簡介</h3>
-              <div className="space-y-3 text-sm" style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                  <span>上次更新時間：4月 30, 2025</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                  <span>作者：Google Developers Training team</span>
+              {/* Info Card */}
+              <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-6 mb-8 shadow-lg">
+                <h3 className="text-xl font-normal text-foreground mb-4">程式碼研究室簡介</h3>
+                <div className="space-y-3 text-sm" style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span>上次更新時間：4月 30, 2025</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <span>作者：Google Developers Training team</span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Step Content */}
+            {currentStepData && (
+              <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
+            )}
+
           </div>
-
-          {/* Step Content */}
-          {currentStepData && (
-            <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
-          )}
-
-          {/* Navigation Button */}
-          {currentStep < steps.length && (
-            <div className="flex justify-end mt-8">
-              <Button
-                onClick={handleNextStep}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3 rounded-xl font-medium shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
-              >
-                下一步
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          )}
         </main>
       </div>
+
+      {/* Fixed Bottom Navigation Button */}
+      {currentStep < steps.length && (
+        <div className="fixed bottom-8 right-8 z-[9999]">
+          <Button
+            onClick={handleNextStep}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3 rounded-xl font-medium shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm"
+          >
+            下一步
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
