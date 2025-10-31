@@ -88,6 +88,29 @@
       }
     }
   },
+  "init": {
+    "welcome": "Welcome",
+    "selectLanguage": "Select Language",
+    "chinese": "语言",
+    "english": "Language",
+    "nextStep": "Next Step",
+    "step1": {
+      "title": "1. Add Your Media Path",
+      "description": ""
+    },
+    "step2": {
+      "title": "2. Choose Addition Method",
+      "description": ""
+    },
+    "step3": {
+      "title": "3. Media Path List",
+      "description": ""
+    },
+    "step4": {
+      "title": "4. Complete",
+      "description": ""
+    }
+  },
   "errors": {
     "requestFailed": "Request failed: {{status}}",
     "unknownError": "Unknown error"

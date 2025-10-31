@@ -1,52 +1,55 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
 import { Button } from "@/components/ui/button"
-
-const steps = [
-  {
-    id: 1,
-    title: "选择语言",
-    content: {
-      title: "1. 添加你的媒体路径",
-      description: "",
-      sections: [],
-    },
-  },
-  {
-    id: 2,
-    title: "选择添加方式",
-    content: {
-      title: "2. 选择添加方式",
-      description: "",
-      sections: [],
-    },
-  },
-  {
-    id: 3,
-    title: "媒体路径清单",
-    content: {
-      title: "3. 媒体路径清单",
-      description: "",
-      sections: [],
-    },
-  },
-  {
-    id: 4,
-    title: "开始浏览",
-    content: {
-      title: "4. 完成",
-      description: "",
-      sections: [],
-    },
-  },
-  ]
+import { LanguageSelector } from "@/components/language-selector"
 
 export default function Page() {
+  const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  const steps = [
+    {
+      id: 1,
+      title: t('init.selectLanguage'),
+      content: {
+        title: t('init.step1.title'),
+        description: "",
+        sections: [],
+      },
+    },
+    {
+      id: 2,
+      title: "选择添加方式",
+      content: {
+        title: t('init.step2.title'),
+        description: "",
+        sections: [],
+      },
+    },
+    {
+      id: 3,
+      title: "媒体路径清单",
+      content: {
+        title: t('init.step3.title'),
+        description: "",
+        sections: [],
+      },
+    },
+    {
+      id: 4,
+      title: "开始浏览",
+      content: {
+        title: t('init.step4.title'),
+        description: "",
+        sections: [],
+      },
+    },
+  ]
 
   const handleNextStep = () => {
     if (currentStep < steps.length) {
@@ -102,7 +105,7 @@ export default function Page() {
                   <div className="w-4 h-0.5 bg-foreground"></div>
                 </div>
               </button>
-              <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">欢迎</h1>
+              <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">{t('init.welcome')}</h1>
             </div>
           </div>
         </div>
@@ -157,7 +160,13 @@ export default function Page() {
 
             {/* Step Content */}
             {currentStepData && (
-              <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
+              <>
+                {currentStep === 1 ? (
+                  <LanguageSelector />
+                ) : (
+                  <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
+                )}
+              </>
             )}
 
           </div>
@@ -171,7 +180,7 @@ export default function Page() {
             onClick={handleNextStep}
             className="bg-white hover:bg-gray-100 text-black px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300"
           >
-            下一步
+            {t('init.nextStep')}
           </Button>
         </div>
       )}

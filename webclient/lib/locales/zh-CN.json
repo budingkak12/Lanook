@@ -88,6 +88,29 @@
       }
     }
   },
+  "init": {
+    "welcome": "欢迎",
+    "selectLanguage": "选择语言",
+    "chinese": "语言",
+    "english": "Language",
+    "nextStep": "下一步",
+    "step1": {
+      "title": "1. 添加你的媒体路径",
+      "description": ""
+    },
+    "step2": {
+      "title": "2. 选择添加方式",
+      "description": ""
+    },
+    "step3": {
+      "title": "3. 媒体路径清单",
+      "description": ""
+    },
+    "step4": {
+      "title": "4. 完成",
+      "description": ""
+    }
+  },
   "errors": {
     "requestFailed": "请求失败: {{status}}",
     "unknownError": "未知错误"
