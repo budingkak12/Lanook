@@ -127,27 +127,17 @@ def get_server_info(request: Request):
     except Exception:
         preferred_port = 8000
 
-    # 获取本机IP地址
-    import socket
-    try:
-        # 创建一个UDP socket连接到外部地址来获取本机IP
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-        s.close()
-    except Exception:
-        # 备用方案：获取主机名对应的IP
-        local_ip = "127.0.0.1"
+    # 直接使用启动阶段保存的 LAN IP（禁止回落到 127.0.0.1）
+    local_ip = getattr(app.state, "lan_ip", "")
 
-    # 构建连接URL
     scheme = request.url.scheme
     netloc = request.url.netloc
 
     return {
         "local_ip": local_ip,
         "port": preferred_port,
-        "url": f"{scheme}://{local_ip}:{preferred_port}",
-        "display_url": f"http://{local_ip}:{preferred_port}",
+        "url": f"{scheme}://{local_ip}:{preferred_port}" if local_ip else "",
+        "display_url": f"http://{local_ip}:{preferred_port}" if local_ip else "",
         "host": request.headers.get("host", netloc),
         "scheme": scheme
     }
@@ -278,6 +268,8 @@ def _display_connection_advert():
 
     lan_ip = _get_local_ip()
     print(f"[boot] Media App API 即将启动: http://{lan_ip}:{preferred_port}  (本机: http://localhost:{preferred_port})")
+
+    # 将探测到的 LAN IP 打印即可；实际接口使用带 TTL 的快速探测与缓存
 
     # 自动打开前端（默认显示设置）
     auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()

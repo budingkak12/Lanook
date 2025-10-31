@@ -164,14 +164,26 @@ export type ProbeResult = {
   reason?: string | null
 }
 
+let cachedOSInfo: OSInfo | null = null
+let fetchingOSInfo: Promise<OSInfo | null> | null = null
+
 export async function getOSInfo(): Promise<OSInfo | null> {
-  try {
-    const resp = await apiFetch("/os-info")
-    if (!resp.ok) return null
-    return (await resp.json()) as OSInfo
-  } catch {
-    return null
-  }
+  if (cachedOSInfo) return cachedOSInfo
+  if (fetchingOSInfo) return fetchingOSInfo
+  fetchingOSInfo = (async () => {
+    try {
+      const resp = await apiFetch("/os-info")
+      if (!resp.ok) return null
+      const data = (await resp.json()) as OSInfo
+      cachedOSInfo = data
+      return data
+    } catch {
+      return null
+    } finally {
+      fetchingOSInfo = null
+    }
+  })()
+  return fetchingOSInfo
 }
 
 export async function getCommonFolders(): Promise<CommonFolderEntry[]> {

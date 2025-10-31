@@ -126,12 +126,15 @@ def set_media_root(
 
 
 @router.get("/os-info", response_model=OSInfoResponse)
-def get_os_info(request: Request):
+def get_os_info(request: Request, refresh: bool = Query(False, description="是否强制刷新网络信息缓存")):
     try:
         port = int(request.headers.get("x-forwarded-port") or request.url.port or 8000)
     except Exception:
         port = 8000
-    return OSInfoResponse(os=detect_os_name(), lan_ips=list_lan_ips(), port=port)
+
+    # 读取缓存；当刷新参数为真或缓存过期时，快速重新探测
+    ips = list_lan_ips(force_refresh=refresh)
+    return OSInfoResponse(os=detect_os_name(), lan_ips=ips, port=port)
 
 
 @router.post("/permissions/probe", response_model=list[ProbeResultModel])

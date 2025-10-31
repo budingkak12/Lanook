@@ -53,10 +53,14 @@ export function InitCommonFolders({ selectedPath, onChangePath, onStart, isStart
     const load = async () => {
       setLoading(true)
       try {
-        const [osinfo, folders] = await Promise.all([getOSInfo(), getCommonFolders()])
+        // 优先加载文件夹，尽快呈现可操作内容；OS 信息异步填充
+        const foldersPromise = getCommonFolders()
+        const osPromise = getOSInfo()
+        const folders = await foldersPromise
         if (cancelled) return
-        setOs(osinfo?.os || "")
         setEntries(folders)
+        // 不阻塞 UI：待 OS 信息返回后再更新（用于展示权限按钮与文案）
+        osPromise.then((osinfo) => { if (!cancelled) setOs(osinfo?.os || "") }).catch(() => {})
       } catch (e) {
         console.error("加载常用文件夹失败", e)
         toast({ title: "错误", description: "无法获取常用文件夹列表" })
