@@ -210,20 +210,20 @@ export default function Page() {
 
         {/* 内容 */}
         <div className="relative z-10 bg-background/20 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="pr-4 pl-2 lg:pl-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 lg:gap-4">
               {/* 移动端菜单按钮 */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="lg:hidden hover:opacity-70 transition-opacity"
               >
-                <div className="flex flex-col justify-center items-center w-6 h-6">
-                  <div className="w-5 h-0.5 bg-foreground mb-1.5"></div>
-                  <div className="w-5 h-0.5 bg-foreground mb-1.5"></div>
-                  <div className="w-5 h-0.5 bg-foreground"></div>
+                <div className="flex flex-col justify-center items-center w-5 h-5">
+                  <div className="w-4 h-0.5 bg-foreground mb-1"></div>
+                  <div className="w-4 h-0.5 bg-foreground mb-1"></div>
+                  <div className="w-4 h-0.5 bg-foreground"></div>
                 </div>
               </button>
-              <h1 className="text-xl font-normal text-foreground">下載並安裝 Android Studio</h1>
+              <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">下載並安裝 Android Studio</h1>
             </div>
           </div>
         </div>
