@@ -28,12 +28,14 @@ from 初始化数据库 import (
     create_database_and_tables,
     seed_initial_data,
 )
+from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
 
 # 业务拆分：批量删除服务
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from sqlalchemy.exc import OperationalError
 from app.api.setup_routes import router as setup_router
 from app.api.settings_routes import router as settings_router
+from app.api.sources_routes import router as sources_router
 from app.api.task_routes import router as task_router
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
@@ -111,6 +113,7 @@ app.add_middleware(
 
 app.include_router(setup_router)
 app.include_router(settings_router)
+app.include_router(sources_router)
 app.include_router(task_router)
 
 # 轻量健康检查，供 Android 客户端自动探测可用服务地址
@@ -327,8 +330,14 @@ def _save_image_thumbnail(img: Image.Image, dest: Path) -> None:
 
 def _generate_image_thumbnail(src: str, dest: Path) -> bool:
     try:
-        with Image.open(src) as img:
-            _save_image_thumbnail(img, dest)
+        if is_smb_url(src):
+            from io import BytesIO
+            data = read_bytes(src)
+            with Image.open(BytesIO(data)) as img:
+                _save_image_thumbnail(img, dest)
+        else:
+            with Image.open(src) as img:
+                _save_image_thumbnail(img, dest)
         return True
     except Exception:
         return False
@@ -336,31 +345,48 @@ def _generate_image_thumbnail(src: str, dest: Path) -> bool:
 
 def _generate_video_thumbnail(src: str, dest: Path, target_seconds: float = 1.0) -> bool:
     try:
-        with av.open(src) as container:
-            video_stream = next((stream for stream in container.streams if stream.type == "video"), None)
-            if video_stream is None:
-                return False
-            video_stream.thread_type = "AUTO"
+        if is_smb_url(src):
+            import tempfile
+            # 将远程视频临时拉取到本地以便 python-av 抽帧
+            with tempfile.NamedTemporaryFile(suffix=".video", delete=True) as tf:
+                for chunk in iter_bytes(src, 0, None, 1024 * 1024):
+                    tf.write(chunk)
+                tf.flush()
+                container = av.open(tf.name)
+                return _extract_frame_to_thumb(container, dest, target_seconds)
+        else:
+            with av.open(src) as container:
+                return _extract_frame_to_thumb(container, dest, target_seconds)
+    except Exception:
+        return False
 
-            seek_pts = None
-            if video_stream.time_base:
-                # time_base 是每个 pts 单位的秒数
-                seek_pts = int(max(target_seconds / float(video_stream.time_base), 0))
-            if seek_pts is not None and seek_pts > 0:
-                try:
-                    container.seek(seek_pts, stream=video_stream, any_frame=False, backward=True)
-                except av.AVError:
-                    container.seek(0)
 
-            frame = None
-            for decoded in container.decode(video_stream):
-                frame = decoded
-                break
-            if frame is None:
-                return False
-            pil_image = frame.to_image()  # PIL.Image
-            _save_image_thumbnail(pil_image, dest)
-            return True
+def _extract_frame_to_thumb(container, dest: Path, target_seconds: float) -> bool:
+    try:
+        video_stream = next((stream for stream in container.streams if stream.type == "video"), None)
+        if video_stream is None:
+            return False
+        video_stream.thread_type = "AUTO"
+
+        seek_pts = None
+        if video_stream.time_base:
+            # time_base 是每个 pts 单位的秒数
+            seek_pts = int(max(target_seconds / float(video_stream.time_base), 0))
+        if seek_pts is not None and seek_pts > 0:
+            try:
+                container.seek(seek_pts, stream=video_stream, any_frame=False, backward=True)
+            except av.AVError:
+                container.seek(0)
+
+        frame = None
+        for decoded in container.decode(video_stream):
+            frame = decoded
+            break
+        if frame is None:
+            return False
+        pil_image = frame.to_image()  # PIL.Image
+        _save_image_thumbnail(pil_image, dest)
+        return True
     except Exception:
         return False
 
@@ -375,8 +401,19 @@ def get_or_generate_thumbnail(media: Media) -> Path | None:
         return None
     src = media.absolute_path
     thumb = _thumb_path_for(media)
-    if not _should_regenerate(src, thumb):
-        return thumb
+    # 对于远程 SMB：比较远端 mtime 决定是否重建
+    if is_smb_url(src):
+        try:
+            mtime, size = stat_url(src)
+            if thumb.exists():
+                th_stat = os.stat(thumb)
+                if th_stat.st_mtime >= mtime and th_stat.st_size >= 2000:
+                    return thumb
+        except Exception:
+            pass
+    else:
+        if not _should_regenerate(src, thumb):
+            return thumb
 
     try:
         if media.media_type == "image":
@@ -619,7 +656,9 @@ def get_media_thumbnail(media_id: int, db=Depends(get_db)):
     if not media:
         raise HTTPException(status_code=404, detail="media not found")
     # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
-    if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
+    if not media.absolute_path or not isinstance(media.absolute_path, str):
+        raise HTTPException(status_code=404, detail="file not found")
+    if (not is_smb_url(media.absolute_path)) and (not os.path.exists(media.absolute_path)):
         raise HTTPException(status_code=404, detail="file not found")
     # 仅提供真实缩略图；不再回退原文件（项目现已具备稳定的视频缩略图能力）
     thumb_path = get_or_generate_thumbnail(media)
@@ -649,28 +688,34 @@ def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
     if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
         raise HTTPException(status_code=404, detail="file not found")
     # 内容类型自动判定，回退到基于 media_type 的默认值
-    guessed, _ = mimetypes.guess_type(media.absolute_path)
+    guessed, _ = mimetypes.guess_type(media.absolute_path if not is_smb_url(media.absolute_path) else os.path.basename(media.absolute_path))
     mime = guessed or ("image/jpeg" if media.media_type == "image" else "video/mp4")
-
-    file_path = media.absolute_path
-    stat = os.stat(file_path)
-    file_size = stat.st_size
+    if is_smb_url(media.absolute_path):
+        try:
+            mtime, size = stat_url(media.absolute_path)
+        except Exception:
+            raise HTTPException(status_code=404, detail="file not found")
+        file_size = size
+        etag = f"{mtime}-{size}"
+    else:
+        file_path = media.absolute_path
+        stat = os.stat(file_path)
+        file_size = stat.st_size
+        etag = f"{int(stat.st_mtime)}-{stat.st_size}"
     range_header = request.headers.get("range") or request.headers.get("Range")
 
     # 通用响应头：支持缓存与范围请求
-    common_headers = {
-        "ETag": f"{int(stat.st_mtime)}-{stat.st_size}",
-        "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stat.st_mtime)),
-        "Accept-Ranges": "bytes",
-    }
+    common_headers = {"ETag": etag, "Accept-Ranges": "bytes"}
+    if not is_smb_url(media.absolute_path):
+        common_headers["Last-Modified"] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stat.st_mtime))
 
     # 无 Range：回退到完整文件响应（带缓存头）
     if not range_header:
-        headers = {
-            **common_headers,
-            "Cache-Control": "public, max-age=3600",
-        }
-        return FileResponse(path=file_path, media_type=mime, headers=headers)
+        headers = {**common_headers, "Cache-Control": "public, max-age=3600"}
+        if is_smb_url(media.absolute_path):
+            return StreamingResponse(iter_bytes(media.absolute_path, 0, file_size), media_type=mime, headers=headers)
+        else:
+            return FileResponse(path=file_path, media_type=mime, headers=headers)
 
     # 解析 Range: bytes=start-end 或 bytes=start- 或 bytes=-suffix
     try:
@@ -723,7 +768,10 @@ def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
         "Content-Length": str(length),
         "Cache-Control": "public, max-age=3600",
     }
-    return StreamingResponse(file_iter(file_path, start, length), status_code=206, media_type=mime, headers=headers)
+    if is_smb_url(media.absolute_path):
+        return StreamingResponse(iter_bytes(media.absolute_path, start, length), status_code=206, media_type=mime, headers=headers)
+    else:
+        return StreamingResponse(file_iter(file_path, start, length), status_code=206, media_type=mime, headers=headers)
 
 
 # =============================

@@ -88,3 +88,101 @@
 
  说明
  - 详情查看通过进入播放器视图并在当前工作区按索引播放；如需元数据可直接使用列表返回的 `MediaItem`。
+
+ 
+
+初始化/媒体来源 v1（新增）
+--------------------------------
+
+目标：引导用户在首次进入时添加一个或多个“媒体来源”。当前版本已支持：
+- 本机路径（macOS/Windows/Linux 的绝对路径）。
+- 局域网 SMB 共享（Windows/macOS/Linux/NAS 等导出的共享）。
+
+只读声明：本程序仅读取媒体文件用于索引与浏览，不会写入或删除“来源目录”中的任何文件；缩略图与数据库仅写入本机项目目录。
+
+支持的来源类型（SourceType）
+- `local`：本机或系统已挂载目录（示例：`/Users/you/Pictures`、`C:\\Users\\you\\Pictures`、`/mnt/photos`）。
+- `smb`：SMB 共享（示例：`smb://user@192.168.1.10/photo/family`）。
+
+数据模型
+- MediaSource
+  - `id: number` 主键
+  - `type: 'local' | 'smb'`
+  - `displayName: string|null` 显示名称
+  - `rootPath: string` 根路径；`local` 为绝对路径；`smb` 为 `smb://[domain;]user@host/share[/sub]` URL（不含密码）
+  - `createdAt: string` ISO 时间
+- ScanJob
+  - `jobId: string`（UUID）
+  - `sourceId: number`
+  - `state: 'running' | 'completed' | 'failed'`
+  - `scannedCount: number`
+  - `message?: string`
+  - `startedAt?: string`
+  - `finishedAt?: string`
+
+1) 验证来源（只读检查 + 估算）
+- `POST /setup/source/validate`
+- Request（local）
+```
+{ "type":"local", "path":"/Users/you/Pictures" }
+```
+- Request（smb）
+```
+// 匿名访问
+{ "type":"smb", "host":"192.168.1.10", "share":"photo", "subPath":"family", "anonymous": true }
+
+// 用户名密码（域可选）
+{ "type":"smb", "host":"nas.local", "share":"photo", "username":"alice", "password":"***", "domain":"WORKGROUP" }
+```
+- Response 200
+```
+{
+  "ok": true,
+  "readable": true,
+  "absPath": "/Users/you/Pictures"            // smb 时为 smb://host/share/sub
+  ,"estimatedCount": 1234,
+  "samples": [".../IMG_0001.jpg", ".../clip.mov"],
+  "note": "只读验证通过，不会写入或删除此目录下文件"
+}
+```
+
+2) 新增来源（保存配置 + 凭证入系统钥匙串）
+- `POST /setup/source`
+- Request（local）
+```
+{ "type":"local", "rootPath":"/Users/you/Pictures", "displayName":"我的相册" }
+```
+- Request（smb）
+```
+{ "type":"smb", "host":"192.168.1.10", "share":"photo", "subPath":"family",
+  "username":"alice", "password":"***", "domain":"WORKGROUP", "displayName":"NAS 相册" }
+// 或匿名：{ "type":"smb", "host":"192.168.1.10", "share":"photo", "anonymous": true }
+```
+- Response 201
+```
+{ "id":1, "type":"smb", "displayName":"NAS 相册", "rootPath":"smb://alice@192.168.1.10/photo/family", "createdAt":"2025-10-31T06:00:00Z" }
+```
+说明：
+- 密码不会写入数据库，只保存到系统钥匙串（keyring）。删除来源不会自动删除钥匙串条目；如需彻底撤销请在系统钥匙串中删除或更改 NAS 口令。
+
+3) 列出来源
+- `GET /media-sources` → `MediaSource[]`
+
+4) 删除来源（仅删配置，不触远端）
+- `DELETE /media-sources/{id}` → 204
+
+5) 启动扫描任务（后台入库，增量去重）
+- `POST /scan/start?source_id=1` → 202 `{ "jobId": "8e3c1c5f-..." }`
+
+6) 查询扫描任务状态
+- `GET /scan/status?job_id=8e3c1c5f-...` → 200
+```
+{ "jobId":"8e3c1c5f-...", "sourceId":1, "state":"running", "scannedCount":100, "message":null,
+  "startedAt":"2025-10-31T06:00:00Z", "finishedAt":null }
+```
+
+行为与约束
+- 去重键为“源文件绝对标识”：`local` 存绝对路径；`smb` 存 `smb://host/share/sub/path.ext`，跨设备稳定。
+- 流媒体读取：`GET /media-resource/{id}` 支持 SMB 的 Range 分片与大文件流式；缩略图生成会针对 SMB 临时拉取必要数据，仅写本机 `thumbnails/`。
+- 只读安全：不会写入或删除远端 SMB 共享文件；任何写入仅发生在本机数据库与缩略图目录。
+- NFS：建议在系统层挂载后以 `local` 方式添加（最稳）。

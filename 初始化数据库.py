@@ -119,6 +119,12 @@ def create_database_and_tables(echo: bool = True):
 
     :param echo: 是否打印提示信息。用于服务端启动时减少重复日志。
     """
+    # 确保扩展模型已加载（媒体来源、扫描任务等）
+    try:
+        import app.db.models_extra  # noqa: F401
+    except Exception:
+        # 导入失败不阻断主流程；后续再次调用时可补充
+        pass
     if echo:
         print("正在创建数据库表...")
     Base.metadata.create_all(bind=engine)
