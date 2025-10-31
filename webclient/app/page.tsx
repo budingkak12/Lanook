@@ -6,6 +6,7 @@ import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
 import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/language-selector"
+import { MediaSourceSelector } from "@/components/media-source-selector"
 
 export default function Page() {
   const { t } = useTranslation()
@@ -163,6 +164,8 @@ export default function Page() {
               <>
                 {currentStep === 1 ? (
                   <LanguageSelector />
+                ) : currentStep === 2 ? (
+                  <MediaSourceSelector />
                 ) : (
                   <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
                 )}

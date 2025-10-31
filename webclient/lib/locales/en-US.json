@@ -100,7 +100,7 @@
     },
     "step2": {
       "title": "2. Choose Addition Method",
-      "description": ""
+      "description": "Select the type of media source to add"
     },
     "step3": {
       "title": "3. Media Path List",
@@ -109,6 +109,24 @@
     "step4": {
       "title": "4. Complete",
       "description": ""
+    },
+    "sourceType": {
+      "local": {
+        "title": "Local Folders",
+        "description": "Select photo or video folders on your computer",
+        "commonPaths": "Common Paths",
+        "customPath": "Custom Path",
+        "selectButton": "Select Folder",
+        "pathPlaceholder": "Enter folder path..."
+      },
+      "network": {
+        "title": "Network Devices",
+        "description": "Connect to NAS or other shared devices on LAN",
+        "smbShare": "SMB Share",
+        "deviceList": "Device List",
+        "connectButton": "Connect Device",
+        "searchPlaceholder": "Search devices..."
+      }
     }
   },
   "errors": {
