@@ -92,7 +92,7 @@ export function MediaSourceSelector() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: 0.1 + index * 0.05 }}
-                    className="flex items-center justify-between p-3 bg-background/60 border border-border/30 rounded-lg hover:bg-background/80 transition-all duration-200 cursor-pointer hover:border-border/50"
+                    className="flex items-center justify-between p-3 bg-background/60 border border-border/30 rounded-lg hover:bg-white/20 hover:shadow-lg hover:scale-[1.02] hover:border-white/40 transition-all duration-200 cursor-pointer group"
                     onClick={() => handleCommonPathClick(item.path)}
                   >
                     <div className="flex items-center gap-3">
@@ -101,12 +101,12 @@ export function MediaSourceSelector() {
                           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium text-foreground">{item.name}</div>
-                        <div className="text-xs text-muted-foreground/80">{item.path}</div>
+                        <div className="text-xs text-muted-foreground/80 truncate" title={item.path}>{item.path}</div>
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" className="h-8 px-2 hover:bg-background/50 text-xs">
+                    <Button size="sm" variant="ghost" className="h-8 px-2 hover:bg-white/30 text-xs group-hover:bg-white/25 group-hover:text-foreground group-hover:shadow-sm">
                       选择
                     </Button>
                   </motion.div>
