@@ -190,7 +190,7 @@ export function InitCommonFolders({ selectedPath, onChangePath, onStart, isStart
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <HardDrive className="w-5 h-5" /> 常用文件夹
+            <HardDrive className="w-5 h-5" /> 选择媒体路径
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
