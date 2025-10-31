@@ -168,11 +168,6 @@ const steps = [
 
 export default function Page() {
   const [currentStep, setCurrentStep] = useState(1)
-  const [mutedForegroundLightness, setMutedForegroundLightness] = useState(75) // 初始值为 75%
-  const [backgroundLightness, setBackgroundLightness] = useState(42) // 初始值为 42% (深灰色)
-  const [headerTopLightness, setHeaderTopLightness] = useState(35) // Header 上半部分亮度
-  const [headerBottomLightness, setHeaderBottomLightness] = useState(50) // Header 下半部分亮度
-  const [showColorPanel, setShowColorPanel] = useState(false)
 
   const handleNextStep = () => {
     if (currentStep < steps.length) {
@@ -182,196 +177,20 @@ export default function Page() {
 
   const currentStepData = steps.find((step) => step.id === currentStep)
 
-  // 生成动态颜色值
-  const generateColorValue = (lightness: number) => {
-    return `oklch(${lightness / 100} 0 0)`
-  }
-
-  // 更新CSS变量
-  const updateCSSVariables = (textLightness: number, bgLightness: number, headerTop: number, headerBottom: number) => {
+  // 设置固定的CSS变量值（基于你满意的版本）
+  useState(() => {
     const root = document.documentElement
-    root.style.setProperty('--dynamic-muted-foreground', generateColorValue(textLightness))
-    root.style.setProperty('--dynamic-background', generateColorValue(bgLightness))
-    root.style.setProperty('--dynamic-header-top', generateColorValue(headerTop))
-    root.style.setProperty('--dynamic-header-bottom', generateColorValue(headerBottom))
-  }
-
-  // 当滑块值改变时更新CSS变量
-  const handleTextColorChange = (value: number) => {
-    setMutedForegroundLightness(value)
-    updateCSSVariables(value, backgroundLightness, headerTopLightness, headerBottomLightness)
-  }
-
-  const handleBackgroundColorChange = (value: number) => {
-    setBackgroundLightness(value)
-    updateCSSVariables(mutedForegroundLightness, value, headerTopLightness, headerBottomLightness)
-  }
-
-  const handleHeaderTopColorChange = (value: number) => {
-    setHeaderTopLightness(value)
-    updateCSSVariables(mutedForegroundLightness, backgroundLightness, value, headerBottomLightness)
-  }
-
-  const handleHeaderBottomColorChange = (value: number) => {
-    setHeaderBottomLightness(value)
-    updateCSSVariables(mutedForegroundLightness, backgroundLightness, headerTopLightness, value)
-  }
+    root.style.setProperty('--dynamic-muted-foreground', 'oklch(0.75 0 0)')
+    root.style.setProperty('--dynamic-background', 'oklch(0.42 0.005 264)')
+    root.style.setProperty('--dynamic-header-top', 'oklch(0.35 0 0)')
+    root.style.setProperty('--dynamic-header-bottom', 'oklch(0.50 0 0)')
+  })
 
   return (
     <div
       className="min-h-screen"
       style={{ backgroundColor: 'var(--dynamic-background, oklch(0.42 0.005 264))' }}
     >
-      {/* 颜色调节面板 */}
-      <div className="fixed top-4 right-4 z-50 bg-card/90 backdrop-blur-md border border-border/50 rounded-xl p-6 shadow-xl w-80">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-foreground">颜色调节面板</h3>
-          <button
-            onClick={() => setShowColorPanel(!showColorPanel)}
-            className="text-xs"
-            style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}
-          >
-            {showColorPanel ? '收起' : '展开'}
-          </button>
-        </div>
-
-        {showColorPanel && (
-          <div className="space-y-6">
-            {/* Header 颜色调节 */}
-            <div className="space-y-4">
-              <div className="text-sm font-medium text-foreground">Header 顶部颜色</div>
-
-              <div>
-                <label className="text-xs text-foreground block mb-2">
-                  Header 上半部分: {headerTopLightness}%
-                </label>
-                <input
-                  type="range"
-                  min="5"
-                  max="95"
-                  value={headerTopLightness}
-                  onChange={(e) => handleHeaderTopColorChange(Number(e.target.value))}
-                  className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer slider"
-                  style={{
-                    background: `linear-gradient(to right,
-                      oklch(0.05 0 0) 0%,
-                      oklch(${headerTopLightness / 100} 0 0) ${(headerTopLightness - 5) * 100 / 90}%,
-                      oklch(0.95 0 0) 100%)`
-                  }}
-                />
-                <div className="mt-1 text-xs font-mono text-foreground">
-                  {generateColorValue(headerTopLightness)}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-foreground block mb-2">
-                  Header 下半部分: {headerBottomLightness}%
-                </label>
-                <input
-                  type="range"
-                  min="5"
-                  max="95"
-                  value={headerBottomLightness}
-                  onChange={(e) => handleHeaderBottomColorChange(Number(e.target.value))}
-                  className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer slider"
-                  style={{
-                    background: `linear-gradient(to right,
-                      oklch(0.05 0 0) 0%,
-                      oklch(${headerBottomLightness / 100} 0 0) ${(headerBottomLightness - 5) * 100 / 90}%,
-                      oklch(0.95 0 0) 100%)`
-                  }}
-                />
-                <div className="mt-1 text-xs font-mono text-foreground">
-                  {generateColorValue(headerBottomLightness)}
-                </div>
-              </div>
-            </div>
-
-            {/* 背景颜色调节 */}
-            <div>
-              <label className="text-xs text-foreground block mb-2">
-                背景颜色亮度: {backgroundLightness}%
-              </label>
-              <input
-                type="range"
-                min="5"
-                max="95"
-                value={backgroundLightness}
-                onChange={(e) => handleBackgroundColorChange(Number(e.target.value))}
-                className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer slider"
-                style={{
-                  background: `linear-gradient(to right,
-                    oklch(0.05 0 0) 0%,
-                    oklch(${backgroundLightness / 100} 0 0) ${(backgroundLightness - 5) * 100 / 90}%,
-                    oklch(0.95 0 0) 100%)`
-                }}
-              />
-              <div className="mt-2 text-xs">
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>当前背景色:</span>
-                  <span className="font-mono text-foreground">
-                    {generateColorValue(backgroundLightness)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 字体颜色调节 */}
-            <div>
-              <label className="text-xs text-foreground block mb-2">
-                静音文本亮度: {mutedForegroundLightness}%
-              </label>
-              <input
-                type="range"
-                min="10"
-                max="95"
-                value={mutedForegroundLightness}
-                onChange={(e) => handleTextColorChange(Number(e.target.value))}
-                className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer slider"
-                style={{
-                  background: `linear-gradient(to right,
-                    oklch(0.10 0 0) 0%,
-                    oklch(${mutedForegroundLightness / 100} 0 0) ${(mutedForegroundLightness - 10) * 100 / 85}%,
-                    oklch(0.95 0 0) 100%)`
-                }}
-              />
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>当前文本色:</span>
-                <span className="font-mono text-foreground">
-                  {generateColorValue(mutedForegroundLightness)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>预览效果:</span>
-                <span
-                  style={{
-                    color: generateColorValue(mutedForegroundLightness),
-                    fontWeight: '500'
-                  }}
-                >
-                  这是预览文本
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-border/50">
-              <div className="text-xs space-y-1" style={{ color: 'var(--dynamic-muted-foreground, oklch(0.75 0 0))' }}>
-                <p>• Header 上半滑块：调节顶部上半部分颜色</p>
-                <p>• Header 下半滑块：调节顶部下半部分颜色</p>
-                <p>• 背景色滑块：调节页面整体背景</p>
-                <p>• 文本色滑块：调节静音文本颜色</p>
-                <p>• 实时预览颜色变化效果</p>
-                <p>• Header 中间有一条分割线</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 relative overflow-hidden">
         {/* 上半部分 */}
@@ -458,29 +277,6 @@ export default function Page() {
           )}
         </main>
       </div>
-
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          background: var(--primary);
-          border-radius: 50%;
-          cursor: pointer;
-          border: 2px solid var(--background);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .slider::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          background: var(--primary);
-          border-radius: 50%;
-          cursor: pointer;
-          border: 2px solid var(--background);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-      `}</style>
     </div>
   )
 }

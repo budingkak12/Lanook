@@ -30,7 +30,7 @@ export function StepContent({ content, isLastStep }: StepContentProps) {
     >
       <h2 className="text-3xl font-normal text-foreground mb-4 text-balance">{content.title}</h2>
 
-      <p style={{ color: 'var(--dynamic-muted-foreground, oklch(0.90 0 0))' }} className="text-base mb-8 leading-relaxed">{content.description}</p>
+      <p className="text-base text-muted-foreground mb-8 leading-relaxed">{content.description}</p>
 
       <div className="space-y-8">
         {content.sections.map((section, index) => (
@@ -48,8 +48,7 @@ export function StepContent({ content, isLastStep }: StepContentProps) {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.2, delay: index * 0.1 + itemIndex * 0.05 }}
-                  style={{ color: 'var(--dynamic-muted-foreground, oklch(0.90 0 0))' }}
-                  className="flex items-start gap-3 leading-relaxed"
+                  className="flex items-start gap-3 text-muted-foreground leading-relaxed"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
                   <span>{item}</span>
