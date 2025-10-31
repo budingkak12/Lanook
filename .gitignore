@@ -71,7 +71,7 @@ desktop.ini
 .cxx
 local.properties
 __pycache__/
-
+webclient/android-studio-tutorial
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
