@@ -6,11 +6,19 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, R
 from app.schemas.setup import (
     DirectoryEntryModel,
     DirectoryListResponse,
+    CommonFolderEntryModel,
+    CommonFolderCategory,
+    OSInfoResponse,
+    ProbeRequest,
+    ProbeResultModel,
     InitializationStateModel,
     InitializationStatusResponse,
     MediaRootRequest,
 )
 from app.services.filesystem_browser import DirectoryInfo, list_roots, list_subdirectories
+from app.services.permissions import probe_paths
+from app.services.common_folders import list_common_folders
+from app.services.network_info import list_lan_ips, detect_os_name
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import (
     MediaInitializationError,
@@ -67,6 +75,25 @@ def get_directory_listing(path: str = Query(..., description="要查看的目录
     )
 
 
+@router.get("/filesystem/common-folders", response_model=list[CommonFolderEntryModel])
+def get_common_folders():
+    infos = list_common_folders()
+    results: list[CommonFolderEntryModel] = []
+    for info in infos:
+        results.append(
+            CommonFolderEntryModel(
+                path=info.path,
+                name=info.name,
+                readable=info.readable,
+                writable=info.writable,
+                is_root=info.is_root,
+                is_symlink=info.is_symlink,
+                category=CommonFolderCategory(info.category),
+            )
+        )
+    return results
+
+
 @router.post("/media-root", response_model=InitializationStatusResponse, status_code=202)
 def set_media_root(
     request: Request,
@@ -96,6 +123,23 @@ def set_media_root(
         message=status.message,
         media_root_path=status.media_root_path,
     )
+
+
+@router.get("/os-info", response_model=OSInfoResponse)
+def get_os_info(request: Request):
+    try:
+        port = int(request.headers.get("x-forwarded-port") or request.url.port or 8000)
+    except Exception:
+        port = 8000
+    return OSInfoResponse(os=detect_os_name(), lan_ips=list_lan_ips(), port=port)
+
+
+@router.post("/permissions/probe", response_model=list[ProbeResultModel])
+def post_permissions_probe(payload: ProbeRequest):
+    results = probe_paths(payload.paths)
+    return [
+        ProbeResultModel(path=r.path, status=r.status, reason=r.reason) for r in results
+    ]
 
 
 @router.get("/init-status", response_model=InitializationStatusResponse)

@@ -127,3 +127,62 @@ export function friendlyDeleteError(reasons: (string | undefined | null)[]): str
   }
   return null
 }
+
+// ===== setup/permissions/os-info =====
+
+export type OSInfo = {
+  os: "macos" | "windows" | "linux" | string
+  lan_ips: string[]
+  port: number
+}
+
+export type CommonFolderCategory =
+  | "desktop"
+  | "documents"
+  | "downloads"
+  | "pictures"
+  | "videos"
+  | "music"
+  | "home"
+  | "volume"
+
+export type CommonFolderEntry = {
+  path: string
+  name: string
+  readable: boolean
+  writable: boolean
+  is_root: boolean
+  is_symlink: boolean
+  category: CommonFolderCategory
+}
+
+export type ProbeStatus = "ok" | "denied" | "not_found" | "error"
+
+export type ProbeResult = {
+  path: string
+  status: ProbeStatus
+  reason?: string | null
+}
+
+export async function getOSInfo(): Promise<OSInfo | null> {
+  try {
+    const resp = await apiFetch("/os-info")
+    if (!resp.ok) return null
+    return (await resp.json()) as OSInfo
+  } catch {
+    return null
+  }
+}
+
+export async function getCommonFolders(): Promise<CommonFolderEntry[]> {
+  const resp = await apiFetch("/filesystem/common-folders")
+  if (!resp.ok) return []
+  return (await resp.json()) as CommonFolderEntry[]
+}
+
+export async function probePermissions(paths: string[]): Promise<ProbeResult[]> {
+  if (paths.length === 0) return []
+  const resp = await apiFetch("/permissions/probe", buildJsonRequestInit("POST", { paths }))
+  if (!resp.ok) return []
+  return (await resp.json()) as ProbeResult[]
+}

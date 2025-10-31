@@ -34,3 +34,43 @@ class InitializationStatusResponse(BaseModel):
     state: InitializationStateModel
     message: Optional[str] = None
     media_root_path: Optional[str] = None
+
+
+# ===== 新增：常用目录与权限/系统信息 =====
+
+class CommonFolderCategory(str, Enum):
+    DESKTOP = "desktop"
+    DOCUMENTS = "documents"
+    DOWNLOADS = "downloads"
+    PICTURES = "pictures"
+    VIDEOS = "videos"
+    MUSIC = "music"
+    HOME = "home"
+    VOLUME = "volume"
+
+
+class CommonFolderEntryModel(DirectoryEntryModel):
+    category: CommonFolderCategory
+
+
+class OSInfoResponse(BaseModel):
+    os: str
+    lan_ips: List[str]
+    port: int
+
+
+class ProbeRequest(BaseModel):
+    paths: List[str]
+
+
+class ProbeStatus(str, Enum):
+    OK = "ok"
+    DENIED = "denied"
+    NOT_FOUND = "not_found"
+    ERROR = "error"
+
+
+class ProbeResultModel(BaseModel):
+    path: str
+    status: ProbeStatus
+    reason: Optional[str] = None

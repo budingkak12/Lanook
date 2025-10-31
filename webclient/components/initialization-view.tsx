@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "react-i18next"
+import { InitCommonFolders } from "@/components/init-common-folders"
 
 interface DirectoryEntry {
   path: string
@@ -38,6 +39,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   const [parentPath, setParentPath] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const { toast } = useToast()
   const isRootView = !currentPath
   const displayedEntries = isRootView ? roots : currentDir
@@ -284,15 +286,29 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
         {/* 状态显示 */}
   
-        {/* 目录选择区域 */}
-        <Card>
+        {/* 常用文件夹优先（适合小白） */}
+        <InitCommonFolders
+          selectedPath={selectedPath}
+          onChangePath={(p) => setSelectedPath(p)}
+          onStart={startInitialization}
+          isStarting={isInitializing}
+        />
+
+        {/* 高级浏览（默认收起） */}
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={() => setShowAdvanced((v) => !v)}>
+            {showAdvanced ? "收起高级浏览" : "需要浏览任意位置？展开高级浏览"}
+          </Button>
+        </div>
+        {showAdvanced && (
+        <Card id="advanced-browser">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FolderOpen className="w-5 h-5" />
-              选择媒体目录
+              浏览其他位置（高级）
             </CardTitle>
             <CardDescription>
-              选择包含您的照片和视频的文件夹
+              若需要选择非常规位置，可在此浏览/输入路径
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -394,28 +410,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
               </CardContent>
         </Card>
-
-        {/* 操作按钮 */}
-        <div className="flex justify-center">
-          <Button
-            size="lg"
-            onClick={startInitialization}
-            disabled={!selectedPath.trim() || isInitializing}
-            className="min-w-48"
-          >
-            {isInitializing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                初始化中...
-              </>
-            ) : (
-              <>
-                开始初始化
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </>
-            )}
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   )
