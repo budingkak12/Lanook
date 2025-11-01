@@ -99,8 +99,8 @@
       "description": ""
     },
     "step2": {
-      "title": "2. 选择添加方式",
-      "description": "选择要添加的媒体来源类型"
+      "title": "选择媒体来源",
+      "description": ""
     },
     "step3": {
       "title": "3. 媒体路径清单",
@@ -113,7 +113,7 @@
     "sourceType": {
       "local": {
         "title": "本机文件夹",
-        "description": "选择本机上的照片或视频文件夹",
+        "description": "",
         "commonPaths": "常用路径",
         "customPath": "自定义路径",
         "selectButton": "选择文件夹",
@@ -121,7 +121,7 @@
       },
       "network": {
         "title": "局域网设备",
-        "description": "连接局域网内的NAS或其他共享设备",
+        "description": "",
         "smbShare": "SMB共享",
         "deviceList": "设备列表",
         "connectButton": "连接设备",

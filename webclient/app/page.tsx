@@ -25,7 +25,7 @@ export default function Page() {
     },
     {
       id: 2,
-      title: "选择添加方式",
+      title: t('init.step2.title'),
       content: {
         title: t('init.step2.title'),
         description: "",

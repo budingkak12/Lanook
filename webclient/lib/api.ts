@@ -198,3 +198,102 @@ export async function probePermissions(paths: string[]): Promise<ProbeResult[]> 
   if (!resp.ok) return []
   return (await resp.json()) as ProbeResult[]
 }
+
+export interface FolderItem {
+  name: string
+  path: string
+  type: 'folder' | 'file'
+  size?: number
+  modified?: string
+}
+
+export async function listFolderContents(path: string): Promise<FolderItem[]> {
+  const resp = await apiFetch(`/filesystem/list?path=${encodeURIComponent(path)}`)
+  if (!resp.ok) return []
+  const data = await resp.json()
+  // API返回的是 { entries: FolderItem[] } 结构
+  if (data && data.entries && Array.isArray(data.entries)) {
+    return data.entries.map((entry: any) => ({
+      name: entry.name,
+      path: entry.path,
+      type: 'folder' as const, // API只返回文件夹
+      size: entry.size,
+      modified: entry.modified
+    }))
+  }
+  return []
+}
+
+// ===== 媒体来源管理 API =====
+
+export type SourceType = 'local' | 'smb'
+
+export interface MediaSource {
+  id: number
+  type: SourceType
+  displayName: string | null
+  rootPath: string
+  createdAt: string
+}
+
+export interface SourceValidationRequest {
+  type: SourceType
+  path?: string // for local
+  host?: string // for smb
+  share?: string // for smb
+  subPath?: string // for smb
+  anonymous?: boolean // for smb
+  username?: string // for smb
+  password?: string // for smb
+  domain?: string // for smb
+}
+
+export interface SourceValidationResponse {
+  ok: boolean
+  readable: boolean
+  absPath: string
+  estimatedCount: number
+  samples: string[]
+  note: string
+}
+
+export interface CreateSourceRequest {
+  type: SourceType
+  rootPath: string
+  displayName?: string
+  // SMB fields
+  host?: string
+  share?: string
+  subPath?: string
+  username?: string
+  password?: string
+  domain?: string
+  anonymous?: boolean
+}
+
+// 验证媒体来源
+export async function validateMediaSource(request: SourceValidationRequest): Promise<SourceValidationResponse> {
+  const response = await apiFetch("/setup/source/validate", buildJsonRequestInit("POST", request))
+  const ensured = await ensureOk(response)
+  return (await ensured.json()) as SourceValidationResponse
+}
+
+// 创建媒体来源
+export async function createMediaSource(request: CreateSourceRequest): Promise<MediaSource> {
+  const response = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
+  const ensured = await ensureOk(response)
+  return (await ensured.json()) as MediaSource
+}
+
+// 获取媒体来源列表
+export async function getMediaSources(): Promise<MediaSource[]> {
+  const response = await apiFetch("/media-sources")
+  const ensured = await ensureOk(response)
+  return (await ensured.json()) as MediaSource[]
+}
+
+// 删除媒体来源
+export async function deleteMediaSource(id: number): Promise<void> {
+  const response = await apiFetch(`/media-sources/${id}`, { method: "DELETE" })
+  await ensureOk(response)
+}
