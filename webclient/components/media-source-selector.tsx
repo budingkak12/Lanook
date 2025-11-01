@@ -110,6 +110,7 @@ export function MediaSourceSelector() {
         setIsLoadingContents(true)
         setCurrentFolderPath(folder.path)
         setSelectedPath(folder.path)
+        setIsBrowsingFolder(true) // 重要：设置浏览状态为true
 
         const contents = await listFolderContents(folder.path)
         const foldersOnly = contents.filter(item => item.type === 'folder')
@@ -123,13 +124,69 @@ export function MediaSourceSelector() {
     }
   }
 
-  const handleBackToCommon = () => {
-    setIsBrowsingFolder(false)
-    setSelectedPath('')
+  const handleBackToCommon = async () => {
+    if (currentFolderPath) {
+      // 获取上级目录路径
+      const parentPath = currentFolderPath.split('/').slice(0, -1).join('/')
+
+      if (parentPath && parentPath !== currentFolderPath) {
+        // 返回到上级目录
+        try {
+          setIsLoadingContents(true)
+          setCurrentFolderPath(parentPath)
+          setSelectedPath(parentPath)
+
+          const contents = await listFolderContents(parentPath)
+          const foldersOnly = contents.filter(item => item.type === 'folder')
+          setFolderContents(foldersOnly)
+        } catch (error) {
+          console.error('返回上级目录失败:', error)
+          setFolderContents([])
+        } finally {
+          setIsLoadingContents(false)
+        }
+      } else {
+        // 如果已经是顶层，则返回到常用路径
+        setIsBrowsingFolder(false)
+        setSelectedPath('')
+      }
+    }
   }
 
   const handleBrowseFolder = () => {
     setIsFolderBrowserOpen(true)
+  }
+
+  // 格式化路径显示，省略前半部分，适应小屏幕
+  const formatPath = (path: string): string => {
+    const parts = path.split('/').filter(part => part !== '') // 过滤掉空部分
+
+    // 对于短路径，完整显示
+    if (parts.length <= 3) {
+      return path
+    }
+
+    // 对于长路径（7个部分以上），只保留最后3个部分
+    if (parts.length > 7) {
+      const lastParts = parts.slice(-3)
+      return `.../${lastParts.join('/')}`
+    }
+
+    // 对于中等长度的路径（4-7个部分），保留前面2个和最后2个部分
+    if (parts.length > 5) {
+      const first = parts.slice(0, 2)
+      const lastParts = parts.slice(-2)
+      return `${first.join('/')}/.../${lastParts.join('/')}`
+    }
+
+    // 对于稍长的路径（4-5个部分），保留前面1个和最后2个部分
+    if (parts.length > 3) {
+      const first = parts[0]
+      const lastParts = parts.slice(-2)
+      return `${first}/.../${lastParts.join('/')}`
+    }
+
+    return path
   }
 
   return (
@@ -152,7 +209,7 @@ export function MediaSourceSelector() {
         transition={{ duration: 0.3, delay: 0.1 }}
         style={{ height: '600px' }}
       >
-        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-4 h-full flex flex-col">
+        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-2 h-full flex flex-col">
           {/* 本机文件夹板块标题 */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
@@ -166,7 +223,7 @@ export function MediaSourceSelector() {
           </div>
 
           {/* 文件夹浏览区域 */}
-          <div className="space-y-4 flex-1 flex flex-col min-h-0">
+          <div className="space-y-1 flex-1 flex flex-col min-h-0">
             {/* 头部：返回按钮 + 当前路径 */}
             <div className="flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
@@ -179,16 +236,16 @@ export function MediaSourceSelector() {
                 >
                   ←
                 </Button>
-                </div>
-              {isBrowsingFolder && (
-                <div className="text-xs text-muted-foreground/80 truncate flex-1 text-right ml-2" title={currentFolderPath}>
-                  {currentFolderPath}
-                </div>
-              )}
+                {isBrowsingFolder && (
+                  <div className="text-xs text-muted-foreground/80 truncate max-w-[300px]" title={currentFolderPath}>
+                    {formatPath(currentFolderPath)}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 文件夹列表 */}
-            <div className="grid grid-cols-1 gap-2 overflow-y-auto flex-1 min-h-0">
+            <div className="overflow-y-auto flex-1 min-h-0 space-y-2 justify-start">
               {isBrowsingFolder ? (
                 // 显示当前文件夹内容
                 isLoadingContents ? (
@@ -206,16 +263,18 @@ export function MediaSourceSelector() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className="flex items-center justify-between p-3 bg-background/60 border border-border/30 rounded-lg hover:bg-white/20 hover:shadow-lg hover:scale-[1.02] hover:border-white/40 transition-all duration-200 cursor-pointer group"
+                      className="flex items-center justify-between p-2 h-14 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-white/30 hover:shadow-xl hover:scale-[1.02] hover:border-white/50 transition-all duration-200 cursor-pointer group"
                       onClick={() => handleFolderNavigate(folder)}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center">
-                          <span className="text-xs">{folder.name.charAt(0)}</span>
+                          <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                          </svg>
                         </div>
                         <div className="min-w-0 flex-1 overflow-hidden">
                           <div className="text-sm font-medium text-foreground truncate">{folder.name}</div>
-                          <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>{folder.path}</div>
+                          <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>{formatPath(folder.path)}</div>
                         </div>
                       </div>
                       <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,8 +302,8 @@ export function MediaSourceSelector() {
                         key={index}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2, delay: 0.1 + index * 0.05 }}
-                        className="flex items-center justify-between p-3 bg-background/60 border border-border/30 rounded-lg hover:bg-white/20 hover:shadow-lg hover:scale-[1.02] hover:border-white/40 transition-all duration-200 cursor-pointer group"
+                        transition={{ duration: 0.2, delay: index * 0.02 }}
+                        className="flex items-center justify-between p-2 h-14 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-white/20 hover:shadow-lg hover:scale-[1.02] hover:border-white/40 transition-all duration-200 cursor-pointer group"
                         onClick={() => handleCommonPathClick(folder.path)}
                       >
                         <div className="flex items-center gap-3">
@@ -255,20 +314,12 @@ export function MediaSourceSelector() {
                           </div>
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <div className="text-sm font-medium text-foreground truncate">{folder.name}</div>
-                            <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>{folder.path}</div>
+                            <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>{formatPath(folder.path)}</div>
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 hover:bg-white/30 text-xs group-hover:bg-white/25 group-hover:text-foreground group-hover:shadow-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleSelectPath(folder.path)
-                          }}
-                        >
-                          选择
-                        </Button>
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </motion.div>
                     ))
                 )
