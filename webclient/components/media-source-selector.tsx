@@ -183,17 +183,7 @@ export function MediaSourceSelector() {
 
   return (
     <div className="space-y-4">
-      {/* 标题模块 */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm">
-          <h2 className="text-2xl font-medium text-foreground text-center">{t('init.step2.title')}</h2>
-        </div>
-      </motion.div>
-
+  
       {/* 本机文件夹框架 */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -203,16 +193,9 @@ export function MediaSourceSelector() {
       >
         <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-2 h-full flex flex-col">
           {/* 本机文件夹板块标题 */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-medium text-foreground">
-              {t('init.sourceType.local.title')}
-            </h3>
-          </div>
+          <h3 className="text-lg font-medium text-foreground mb-3">
+            {t('init.sourceType.local.title')}
+          </h3>
 
           {/* 文件夹浏览区域 */}
           <div className="space-y-1 flex-1 flex flex-col min-h-0">

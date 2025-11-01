@@ -165,7 +165,13 @@ export default function Page() {
                 {currentStep === 1 ? (
                   <LanguageSelector />
                 ) : currentStep === 2 ? (
-                  <MediaSourceSelector />
+                  <>
+                    {/* 页面顶部小标题 */}
+                    <div className="text-center pb-4">
+                      <h2 className="text-lg font-medium text-muted-foreground/80">{t('init.step2.title')}</h2>
+                    </div>
+                    <MediaSourceSelector />
+                  </>
                 ) : (
                   <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
                 )}
