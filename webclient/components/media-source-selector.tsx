@@ -5,13 +5,11 @@ import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { FolderBrowser } from '@/components/folder-browser'
 import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, type CommonFolderEntry, type FolderItem } from '@/lib/api'
 
 export function MediaSourceSelector() {
   const { t } = useTranslation()
-  const [isFolderBrowserOpen, setIsFolderBrowserOpen] = useState(false)
-  const [selectedPath, setSelectedPath] = useState('')
+    const [selectedPath, setSelectedPath] = useState('')
   const [isValidating, setIsValidating] = useState(false)
   const [validationResult, setValidationResult] = useState<string | null>(null)
   const [currentFolderPath, setCurrentFolderPath] = useState('')
@@ -44,10 +42,7 @@ export function MediaSourceSelector() {
     loadCommonFolders()
   }, [])
 
-  const handleFolderSelect = (path: string) => {
-    setSelectedPath(path)
-  }
-
+  
   const handleSelectPath = async (path: string) => {
     if (!path.trim()) return
 
@@ -153,10 +148,7 @@ export function MediaSourceSelector() {
     }
   }
 
-  const handleBrowseFolder = () => {
-    setIsFolderBrowserOpen(true)
-  }
-
+  
   // 格式化路径显示，省略前半部分，适应小屏幕
   const formatPath = (path: string): string => {
     const parts = path.split('/').filter(part => part !== '') // 过滤掉空部分
@@ -340,9 +332,9 @@ export function MediaSourceSelector() {
 
           {/* 自定义路径 */}
           <div className="space-y-3 pt-3 border-t border-border/20">
-            <h4 className="text-sm font-medium text-foreground/90">
-              {t('init.sourceType.local.customPath')}
-            </h4>
+            <p className="text-xs text-muted-foreground/70">
+              从上方选择文件夹，或直接输入完整路径
+            </p>
             <div className="flex gap-2">
               <Input
                 value={selectedPath}
@@ -351,14 +343,6 @@ export function MediaSourceSelector() {
                 className="flex-1 bg-background/60 border-border/40 focus:border-border/60"
                 disabled={isValidating}
               />
-              <Button
-                variant="outline"
-                className="shrink-0 bg-background/40 border-border/40 hover:bg-background/60 text-sm px-3"
-                onClick={handleBrowseFolder}
-                disabled={isValidating}
-              >
-                {isValidating ? '处理中...' : '浏览文件夹'}
-              </Button>
             </div>
 
             {/* 验证结果 */}
@@ -376,14 +360,14 @@ export function MediaSourceSelector() {
               </motion.div>
             )}
 
-            {/* 快速添加按钮 */}
-            {selectedPath && !isValidating && !isBrowsingFolder && (
+            {/* 添加按钮 */}
+            {selectedPath && !isValidating && (
               <Button
                 onClick={() => handleSelectPath(selectedPath)}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white"
                 disabled={isValidating}
               >
-                {isValidating ? '验证中...' : `添加当前路径: ${selectedPath.split('/').pop() || selectedPath}`}
+                {isValidating ? '验证中...' : '添加此媒体来源'}
               </Button>
             )}
           </div>
@@ -491,13 +475,6 @@ export function MediaSourceSelector() {
         </div>
       </motion.div>
 
-      {/* 文件夹浏览器模态框 */}
-      <FolderBrowser
-        isOpen={isFolderBrowserOpen}
-        onClose={() => setIsFolderBrowserOpen(false)}
-        onSelect={handleFolderSelect}
-        initialPath={selectedPath || '/Users/you'}
-      />
-    </div>
+      </div>
   )
 }
