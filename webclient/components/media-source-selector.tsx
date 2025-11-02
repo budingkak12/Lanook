@@ -350,7 +350,7 @@ export function MediaSourceSelector() {
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white"
                 disabled={isValidating}
               >
-                {isValidating ? '验证中...' : '添加此媒体来源'}
+                {isValidating ? '验证中...' : '添加至媒体路径清单'}
               </Button>
             )}
           </div>
