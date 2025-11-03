@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
 import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/language-selector"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { MediaSourceSelector } from "@/components/media-source-selector"
 import { MediaPathList } from "@/components/media-path-list"
 
@@ -61,39 +62,27 @@ export default function Page() {
 
   const currentStepData = steps.find((step) => step.id === currentStep)
 
-  // 设置固定的CSS变量值（基于你满意的版本）
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const root = document.documentElement
-      root.style.setProperty('--dynamic-muted-foreground', 'oklch(0.75 0 0)')
-      root.style.setProperty('--dynamic-background', 'oklch(0.42 0.005 264)')
-      root.style.setProperty('--dynamic-header-top', 'oklch(0.47 0 0)')
-      root.style.setProperty('--dynamic-header-bottom', 'oklch(0.28 0 0)')
-    }
-  }, [])
+  // 移除硬编码的CSS变量，使用主题系统
 
   return (
     <div
-      className="min-h-screen"
-      style={{ backgroundColor: 'var(--dynamic-background, oklch(0.42 0.005 264))' }}
+      className="min-h-screen bg-background"
     >
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, transform: 'translateZ(0)' }}>
         {/* 上半部分 */}
         <div
-          className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm"
-          style={{ backgroundColor: 'var(--dynamic-header-top, oklch(0.35 0 0))' }}
+          className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm bg-card/50"
         />
         {/* 下半部分 */}
         <div
-          className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-sm"
-          style={{ backgroundColor: 'var(--dynamic-header-bottom, oklch(0.50 0 0))' }}
+          className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-sm bg-muted/50"
         />
         {/* 中间分割线 */}
         <div className="absolute inset-x-0 top-1/2 h-px bg-border/70" />
 
         {/* 内容 */}
-        <div className="relative z-10 bg-background/20 backdrop-blur-md">
+        <div className="relative z-10 bg-card/20 backdrop-blur-md">
           <div className="pr-4 pl-2 lg:pl-4 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2 lg:gap-4">
               {/* 移动端菜单按钮 */}
@@ -108,6 +97,11 @@ export default function Page() {
                 </div>
               </button>
               <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">{t('init.welcome')}</h1>
+            </div>
+
+            {/* 主题切换按钮 */}
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
             </div>
           </div>
         </div>
@@ -209,7 +203,7 @@ export default function Page() {
       {currentStep < steps.length && (
         <Button
           onClick={handleNextStep}
-          className="bg-white hover:bg-gray-100 text-black px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground border border-border/50 px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-md transition-all duration-300"
           style={{
             transform: 'translateZ(0)',
             willChange: 'transform'

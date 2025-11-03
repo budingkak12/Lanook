@@ -76,6 +76,7 @@ webclient/android-studio-tutorial
 
 # dependencies
 /node_modules
+test/
 /.pnp
 .pnp.*
 .yarn/*

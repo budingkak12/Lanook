@@ -29,11 +29,7 @@ export function LanguageSelector() {
           <Button
             variant={currentLanguage === 'zh-CN' ? 'default' : 'outline'}
             onClick={() => handleLanguageSelect('zh-CN')}
-            className={`w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300 ${
-              currentLanguage === 'zh-CN'
-                ? 'bg-white text-black shadow-md hover:shadow-lg'
-                : 'bg-transparent border-white/20 text-white hover:bg-white/10'
-            }`}
+            className="w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300"
           >
             {t('init.chinese')}
           </Button>
@@ -47,11 +43,7 @@ export function LanguageSelector() {
           <Button
             variant={currentLanguage === 'en-US' ? 'default' : 'outline'}
             onClick={() => handleLanguageSelect('en-US')}
-            className={`w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300 ${
-              currentLanguage === 'en-US'
-                ? 'bg-white text-black shadow-md hover:shadow-lg'
-                : 'bg-transparent border-white/20 text-white hover:bg-white/10'
-            }`}
+            className="w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300"
           >
             {t('init.english')}
           </Button>

@@ -45,9 +45,6 @@ export function StepNavigation({ steps, currentStep, onStepClick }: StepNavigati
                 isActive && "font-medium text-primary-foreground",
                 !isActive && "text-muted-foreground",
               )}
-              style={{
-                color: isActive ? 'inherit' : 'var(--dynamic-muted-foreground, oklch(0.75 0 0))'
-              }}
             >
               {step.title}
             </span>

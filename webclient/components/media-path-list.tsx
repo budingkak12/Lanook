@@ -70,7 +70,7 @@ export function MediaPathList() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
-                    className="flex items-center justify-between p-2 sm:p-3 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-white/30 hover:shadow-xl hover:border-white/50 transition-all duration-200 group cursor-pointer"
+                    className="flex items-center justify-between p-2 sm:p-3 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-card/50 hover:shadow-xl hover:border-border/50 transition-all duration-200 group cursor-pointer"
                     onClick={() => setSelectedSource(source)}
                   >
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">

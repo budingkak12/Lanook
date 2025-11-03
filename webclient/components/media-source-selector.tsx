@@ -214,7 +214,7 @@ export function MediaSourceSelector() {
                   variant="ghost"
                   size="sm"
                   onClick={isBrowsingFolder ? handleBackToCommon : undefined}
-                  className="h-8 w-8 p-0 hover:bg-white/20 flex-shrink-0"
+                  className="h-8 w-8 p-0 hover:bg-accent/20 flex-shrink-0"
                   disabled={!isBrowsingFolder}
                 >
                   ←
@@ -246,7 +246,7 @@ export function MediaSourceSelector() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className="flex items-center justify-between p-2 h-14 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-white/30 hover:shadow-xl hover:border-white/50 transition-all duration-200 cursor-pointer group"
+                      className="flex items-center justify-between p-2 h-14 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-card/50 hover:shadow-xl hover:border-border/50 transition-all duration-200 cursor-pointer group"
                       onClick={() => handleFolderNavigate(folder)}
                     >
                       <div className="flex items-center gap-3">
@@ -286,7 +286,7 @@ export function MediaSourceSelector() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2, delay: index * 0.02 }}
-                        className="flex items-center justify-between p-2 h-14 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-white/20 hover:shadow-lg hover:border-white/40 transition-all duration-200 cursor-pointer group"
+                        className="flex items-center justify-between p-2 h-14 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-card/30 hover:shadow-lg hover:border-border/40 transition-all duration-200 cursor-pointer group"
                         onClick={() => handleCommonPathClick(folder.path)}
                       >
                         <div className="flex items-center gap-3">
