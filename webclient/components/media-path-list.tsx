@@ -50,7 +50,7 @@ export function MediaPathList() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="bg-background/30 border border-border/30 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm space-y-2 w-full" style={{ minHeight: '300px', maxHeight: '500px' }}>
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg space-y-2 w-full" style={{ minHeight: '300px', maxHeight: '500px' }}>
   
           {/* 路径列表 */}
           <div className="space-y-1 flex-1 flex flex-col min-h-0">

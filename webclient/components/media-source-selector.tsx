@@ -199,7 +199,7 @@ export function MediaSourceSelector() {
         transition={{ duration: 0.3, delay: 0.1 }}
         style={{ height: '600px' }}
       >
-        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-2 h-full flex flex-col w-full">
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-2 h-full flex flex-col w-full">
           {/* 本机文件夹板块标题 */}
           <h3 className="text-lg font-medium text-foreground mb-3">
             {t('init.sourceType.local.title')}
@@ -370,7 +370,7 @@ export function MediaSourceSelector() {
         transition={{ duration: 0.3, delay: 0.2 }}
         className="flex-shrink-0"
       >
-        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-4 w-full">
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-4 w-full">
           {/* 局域网设备板块标题 */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
