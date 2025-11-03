@@ -18,6 +18,7 @@ export function MediaSourceSelector() {
   const [commonFolders, setCommonFolders] = useState<CommonFolderEntry[]>([])
   const [isLoadingFolders, setIsLoadingFolders] = useState(false)
   const [isLoadingContents, setIsLoadingContents] = useState(false)
+  const [browsingPath, setBrowsingPath] = useState('') // 新增：当前浏览的路径，不显示在地址栏
 
   // 模拟局域网设备
   const networkDevices = [
@@ -46,8 +47,7 @@ export function MediaSourceSelector() {
   const handleSelectPath = async (path: string) => {
     if (!path.trim()) return
 
-    setSelectedPath(path)
-    setValidationResult(null)
+    setValidationResult(null) // 清空之前的验证结果
 
     try {
       setIsValidating(true)
@@ -84,7 +84,7 @@ export function MediaSourceSelector() {
     try {
       setIsLoadingContents(true)
       setCurrentFolderPath(path)
-      setSelectedPath(path)
+      setBrowsingPath(path) // 设置浏览路径，不填充到地址栏
       setIsBrowsingFolder(true)
 
       const contents = await listFolderContents(path)
@@ -104,7 +104,7 @@ export function MediaSourceSelector() {
       try {
         setIsLoadingContents(true)
         setCurrentFolderPath(folder.path)
-        setSelectedPath(folder.path)
+        setBrowsingPath(folder.path) // 设置浏览路径，不填充到地址栏
         setIsBrowsingFolder(true) // 重要：设置浏览状态为true
 
         const contents = await listFolderContents(folder.path)
@@ -129,7 +129,7 @@ export function MediaSourceSelector() {
         try {
           setIsLoadingContents(true)
           setCurrentFolderPath(parentPath)
-          setSelectedPath(parentPath)
+          setBrowsingPath(parentPath) // 设置浏览路径，不填充到地址栏
 
           const contents = await listFolderContents(parentPath)
           const foldersOnly = contents.filter(item => item.type === 'folder')
@@ -143,8 +143,16 @@ export function MediaSourceSelector() {
       } else {
         // 如果已经是顶层，则返回到常用路径
         setIsBrowsingFolder(false)
-        setSelectedPath('')
+        setBrowsingPath('') // 清空浏览路径
       }
+    }
+  }
+
+  // 新增：选择当前文件夹按钮点击处理
+  const handleSelectCurrentFolder = () => {
+    if (browsingPath) {
+      setSelectedPath(browsingPath) // 只有点击按钮才填充到地址栏
+      setValidationResult(null) // 清空之前的验证结果
     }
   }
 
@@ -302,13 +310,13 @@ export function MediaSourceSelector() {
             </div>
 
             {/* 浏览模式下选择按钮 */}
-            {isBrowsingFolder && selectedPath && (
+            {isBrowsingFolder && browsingPath && (
               <Button
-                onClick={() => handleSelectPath(selectedPath)}
+                onClick={handleSelectCurrentFolder}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white"
                 disabled={isValidating}
               >
-                {isValidating ? '验证中...' : `选择当前文件夹: ${selectedPath.split('/').pop() || selectedPath}`}
+                {isValidating ? '验证中...' : `选择当前文件夹: ${browsingPath.split('/').pop() || browsingPath}`}
               </Button>
             )}
           </div>
@@ -343,16 +351,14 @@ export function MediaSourceSelector() {
               </motion.div>
             )}
 
-            {/* 添加按钮 */}
-            {selectedPath && !isValidating && (
-              <Button
-                onClick={() => handleSelectPath(selectedPath)}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                disabled={isValidating}
-              >
-                {isValidating ? '验证中...' : '添加至媒体路径清单'}
-              </Button>
-            )}
+            {/* 添加按钮 - 始终存在，有地址时才可点击 */}
+            <Button
+              onClick={() => selectedPath && handleSelectPath(selectedPath)}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedPath || isValidating}
+            >
+              {isValidating ? '验证中...' : '添加至媒体路径清单'}
+            </Button>
           </div>
         </div>
       </motion.div>
