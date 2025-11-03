@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
 
 interface ContentSection {
   heading: string
@@ -28,8 +29,6 @@ export function StepContent({ content, isLastStep }: StepContentProps) {
       transition={{ duration: 0.4, ease: "easeInOut" }}
       className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-8 shadow-lg"
     >
-      <h2 className="text-3xl font-normal text-foreground mb-4 text-balance">{content.title}</h2>
-
       <p className="text-base text-muted-foreground mb-8 leading-relaxed">{content.description}</p>
 
       <div className="space-y-8">
@@ -64,9 +63,17 @@ export function StepContent({ content, isLastStep }: StepContentProps) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3, delay: 0.4 }}
-          className="mt-8 p-6 bg-primary/10 border border-primary/30 rounded-xl backdrop-blur-sm"
+          className="mt-8 flex justify-center"
         >
-          <p className="text-center text-foreground font-medium">🎉 恭喜您完成所有步驟！</p>
+          <Button
+            onClick={() => {
+              // TODO: 切换到媒体浏览界面，这里暂时先重新加载页面
+              window.location.reload()
+            }}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-md transition-all duration-300"
+          >
+            进入首页
+          </Button>
         </motion.div>
       )}
     </motion.div>

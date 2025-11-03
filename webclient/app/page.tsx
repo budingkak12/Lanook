@@ -45,7 +45,7 @@ export default function Page() {
     },
     {
       id: 4,
-      title: "开始浏览",
+      title: "完成",
       content: {
         title: t('init.step4.title'),
         description: "",
@@ -163,7 +163,13 @@ export default function Page() {
             {currentStepData && (
               <>
                 {currentStep === 1 ? (
-                  <LanguageSelector />
+                  <>
+                    {/* 页面顶部小标题 */}
+                    <div className="text-center pb-4">
+                      <h2 className="text-lg font-medium text-muted-foreground/80">选择语言</h2>
+                    </div>
+                    <LanguageSelector />
+                  </>
                 ) : currentStep === 2 ? (
                   <>
                     {/* 页面顶部小标题 */}
@@ -179,6 +185,14 @@ export default function Page() {
                       <h2 className="text-lg font-medium text-muted-foreground/80 text-center">媒体路径清单</h2>
                     </div>
                     <MediaPathList />
+                  </>
+                ) : currentStep === 4 ? (
+                  <>
+                    {/* 页面顶部小标题 */}
+                    <div className="text-center pb-4">
+                      <h2 className="text-lg font-medium text-muted-foreground/80 text-center">完成</h2>
+                    </div>
+                    <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
                   </>
                 ) : (
                   <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
