@@ -190,8 +190,8 @@ export function MediaSourceSelector() {
   }
 
   return (
-    <div className="space-y-4">
-  
+    <div className="space-y-3 w-full">
+
       {/* 本机文件夹框架 */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -199,7 +199,7 @@ export function MediaSourceSelector() {
         transition={{ duration: 0.3, delay: 0.1 }}
         style={{ height: '600px' }}
       >
-        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-2 h-full flex flex-col">
+        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-2 h-full flex flex-col w-full">
           {/* 本机文件夹板块标题 */}
           <h3 className="text-lg font-medium text-foreground mb-3">
             {t('init.sourceType.local.title')}
@@ -370,7 +370,7 @@ export function MediaSourceSelector() {
         transition={{ duration: 0.3, delay: 0.2 }}
         className="flex-shrink-0"
       >
-        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-4">
+        <div className="bg-background/30 border border-border/30 rounded-xl p-4 shadow-sm space-y-4 w-full">
           {/* 局域网设备板块标题 */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -393,7 +393,7 @@ export function MediaSourceSelector() {
               {t('init.sourceType.network.smbShare')}
             </h4>
             <div className="space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder="192.168.1.10"
                   className="flex-1 bg-background/60 border-border/40 focus:border-border/60 text-sm"
@@ -402,11 +402,11 @@ export function MediaSourceSelector() {
                   placeholder="共享名称"
                   className="flex-1 bg-background/60 border-border/40 focus:border-border/60 text-sm"
                 />
-                <Button variant="outline" className="shrink-0 bg-background/40 border-border/40 hover:bg-background/60 text-sm px-3">
+                <Button variant="outline" className="shrink-0 bg-background/40 border-border/40 hover:bg-background/60 text-sm px-3 w-full sm:w-auto">
                   连接
                 </Button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="text"
                   placeholder="用户名 (可选)"

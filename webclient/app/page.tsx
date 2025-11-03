@@ -7,6 +7,7 @@ import { StepContent } from "@/components/step-content"
 import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/language-selector"
 import { MediaSourceSelector } from "@/components/media-source-selector"
+import { MediaPathList } from "@/components/media-path-list"
 
 export default function Page() {
   const { t } = useTranslation()
@@ -154,10 +155,15 @@ export default function Page() {
 
         {/* Main Content */}
         <main
-          className="flex-1 lg:ml-44 ml-0 lg:pl-1 pl-1 pr-1 lg:pr-1 lg:relative"
+          className="flex-1 lg:ml-44 ml-0 lg:pl-1 pl-1 pr-1 lg:pr-1 lg:relative pb-24"
           onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
+          style={{
+            minHeight: 'calc(100vh - 6rem)',
+            maxHeight: 'calc(100vh - 6rem)',
+            overflowY: 'auto'
+          }}
         >
-          <div className="max-w-2xl mx-auto">
+          <div className="w-full max-w-2xl mx-auto px-2 sm:px-4 h-full">
 
             {/* Step Content */}
             {currentStepData && (
@@ -172,6 +178,14 @@ export default function Page() {
                     </div>
                     <MediaSourceSelector />
                   </>
+                ) : currentStep === 3 ? (
+                  <>
+                    {/* 页面顶部小标题 */}
+                    <div className="text-center pb-4">
+                      <h2 className="text-lg font-medium text-muted-foreground/80 text-center">媒体路径清单</h2>
+                    </div>
+                    <MediaPathList />
+                  </>
                 ) : (
                   <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
                 )}
@@ -182,17 +196,29 @@ export default function Page() {
         </main>
       </div>
 
-      {/* Fixed Bottom Navigation Button */}
+    {/* Fixed Bottom Navigation Button - 使用React.memo优化重渲染 */}
+    <div
+      className="fixed bottom-8 right-4 z-[99999]"
+      style={{
+        transform: 'translateZ(0)',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        isolation: 'isolate' // 创建新的层叠上下文
+      }}
+    >
       {currentStep < steps.length && (
-        <div className="fixed bottom-8 right-4 z-[9999]">
-          <Button
-            onClick={handleNextStep}
-            className="bg-white hover:bg-gray-100 text-black px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300"
-          >
-            {t('init.nextStep')}
-          </Button>
-        </div>
+        <Button
+          onClick={handleNextStep}
+          className="bg-white hover:bg-gray-100 text-black px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all duration-300"
+          style={{
+            transform: 'translateZ(0)',
+            willChange: 'transform'
+          }}
+        >
+          {t('init.nextStep')}
+        </Button>
       )}
+    </div>
     </div>
   )
 }

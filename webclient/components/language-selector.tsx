@@ -18,9 +18,9 @@ export function LanguageSelector() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeInOut" }}
-      className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-8 shadow-lg"
+      className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg sm:rounded-xl p-4 sm:p-6 lg:p-8 shadow-lg w-full max-w-sm mx-auto"
     >
-      <div className="flex flex-col items-center justify-center gap-6">
+      <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 w-full">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -29,7 +29,7 @@ export function LanguageSelector() {
           <Button
             variant={currentLanguage === 'zh-CN' ? 'default' : 'outline'}
             onClick={() => handleLanguageSelect('zh-CN')}
-            className={`w-48 px-8 py-4 text-lg rounded-xl transition-all duration-300 ${
+            className={`w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300 ${
               currentLanguage === 'zh-CN'
                 ? 'bg-white text-black shadow-md hover:shadow-lg'
                 : 'bg-transparent border-white/20 text-white hover:bg-white/10'
@@ -47,7 +47,7 @@ export function LanguageSelector() {
           <Button
             variant={currentLanguage === 'en-US' ? 'default' : 'outline'}
             onClick={() => handleLanguageSelect('en-US')}
-            className={`w-48 px-8 py-4 text-lg rounded-xl transition-all duration-300 ${
+            className={`w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300 ${
               currentLanguage === 'en-US'
                 ? 'bg-white text-black shadow-md hover:shadow-lg'
                 : 'bg-transparent border-white/20 text-white hover:bg-white/10'
