@@ -50,7 +50,7 @@ export function MediaPathList() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="bg-background/30 border border-border/30 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm space-y-2 w-full" style={{ height: '500px' }}>
+        <div className="bg-background/30 border border-border/30 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm space-y-2 w-full" style={{ minHeight: '300px', maxHeight: '500px' }}>
   
           {/* 路径列表 */}
           <div className="space-y-1 flex-1 flex flex-col min-h-0">
@@ -118,7 +118,7 @@ export function MediaPathList() {
           </div>
 
           {/* 底部统计信息 */}
-          <div className="pt-3 border-t border-border/20">
+          <div className="pt-3 border-t border-border/20 mt-auto">
             <div className="flex items-center justify-center text-xs text-muted-foreground/70">
               <div>
                 共 {mediaSources.length} 个媒体路径
