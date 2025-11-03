@@ -66,14 +66,14 @@ export function MediaSourceSelector() {
           displayName: path.split('/').pop() || path
         })
 
-        setValidationResult(`✅ 成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`)
+        setValidationResult(`✓ 成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`)
         console.log('成功创建媒体来源:', source)
       } else {
-        setValidationResult(`❌ 路径验证失败: ${validation.note}`)
+        setValidationResult(`✕ 路径验证失败: ${validation.note}`)
       }
     } catch (error) {
       console.error('添加媒体来源失败:', error)
-      setValidationResult(`❌ 添加失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      setValidationResult(`✕ 添加失败: ${error instanceof Error ? error.message : '未知错误'}`)
     } finally {
       setIsValidating(false)
     }
@@ -246,7 +246,7 @@ export function MediaSourceSelector() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className="flex items-center justify-between p-2 h-14 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-card/50 hover:shadow-xl hover:border-border/50 transition-all duration-200 cursor-pointer group"
+                      className="flex items-center justify-between p-2 h-14 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-accent/50 hover:border-border/60 transition-all duration-200 cursor-pointer group"
                       onClick={() => handleFolderNavigate(folder)}
                     >
                       <div className="flex items-center gap-3">
@@ -286,7 +286,7 @@ export function MediaSourceSelector() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2, delay: index * 0.02 }}
-                        className="flex items-center justify-between p-2 h-14 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-card/30 hover:shadow-lg hover:border-border/40 transition-all duration-200 cursor-pointer group"
+                        className="flex items-center justify-between p-2 h-14 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-accent/40 hover:border-border/50 transition-all duration-200 cursor-pointer group"
                         onClick={() => handleCommonPathClick(folder.path)}
                       >
                         <div className="flex items-center gap-3">
@@ -343,8 +343,8 @@ export function MediaSourceSelector() {
                 animate={{ opacity: 1, y: 0 }}
                 className={`p-3 rounded-lg text-sm ${
                   validationResult.includes('✅')
-                    ? 'bg-green-500/10 border border-green-500/30 text-green-300'
-                    : 'bg-red-500/10 border border-red-500/30 text-red-300'
+                    ? 'bg-destructive/10 border border-destructive/30 text-destructive-foreground'
+                    : 'bg-destructive/10 border border-destructive/30 text-destructive-foreground'
                 }`}
               >
                 {validationResult}
@@ -354,7 +354,7 @@ export function MediaSourceSelector() {
             {/* 添加按钮 - 始终存在，有地址时才可点击 */}
             <Button
               onClick={() => selectedPath && handleSelectPath(selectedPath)}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:opacity-60 disabled:cursor-not-allowed disabled:border-border/50 disabled:text-muted-foreground"
               disabled={!selectedPath || isValidating}
             >
               {isValidating ? '验证中...' : '添加至媒体路径清单'}
