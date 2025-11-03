@@ -15,10 +15,16 @@ function getApiBase(): string {
 
   if (typeof window !== "undefined") {
     const host = window.location.hostname
+    const port = window.location.port
+
     if (DEV_HOSTS.has(host)) {
       cachedApiBase = "http://localhost:8000"
       return cachedApiBase
     }
+
+    // 对于局域网访问，使用当前主机的8000端口
+    cachedApiBase = `http://${host}:8000`
+    return cachedApiBase
   }
 
   cachedApiBase = ""

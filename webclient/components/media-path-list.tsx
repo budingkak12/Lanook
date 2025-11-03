@@ -9,6 +9,7 @@ export function MediaPathList() {
   const [mediaSources, setMediaSources] = useState<MediaSource[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [selectedSource, setSelectedSource] = useState<MediaSource | null>(null)
 
   // 加载媒体路径清单
   useEffect(() => {
@@ -69,7 +70,8 @@ export function MediaPathList() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
-                    className="flex items-center justify-between p-2 sm:p-3 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-white/30 hover:shadow-xl hover:scale-[1.02] hover:border-white/50 transition-all duration-200 group"
+                    className="flex items-center justify-between p-2 sm:p-3 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-white/30 hover:shadow-xl hover:scale-[1.02] hover:border-white/50 transition-all duration-200 group cursor-pointer"
+                    onClick={() => setSelectedSource(source)}
                   >
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                       <div className="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center flex-shrink-0">
@@ -93,7 +95,10 @@ export function MediaPathList() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteSource(source.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteSource(source.id)
+                        }}
                         disabled={deletingId === source.id}
                         className="h-8 w-8 p-0 hover:bg-red-500/20 hover:text-red-400 text-muted-foreground group-hover:text-foreground flex-shrink-0"
                       >
@@ -122,6 +127,105 @@ export function MediaPathList() {
           </div>
         </div>
       </motion.div>
+
+      {/* 详情弹窗 */}
+      {selectedSource && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          onClick={() => setSelectedSource(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="bg-background/95 border border-border/50 rounded-xl p-6 shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-medium text-foreground">媒体路径详情</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedSource(null)}
+                className="h-8 w-8 p-0 hover:bg-background/80"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              {/* 基本信息 */}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">路径名称</div>
+                <div className="text-base font-medium text-foreground break-all">
+                  {selectedSource.displayName || '未命名路径'}
+                </div>
+              </div>
+
+              {/* 完整路径 */}
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">完整路径</div>
+                <div className="p-3 bg-background/50 border border-border/30 rounded-lg">
+                  <code className="text-sm text-foreground break-all font-mono">
+                    {selectedSource.rootPath}
+                  </code>
+                </div>
+              </div>
+
+              {/* 其他信息 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">类型</div>
+                  <div className="text-sm font-medium">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+                      {selectedSource.type === 'local' ? '本地' : selectedSource.type}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">ID</div>
+                  <div className="text-sm font-medium text-muted-foreground">
+                    #{selectedSource.id}
+                  </div>
+                </div>
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="flex gap-2 pt-4 border-t border-border/20">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedSource(null)}
+                  className="flex-1"
+                >
+                  关闭
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    handleDeleteSource(selectedSource.id)
+                    setSelectedSource(null)
+                  }}
+                  disabled={deletingId === selectedSource.id}
+                  className="px-4"
+                >
+                  {deletingId === selectedSource.id ? (
+                    <div className="w-4 h-4 animate-spin border border-current border-t-transparent rounded-full" />
+                  ) : (
+                    '删除'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }
