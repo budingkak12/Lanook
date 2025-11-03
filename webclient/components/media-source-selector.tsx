@@ -3,15 +3,16 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, type CommonFolderEntry, type FolderItem } from '@/lib/api'
 
 export function MediaSourceSelector() {
   const { t } = useTranslation()
+  const { toast } = useToast()
     const [selectedPath, setSelectedPath] = useState('')
   const [isValidating, setIsValidating] = useState(false)
-  const [validationResult, setValidationResult] = useState<string | null>(null)
   const [currentFolderPath, setCurrentFolderPath] = useState('')
   const [folderContents, setFolderContents] = useState<FolderItem[]>([])
   const [isBrowsingFolder, setIsBrowsingFolder] = useState(false)
@@ -47,8 +48,6 @@ export function MediaSourceSelector() {
   const handleSelectPath = async (path: string) => {
     if (!path.trim()) return
 
-    setValidationResult(null) // 清空之前的验证结果
-
     try {
       setIsValidating(true)
 
@@ -66,14 +65,23 @@ export function MediaSourceSelector() {
           displayName: path.split('/').pop() || path
         })
 
-        setValidationResult(`✓ 成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`)
+        toast({
+          title: "添加成功",
+          description: `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
+        })
         console.log('成功创建媒体来源:', source)
       } else {
-        setValidationResult(`✕ 路径验证失败: ${validation.note}`)
+        toast({
+          title: "添加失败",
+          description: `路径验证失败: ${validation.note}`
+        })
       }
     } catch (error) {
       console.error('添加媒体来源失败:', error)
-      setValidationResult(`✕ 添加失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      toast({
+        title: "添加失败",
+        description: `添加失败: ${error instanceof Error ? error.message : '未知错误'}`
+      })
     } finally {
       setIsValidating(false)
     }
@@ -152,7 +160,6 @@ export function MediaSourceSelector() {
   const handleSelectCurrentFolder = () => {
     if (browsingPath) {
       setSelectedPath(browsingPath) // 只有点击按钮才填充到地址栏
-      setValidationResult(null) // 清空之前的验证结果
     }
   }
 
@@ -335,21 +342,6 @@ export function MediaSourceSelector() {
                 disabled={isValidating}
               />
             </div>
-
-            {/* 验证结果 */}
-            {validationResult && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`p-3 rounded-lg text-sm ${
-                  validationResult.includes('✅')
-                    ? 'bg-destructive/10 border border-destructive/30 text-destructive-foreground'
-                    : 'bg-destructive/10 border border-destructive/30 text-destructive-foreground'
-                }`}
-              >
-                {validationResult}
-              </motion.div>
-            )}
 
             {/* 添加按钮 - 始终存在，有地址时才可点击 */}
             <Button
