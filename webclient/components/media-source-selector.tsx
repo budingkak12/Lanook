@@ -250,8 +250,8 @@ export function MediaSourceSelector() {
                       onClick={() => handleFolderNavigate(folder)}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center">
-                          <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
+                          <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                           </svg>
                         </div>
@@ -290,8 +290,8 @@ export function MediaSourceSelector() {
                         onClick={() => handleCommonPathClick(folder.path)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center">
-                            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
+                            <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                             </svg>
                           </div>
@@ -313,7 +313,7 @@ export function MediaSourceSelector() {
             {isBrowsingFolder && browsingPath && (
               <Button
                 onClick={handleSelectCurrentFolder}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={isValidating}
               >
                 {isValidating ? '验证中...' : `选择当前文件夹: ${browsingPath.split('/').pop() || browsingPath}`}
@@ -354,7 +354,7 @@ export function MediaSourceSelector() {
             {/* 添加按钮 - 始终存在，有地址时才可点击 */}
             <Button
               onClick={() => selectedPath && handleSelectPath(selectedPath)}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!selectedPath || isValidating}
             >
               {isValidating ? '验证中...' : '添加至媒体路径清单'}

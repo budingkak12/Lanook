@@ -74,8 +74,8 @@ export function MediaPathList() {
                     onClick={() => setSelectedSource(source)}
                   >
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <div className="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
                       </div>
@@ -89,7 +89,7 @@ export function MediaPathList() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+                      <div className="text-xs px-2 py-1 bg-primary/20 text-primary rounded border border-primary/30">
                         {source.type === 'local' ? '本地' : source.type}
                       </div>
                       <Button
@@ -183,7 +183,7 @@ export function MediaPathList() {
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">类型</div>
                   <div className="text-sm font-medium">
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+                    <span className="px-2 py-1 bg-primary/20 text-primary rounded border border-primary/30">
                       {selectedSource.type === 'local' ? '本地' : selectedSource.type}
                     </span>
                   </div>
