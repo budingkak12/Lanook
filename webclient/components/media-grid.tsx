@@ -22,7 +22,7 @@ import { apiFetch, batchDeleteMedia, friendlyDeleteError, resolveApiUrl } from "
 
 type MediaGridProps = {
   sessionId: string | null
-  onMediaClick: (media: MediaItem, index: number) => void
+  onMediaClick: (media: MediaItem) => void
   onItemsChange?: (items: MediaItem[]) => void
 }
 
@@ -410,7 +410,20 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
                 <div
                   key={`${item.id}-${item.thumbnailUrl ?? ""}`}
                   className="group relative aspect-square overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                  onClick={() => !isSelectionMode && onMediaClick(item, index)}
+                  onClick={() => {
+                    if (!isSelectionMode) {
+                      console.log('🖱️ [MediaGrid] 点击缩略图')
+                      console.log('📸 点击的item:', {
+                        id: item.id,
+                        mediaId: item.mediaId,
+                        filename: item.filename,
+                        type: item.type
+                      })
+                      console.log('📊 当前索引(index):', index)
+                      console.log('📊 mediaItems总数:', mediaItems.length)
+                      onMediaClick(item)
+                    }
+                  }}
                 >
                   <img
                     src={item.thumbnailUrl ? resolveApiUrl(item.thumbnailUrl) : (item.resourceUrl ? resolveApiUrl(item.resourceUrl) : "/file.svg")}

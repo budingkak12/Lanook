@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, X } from "lucide-react"
 
 type SearchViewProps = {
-  onMediaClick: (media: MediaItem, index: number) => void
+  onMediaClick: (media: MediaItem) => void
 }
 
 const popularTags = ["风景", "旅行", "美食", "人物", "建筑", "自然", "动物", "城市"]

@@ -37,7 +37,21 @@ type MediaViewerProps = {
 }
 
 export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate, onMediaUpdate, onMediaRemove, onIndexChange, onLoadMore, hasMore = true, isLoadingMore = false }: MediaViewerProps) {
-  const [currentMedia, setCurrentMedia] = useState(media)
+  console.log('🎬 [MediaViewer] 组件初始化')
+  console.log('📸 接收到的media:', {
+    id: media.id,
+    mediaId: media.mediaId,
+    filename: media.filename,
+    type: media.type
+  })
+  console.log('📊 接收到的currentIndex:', currentIndex)
+  console.log('📊 allMedia.length:', allMedia.length)
+  console.log('📋 allMedia前3项:', allMedia.slice(0, 3).map(item => ({
+    id: item.id,
+    mediaId: item.mediaId,
+    filename: item.filename
+  })))
+
   const [currentSlideIndex, setCurrentSlideIndex] = useState(currentIndex)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isLiked, setIsLiked] = useState(Boolean(media.liked))
@@ -103,7 +117,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     onClose()
   }, [pauseAllVideos, onClose])
 
-  // 键盘事件处理
+  // 键盘和触摸事件处理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -115,27 +129,64 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       }
     }
 
+    
     window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
+
+    // 为移动端添加背景点击关闭
+    const viewerElement = document.querySelector('.fixed.inset-0')
+    if (viewerElement) {
+      viewerElement.addEventListener('click', (e) => {
+        if (e.target === viewerElement) {
+          handleClose()
+        }
+      })
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
   }, [handleClose, handlePrev, handleNext])
 
   // 同步 Swiper 索引变化
   useEffect(() => {
     if (swiperRef.current && currentSlideIndex !== currentIndex) {
-      swiperRef.current.slideTo(currentIndex)
+      // 验证currentIndex是否有效
+      const validIndex = Math.min(Math.max(currentIndex, 0), allMedia.length - 1)
+      swiperRef.current.slideTo(validIndex)
     }
-  }, [currentIndex, currentSlideIndex])
+  }, [currentIndex, currentSlideIndex, allMedia.length])
 
   // 当媒体项变化时更新状态
   useEffect(() => {
-    setCurrentMedia(media)
+    console.log('🔄 [MediaViewer useEffect] 媒体项变化')
+    console.log('📸 当前media:', {
+      id: media.id,
+      mediaId: media.mediaId,
+      filename: media.filename
+    })
+    console.log('📊 currentIndex:', currentIndex)
+    console.log('📊 allMedia.length:', allMedia.length)
+
+    // 验证传递的currentIndex是否与媒体匹配
+    const actualIndex = allMedia.findIndex(item => item.mediaId === media.mediaId)
+    console.log('🎯 MediaViewer中计算的actualIndex:', actualIndex)
+
+    const validIndex = actualIndex >= 0 ? actualIndex : currentIndex
+    console.log('✅ 使用的validIndex:', validIndex)
+
     setIsLiked(Boolean(media.liked))
     setIsFavorited(Boolean(media.favorited))
     setLikeLoading(false)
     setFavoriteLoading(false)
     setIsDeleting(false)
     setShowDeleteDialog(false)
-    setCurrentSlideIndex(currentIndex)
+    setCurrentSlideIndex(validIndex)
+
+    // 如果索引有修正，通知父组件
+    if (actualIndex >= 0 && actualIndex !== currentIndex) {
+      console.log('🔄 索引修正，通知父组件从', currentIndex, '到', actualIndex)
+      onIndexChange(actualIndex)
+    }
 
     // 如果当前是视频，自动播放
     if (media.type === 'video') {
@@ -143,7 +194,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
         playVideo(media.id)
       }, 300)
     }
-  }, [media, currentIndex, playVideo])
+  }, [media, currentIndex, allMedia, onIndexChange, playVideo])
 
   // 组件卸载时暂停所有视频并清理引用
   useEffect(() => {
@@ -173,7 +224,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
       const ACTIVE_RANGE = 15 // 保留当前±15范围内的视频引用
-      const currentMediaId = currentMedia?.id
       let cleanedCount = 0
 
       Object.keys(videoRefs.current).forEach(key => {
@@ -194,7 +244,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     return () => {
       clearInterval(cleanupInterval)
     }
-  }, [allMedia, currentSlideIndex, currentMedia])
+  }, [allMedia, currentSlideIndex])
 
   
   const toggleLike = async () => {
@@ -210,7 +260,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     setLikeLoading(true)
     setIsLiked(target)
-    setCurrentMedia((prev) => ({ ...prev, liked: target }))
 
     try {
       console.log('📡 Calling setLike API:', media.mediaId, target)
@@ -224,7 +273,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       console.error('❌ setLike API call failed:', err)
       const message = err instanceof Error ? err.message : "操作失败，请稍后重试"
       setIsLiked(!target)
-      setCurrentMedia((prev) => ({ ...prev, liked: !target }))
       toast({
         title: "点赞失败",
         description: message,
@@ -248,7 +296,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     setFavoriteLoading(true)
     setIsFavorited(target)
-    setCurrentMedia((prev) => ({ ...prev, favorited: target }))
 
     try {
       console.log('📡 Calling setFavorite API:', media.mediaId, target)
@@ -262,7 +309,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       console.error('❌ setFavorite API call failed:', err)
       const message = err instanceof Error ? err.message : "操作失败，请稍后重试"
       setIsFavorited(!target)
-      setCurrentMedia((prev) => ({ ...prev, favorited: !target }))
       toast({
         title: "收藏失败",
         description: message,
@@ -330,7 +376,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     // 更新当前媒体项
     if (allMedia[newIndex]) {
       const newMedia = allMedia[newIndex]
-      setCurrentMedia(newMedia)
       setIsLiked(Boolean(newMedia.liked))
       setIsFavorited(Boolean(newMedia.favorited))
 
@@ -345,7 +390,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     // 视频引用清理机制：每滑动30次清理一次超出范围的视频引用
     if (newIndex > 0 && newIndex % 30 === 0) {
       const CLEANUP_RANGE = 10 // 保留当前±10范围内的视频引用
-      const currentMediaId = allMedia[newIndex]?.id
 
       Object.keys(videoRefs.current).forEach(key => {
         const mediaIndex = allMedia.findIndex(item => item.id === key)
@@ -374,20 +418,25 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   return (
     <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent z-10">
+      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent z-20">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={handleClose} className="text-white hover:bg-white/20">
-            <X className="w-5 h-5" />
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={handleClose}
+            className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]"
+          >
+            <X className="w-6 h-6" />
           </Button>
         </div>
         <Button
           variant="ghost"
-          size="icon"
+          size="lg"
           disabled={isDeleting}
           onClick={() => setShowDeleteDialog(true)}
-          className="text-white hover:bg-white/20"
+          className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]"
         >
-          <Trash2 className="w-5 h-5" />
+          <Trash2 className="w-6 h-6" />
         </Button>
       </div>
 
@@ -395,7 +444,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       <div className="flex-1 relative">
         <Swiper
           modules={[Navigation, Keyboard]}
-          initialSlide={currentIndex}
+          initialSlide={Math.min(Math.max(currentIndex, 0), allMedia.length - 1)}
           onSwiper={(swiper) => { swiperRef.current = swiper }}
           onSlideChange={handleSlideChange}
           spaceBetween={0}
@@ -519,13 +568,24 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       )}
 
       {/* Bottom Actions */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-center gap-4 bg-gradient-to-t from-black/50 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex items-center justify-center gap-3 sm:gap-4 bg-gradient-to-t from-black/60 to-transparent">
+        {/* 移动端关闭按钮 */}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={handleClose}
+            className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
           disabled={likeLoading || isDeleting}
           onClick={() => void toggleLike()}
-          className={`text-white hover:bg-white/20 ${isLiked ? "text-red-500" : ""}`}
+          className={`text-white hover:bg-white/20 ${isLiked ? "text-red-500" : ""} bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]`}
         >
           <Heart className={`w-6 h-6 ${isLiked ? "fill-current" : ""}`} />
         </Button>
@@ -534,7 +594,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           size="icon"
           disabled={favoriteLoading || isDeleting}
           onClick={() => void toggleFavorite()}
-          className={`text-white hover:bg-white/20 ${isFavorited ? "text-yellow-500" : ""}`}
+          className={`text-white hover:bg-white/20 ${isFavorited ? "text-yellow-500" : ""} bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]`}
         >
           <Star className={`w-6 h-6 ${isFavorited ? "fill-current" : ""}`} />
         </Button>
