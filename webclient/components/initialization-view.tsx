@@ -82,7 +82,6 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
           toast({
             title: "没有媒体源",
             description: "请先添加至少一个媒体源路径",
-            variant: "destructive",
           })
           setIsStartingInitialization(false)
           return
@@ -112,7 +111,6 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
           toast({
             title: "启动媒体库失败",
             description: errorData.detail || `服务器错误 ${response.status}`,
-            variant: "destructive",
           })
         }
       } catch (error) {
@@ -121,7 +119,6 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         toast({
           title: "初始化失败",
           description: error instanceof Error ? error.message : "无法连接到服务器",
-          variant: "destructive",
         })
       } finally {
         setIsStartingInitialization(false)

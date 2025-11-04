@@ -6,8 +6,14 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _geist = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist"
+});
+const _geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono"
+});
 
 export const metadata: Metadata = {
   title: 'v0 App',
