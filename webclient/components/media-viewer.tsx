@@ -60,6 +60,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set())
   const swiperRef = useRef<any>(null)
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({})
   const { toast } = useToast()
@@ -155,6 +156,39 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       swiperRef.current.slideTo(validIndex)
     }
   }, [currentIndex, currentSlideIndex, allMedia.length])
+
+  // 初始预加载当前图片
+  useEffect(() => {
+    if (media.type === 'image') {
+      const imageUrl = resolveApiUrl(media.resourceUrl || media.url || "/file.svg")
+
+      if (!loadedImages.has(imageUrl)) {
+        const img = new Image()
+        img.onload = () => {
+          setLoadedImages(prev => new Set(prev).add(imageUrl))
+        }
+        img.src = imageUrl
+      }
+    }
+  }, [media, loadedImages])
+
+  // 预加载图片
+  useEffect(() => {
+    allMedia.forEach((mediaItem, index) => {
+      // 预加载当前项及前后各2项
+      if (Math.abs(index - currentIndex) <= 2 && mediaItem.type === 'image') {
+        const imageUrl = resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")
+
+        if (!loadedImages.has(imageUrl)) {
+          const img = new Image()
+          img.onload = () => {
+            setLoadedImages(prev => new Set(prev).add(imageUrl))
+          }
+          img.src = imageUrl
+        }
+      }
+    })
+  }, [allMedia, currentIndex, loadedImages])
 
   // 当媒体项变化时更新状态
   useEffect(() => {
@@ -416,7 +450,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent z-20">
         <div className="flex items-center gap-2">
@@ -441,7 +475,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       </div>
 
       {/* Swiper Container */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-0">
         <Swiper
           modules={[Navigation, Keyboard]}
           initialSlide={Math.min(Math.max(currentIndex, 0), allMedia.length - 1)}
@@ -485,23 +519,39 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                 onDoubleClick={handleDoubleClick}
               >
                 {mediaItem.type === "image" ? (
-                  <img
-                    src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
-                    alt="Media"
-                    className="max-w-full max-h-full object-contain"
-                    style={{
-                      maxHeight: '100vh',
-                      maxWidth: '100vw',
-                      objectFit: 'contain'
-                    }}
-                    onError={(e) => {
-                      const target = e.currentTarget
-                      if (!target.src.endsWith("/file.svg")) {
-                        target.src = resolveApiUrl("/file.svg")
-                      }
-                    }}
-                    draggable={false}
-                  />
+                  <>
+                    <div
+                      className="absolute inset-0 flex items-center justify-center bg-black/10"
+                      style={{
+                        opacity: loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 0 : 1,
+                        transition: 'opacity 0.3s ease-in-out'
+                      }}
+                    >
+                      <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    </div>
+                    <img
+                      src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
+                      alt="Media"
+                      className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
+                        loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={{
+                        maxHeight: '100vh',
+                        maxWidth: '100vw',
+                        objectFit: 'contain',
+                        minWidth: '1px',
+                        minHeight: '1px'
+                      }}
+                      onError={(e) => {
+                        const target = e.currentTarget
+                        if (!target.src.endsWith("/file.svg")) {
+                          target.src = resolveApiUrl("/file.svg")
+                          setLoadedImages(prev => new Set(prev).add(resolveApiUrl("/file.svg")))
+                        }
+                      }}
+                      draggable={false}
+                    />
+                  </>
                 ) : (
                   <video
                     ref={(el) => {
@@ -568,36 +618,23 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       )}
 
       {/* Bottom Actions */}
-      <div className="absolute bottom-32 sm:bottom-6 left-0 right-0 p-3 sm:p-6 flex items-center justify-center gap-2 sm:gap-4 bg-gradient-to-t from-black/60 to-transparent z-30">
-        {/* 移动端关闭按钮 */}
-        {isMobile && (
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={handleClose}
-            className="text-white hover:bg-white/20 bg-red-600/80 backdrop-blur-md rounded-full p-3 sm:p-3 min-w-[44px] min-h-[44px] sm:min-w-[44px] sm:min-h-[44px] relative z-50 border-2 border-white/40 shadow-xl"
-          >
-            <X className="w-5 h-5 sm:w-5 sm:h-5" />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
+      <div className="absolute bottom-20 sm:bottom-6 left-0 right-0 p-3 sm:p-6 flex items-center justify-center gap-2 sm:gap-4 z-30">
+        <button
+          type="button"
           disabled={likeLoading || isDeleting}
           onClick={() => void toggleLike()}
-          className={`text-white hover:bg-white/20 ${isLiked ? "text-red-500 bg-red-600/90" : "bg-red-600/80"} backdrop-blur-md rounded-full p-3 sm:p-3 min-w-[44px] min-h-[44px] sm:min-w-[44px] sm:min-h-[44px] relative z-50 border-2 border-white/40 shadow-xl transition-all duration-200 ${isLiked ? "scale-110 shadow-lg shadow-red-500/50" : "hover:scale-105"}`}
+          className={`text-white hover:bg-black/70 bg-black/50 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px] relative z-50 transition-all duration-200 shadow-none hover:shadow-none focus:shadow-none active:shadow-none ${isLiked ? "scale-110" : "hover:scale-105"} disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          <Heart className={`w-6 h-6 sm:w-6 sm:h-6 ${isLiked ? "fill-current text-white" : "text-white"}`} />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
+          <Heart className={`w-6 h-6 ${isLiked ? "fill-current text-red-400" : "text-white"}`} />
+        </button>
+        <button
+          type="button"
           disabled={favoriteLoading || isDeleting}
           onClick={() => void toggleFavorite()}
-          className={`text-white hover:bg-white/20 ${isFavorited ? "text-yellow-500 bg-yellow-600/90" : "bg-yellow-600/80"} backdrop-blur-md rounded-full p-3 sm:p-3 min-w-[44px] min-h-[44px] sm:min-w-[44px] sm:min-h-[44px] relative z-50 border-2 border-white/40 shadow-xl transition-all duration-200 ${isFavorited ? "scale-110 shadow-lg shadow-yellow-500/50" : "hover:scale-105"}`}
+          className={`text-white hover:bg-black/70 bg-black/50 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px] relative z-50 transition-all duration-200 shadow-none hover:shadow-none focus:shadow-none active:shadow-none ${isFavorited ? "scale-110" : "hover:scale-105"} disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          <Star className={`w-6 h-6 sm:w-6 sm:h-6 ${isFavorited ? "fill-current text-white" : "text-white"}`} />
-        </Button>
+          <Star className={`w-6 h-6 ${isFavorited ? "fill-current text-yellow-400" : "text-white"}`} />
+        </button>
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
