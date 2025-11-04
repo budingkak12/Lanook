@@ -44,6 +44,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   const [isDeleting, setIsDeleting] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const swiperRef = useRef<any>(null)
+  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({})
   const { toast } = useToast()
 
   // 检测移动端设备
@@ -57,20 +58,63 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  
+  // 视频播放管理函数
+  const pauseAllVideos = useCallback(() => {
+    Object.values(videoRefs.current).forEach(video => {
+      if (video && !video.paused) {
+        video.pause()
+      }
+    })
+  }, [])
+
+  const playVideo = useCallback((mediaId: string) => {
+    const video = videoRefs.current[mediaId]
+    if (video && video.paused) {
+      video.play().catch(err => {
+        console.log('视频自动播放失败:', err)
+      })
+    }
+  }, [])
+
+  const handlePrev = useCallback(() => {
+    pauseAllVideos()
+    if (swiperRef.current) {
+      swiperRef.current.slidePrev()
+    } else {
+      void onNavigate("prev")
+    }
+  }, [pauseAllVideos, onNavigate])
+
+  const handleNext = useCallback(() => {
+    pauseAllVideos()
+    if (swiperRef.current) {
+      swiperRef.current.slideNext()
+    } else {
+      void onNavigate("next")
+    }
+  }, [pauseAllVideos, onNavigate])
+
+  const handleClose = useCallback(() => {
+    pauseAllVideos()
+    onClose()
+  }, [pauseAllVideos, onClose])
+
+  // 键盘事件处理
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose()
+        handleClose()
       } else if (e.key === "ArrowLeft") {
-        void onNavigate("prev")
+        handlePrev()
       } else if (e.key === "ArrowRight") {
-        void onNavigate("next")
+        handleNext()
       }
     }
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [onClose, onNavigate])
+  }, [handleClose, handlePrev, handleNext])
 
   // 同步 Swiper 索引变化
   useEffect(() => {
@@ -89,7 +133,35 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     setIsDeleting(false)
     setShowDeleteDialog(false)
     setCurrentSlideIndex(currentIndex)
-  }, [media, currentIndex])
+
+    // 如果当前是视频，自动播放
+    if (media.type === 'video') {
+      setTimeout(() => {
+        playVideo(media.id)
+      }, 300)
+    }
+  }, [media, currentIndex, playVideo])
+
+  // 组件卸载时暂停所有视频
+  useEffect(() => {
+    return () => {
+      pauseAllVideos()
+    }
+  }, [pauseAllVideos])
+
+  // 监听页面可见性变化，暂停所有视频
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        pauseAllVideos()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [pauseAllVideos])
 
   
   const toggleLike = async () => {
@@ -209,6 +281,16 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
   const handleSlideChange = (swiper: any) => {
     const newIndex = swiper.activeIndex
+    const prevIndex = currentSlideIndex
+
+    // 暂停之前的视频
+    if (allMedia[prevIndex] && allMedia[prevIndex].type === 'video') {
+      const prevVideo = videoRefs.current[allMedia[prevIndex].id]
+      if (prevVideo && !prevVideo.paused) {
+        prevVideo.pause()
+      }
+    }
+
     setCurrentSlideIndex(newIndex)
     onIndexChange(newIndex)
 
@@ -218,22 +300,13 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       setCurrentMedia(newMedia)
       setIsLiked(Boolean(newMedia.liked))
       setIsFavorited(Boolean(newMedia.favorited))
-    }
-  }
 
-  const handlePrev = () => {
-    if (swiperRef.current) {
-      swiperRef.current.slidePrev()
-    } else {
-      void onNavigate("prev")
-    }
-  }
-
-  const handleNext = () => {
-    if (swiperRef.current) {
-      swiperRef.current.slideNext()
-    } else {
-      void onNavigate("next")
+      // 播放当前视频
+      if (newMedia.type === 'video') {
+        setTimeout(() => {
+          playVideo(newMedia.id)
+        }, 300) // 延迟播放，确保动画完成
+      }
     }
   }
 
@@ -242,7 +315,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent z-10">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+          <Button variant="ghost" size="icon" onClick={handleClose} className="text-white hover:bg-white/20">
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -321,6 +394,11 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                   />
                 ) : (
                   <video
+                    ref={(el) => {
+                      if (el) {
+                        videoRefs.current[mediaItem.id] = el
+                      }
+                    }}
                     src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url)}
                     controls
                     className="max-w-full max-h-full object-contain"
@@ -329,9 +407,24 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                       maxHeight: '100vh',
                       objectFit: 'contain'
                     }}
-                    autoPlay
                     playsInline
                     muted
+                    loop
+                    onPlay={(e) => {
+                      // 确保只有一个视频在播放
+                      const currentVideo = e.currentTarget
+                      if (currentSlideIndex !== index) {
+                        currentVideo.pause()
+                      }
+                    }}
+                    onEnded={() => {
+                      // 视频结束时自动切换到下一个
+                      if (currentSlideIndex === index && currentSlideIndex < allMedia.length - 1) {
+                        setTimeout(() => {
+                          handleNext()
+                        }, 500)
+                      }
+                    }}
                   />
                 )}
               </div>
