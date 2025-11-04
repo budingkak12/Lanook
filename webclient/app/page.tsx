@@ -337,6 +337,7 @@ export default function Home() {
         <MediaViewer
           media={selectedMedia}
           currentIndex={selectedIndex}
+          allMedia={gridItems}
           onClose={() => {
             setSelectedMedia(null)
             setSelectedIndex(-1)
@@ -344,6 +345,7 @@ export default function Home() {
           onNavigate={handleNavigate}
           onMediaUpdate={handleMediaUpdate}
           onMediaRemove={handleMediaRemove}
+          onIndexChange={setSelectedIndex}
         />
       )}
     </div>

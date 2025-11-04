@@ -16,25 +16,46 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { batchDeleteMedia, friendlyDeleteError, setFavorite, setLike, resolveApiUrl } from "@/lib/api"
+import { Swiper, SwiperSlide } from 'swiper/react'
+import { Navigation, Keyboard } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/keyboard'
 
 type MediaViewerProps = {
   media: MediaItem
   currentIndex: number
+  allMedia: MediaItem[]
   onClose: () => void
   onNavigate: (direction: "prev" | "next") => void | Promise<void>
   onMediaUpdate: (mediaId: number, updates: Partial<MediaItem>) => void
   onMediaRemove: (mediaIds: number[]) => void
+  onIndexChange: (index: number) => void
 }
 
-export function MediaViewer({ media, onClose, onNavigate, onMediaUpdate, onMediaRemove }: MediaViewerProps) {
+export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate, onMediaUpdate, onMediaRemove, onIndexChange }: MediaViewerProps) {
   const [currentMedia, setCurrentMedia] = useState(media)
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(currentIndex)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isLiked, setIsLiked] = useState(Boolean(media.liked))
   const [isFavorited, setIsFavorited] = useState(Boolean(media.favorited))
   const [likeLoading, setLikeLoading] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const swiperRef = useRef<any>(null)
   const { toast } = useToast()
+
+  // 检测移动端设备
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -51,6 +72,14 @@ export function MediaViewer({ media, onClose, onNavigate, onMediaUpdate, onMedia
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [onClose, onNavigate])
 
+  // 同步 Swiper 索引变化
+  useEffect(() => {
+    if (swiperRef.current && currentSlideIndex !== currentIndex) {
+      swiperRef.current.slideTo(currentIndex)
+    }
+  }, [currentIndex, currentSlideIndex])
+
+  // 当媒体项变化时更新状态
   useEffect(() => {
     setCurrentMedia(media)
     setIsLiked(Boolean(media.liked))
@@ -59,8 +88,10 @@ export function MediaViewer({ media, onClose, onNavigate, onMediaUpdate, onMedia
     setFavoriteLoading(false)
     setIsDeleting(false)
     setShowDeleteDialog(false)
-  }, [media])
+    setCurrentSlideIndex(currentIndex)
+  }, [media, currentIndex])
 
+  
   const toggleLike = async () => {
     console.log('🔄 toggleLike called', { likeLoading, isLiked, mediaId: media.mediaId })
 
@@ -176,6 +207,36 @@ export function MediaViewer({ media, onClose, onNavigate, onMediaUpdate, onMedia
     void toggleLike()
   }
 
+  const handleSlideChange = (swiper: any) => {
+    const newIndex = swiper.activeIndex
+    setCurrentSlideIndex(newIndex)
+    onIndexChange(newIndex)
+
+    // 更新当前媒体项
+    if (allMedia[newIndex]) {
+      const newMedia = allMedia[newIndex]
+      setCurrentMedia(newMedia)
+      setIsLiked(Boolean(newMedia.liked))
+      setIsFavorited(Boolean(newMedia.favorited))
+    }
+  }
+
+  const handlePrev = () => {
+    if (swiperRef.current) {
+      swiperRef.current.slidePrev()
+    } else {
+      void onNavigate("prev")
+    }
+  }
+
+  const handleNext = () => {
+    if (swiperRef.current) {
+      swiperRef.current.slideNext()
+    } else {
+      void onNavigate("next")
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black/95 flex flex-col">
       {/* Header */}
@@ -196,57 +257,112 @@ export function MediaViewer({ media, onClose, onNavigate, onMediaUpdate, onMedia
         </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center bg-black overflow-hidden" onDoubleClick={handleDoubleClick}>
-        {currentMedia.type === "image" ? (
-          <img
-            src={resolveApiUrl(currentMedia.resourceUrl || currentMedia.url || "/file.svg")}
-            alt="Media"
-            className="h-screen w-auto object-contain"
-            style={{
-              maxHeight: '100vh',
-              maxWidth: '100vw',
-              objectFit: 'contain'
-            }}
-            onError={(e) => {
-              const target = e.currentTarget
-              if (!target.src.endsWith("/file.svg")) {
-                target.src = resolveApiUrl("/file.svg")
-              }
-            }}
-          />
-        ) : (
-          <video
-            src={resolveApiUrl(currentMedia.resourceUrl || currentMedia.url)}
-            controls
-            className="w-full h-auto object-contain"
-            style={{
-              maxWidth: '100vw',
-              maxHeight: '100vh',
-              objectFit: 'contain'
-            }}
-            autoPlay
-          />
-        )}
+      {/* Swiper Container */}
+      <div className="flex-1 relative">
+        <Swiper
+          modules={[Navigation, Keyboard]}
+          initialSlide={currentIndex}
+          onSwiper={(swiper) => { swiperRef.current = swiper }}
+          onSlideChange={handleSlideChange}
+          spaceBetween={0}
+          slidesPerView={1}
+          navigation={{
+            prevEl: '.swiper-button-prev',
+            nextEl: '.swiper-button-next',
+          }}
+          keyboard={{
+            enabled: true,
+            onlyInViewport: true,
+          }}
+          resistance={true}
+          resistanceRatio={0.85}
+          watchSlidesProgress={true}
+          loop={false}
+          speed={300}
+          touchEventsTarget='container'
+          allowTouchMove={true}
+          touchRatio={1}
+          touchAngle={45}
+          longSwipes={true}
+          longSwipesRatio={0.5}
+          shortSwipes={true}
+          preventInteractionOnTransition={true}
+          centeredSlides={true}
+          centeredSlidesBounds={true}
+          className="w-full h-full"
+          style={{
+            width: '100%',
+            height: '100%'
+          }}
+        >
+          {allMedia.map((mediaItem, index) => (
+            <SwiperSlide key={`${mediaItem.id}-${index}`} className="flex items-center justify-center">
+              <div
+                className="w-full h-full flex items-center justify-center"
+                onDoubleClick={handleDoubleClick}
+              >
+                {mediaItem.type === "image" ? (
+                  <img
+                    src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
+                    alt="Media"
+                    className="max-w-full max-h-full object-contain"
+                    style={{
+                      maxHeight: '100vh',
+                      maxWidth: '100vw',
+                      objectFit: 'contain'
+                    }}
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      if (!target.src.endsWith("/file.svg")) {
+                        target.src = resolveApiUrl("/file.svg")
+                      }
+                    }}
+                    draggable={false}
+                  />
+                ) : (
+                  <video
+                    src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url)}
+                    controls
+                    className="max-w-full max-h-full object-contain"
+                    style={{
+                      maxWidth: '100vw',
+                      maxHeight: '100vh',
+                      objectFit: 'contain'
+                    }}
+                    autoPlay
+                    playsInline
+                    muted
+                  />
+                )}
+              </div>
+            </SwiperSlide>
+          ))}
+        </Swiper>
       </div>
 
-      {/* Navigation Arrows */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-        onClick={() => void onNavigate("prev")}
-      >
-        <ChevronLeft className="w-8 h-8" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-        onClick={() => void onNavigate("next")}
-      >
-        <ChevronRight className="w-8 h-8" />
-      </Button>
+      {/* Navigation Arrows - 桌面端显示，移动端隐藏 */}
+      {!isMobile && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="swiper-button-prev absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 z-20"
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+          >
+            <ChevronLeft className="w-8 h-8" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="swiper-button-next absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 z-20"
+            onClick={handleNext}
+            disabled={currentIndex >= allMedia.length - 1}
+          >
+            <ChevronRight className="w-8 h-8" />
+          </Button>
+        </>
+      )}
 
       {/* Bottom Actions */}
       <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-center gap-4 bg-gradient-to-t from-black/50 to-transparent">
