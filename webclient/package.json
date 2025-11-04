@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "pkill -f \"next dev\" || true && sleep 2 && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
