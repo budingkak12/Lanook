@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import QRCode from "qrcode"
-import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe, RotateCcw } from "lucide-react"
+import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe, RotateCcw, Sun, Moon, Monitor } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTheme } from "next-themes"
 import { apiFetch, getOSInfo } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "react-i18next"
@@ -13,6 +14,7 @@ interface ConnectionInfo { ip: string; port: number; display_url: string }
 
 export function SettingsView() {
   const { t, i18n } = useTranslation()
+  const { theme, setTheme } = useTheme()
   const [serverInfo, setServerInfo] = useState<ConnectionInfo | null>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
@@ -400,9 +402,66 @@ export function SettingsView() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <Palette className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">{t("settings.appearance.developing")}</p>
+            <div className="space-y-4">
+              {/* 主题模式选择 */}
+              <div className="space-y-2">
+                <h4 className="font-medium">主题模式</h4>
+                <p className="text-sm text-muted-foreground">
+                  选择您喜欢的界面主题，可以跟随系统设置自动切换
+                </p>
+              </div>
+
+              {/* 主题选择按钮 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Button
+                  variant={theme === "light" ? "default" : "outline"}
+                  className="h-auto p-4 justify-start"
+                  onClick={() => setTheme("light")}
+                >
+                  <Sun className="w-5 h-5 mr-3" />
+                  <div className="text-left">
+                    <p className="font-medium">明亮模式</p>
+                    <p className="text-xs opacity-70">适合白天使用</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant={theme === "dark" ? "default" : "outline"}
+                  className="h-auto p-4 justify-start"
+                  onClick={() => setTheme("dark")}
+                >
+                  <Moon className="w-5 h-5 mr-3" />
+                  <div className="text-left">
+                    <p className="font-medium">黑暗模式</p>
+                    <p className="text-xs opacity-70">适合夜间使用</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant={theme === "system" ? "default" : "outline"}
+                  className="h-auto p-4 justify-start"
+                  onClick={() => setTheme("system")}
+                >
+                  <Monitor className="w-5 h-5 mr-3" />
+                  <div className="text-left">
+                    <p className="font-medium">跟随系统</p>
+                    <p className="text-xs opacity-70">自动适配系统</p>
+                  </div>
+                </Button>
+              </div>
+
+              {/* 当前主题提示 */}
+              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                当前主题：<span className="font-medium">
+                  {theme === "light" ? "明亮模式" :
+                   theme === "dark" ? "黑暗模式" : "跟随系统"}
+                </span>
+                {theme === "system" && typeof window !== 'undefined' && (
+                  <span className="ml-2">
+                    (系统为{window.matchMedia('(prefers-color-scheme: dark)').matches ? '黑暗' : '明亮'}模式)
+                  </span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
