@@ -386,7 +386,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-6 pt-6">
+      <div className="flex-1 overflow-y-auto pt-6">
         {isInitialLoading && mediaItems.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">正在加载媒体...</div>
         ) : error && mediaItems.length === 0 ? (
@@ -401,11 +401,11 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
           <div className="flex h-full items-center justify-center text-muted-foreground">暂无媒体内容</div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-px">
               {mediaItems.map((item, index) => (
                 <div
                   key={`${item.id}-${item.thumbnailUrl ?? ""}`}
-                  className="group relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                  className="group relative aspect-square overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                   onClick={() => !isSelectionMode && onMediaClick(item, index)}
                 >
                   <img
