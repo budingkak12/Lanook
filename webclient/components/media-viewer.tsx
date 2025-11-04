@@ -145,10 +145,13 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     }
   }, [media, currentIndex, playVideo])
 
-  // 组件卸载时暂停所有视频
+  // 组件卸载时暂停所有视频并清理引用
   useEffect(() => {
     return () => {
       pauseAllVideos()
+      // 强制清空所有视频引用，防止内存泄漏
+      videoRefs.current = {}
+      console.log('MediaViewer: 组件卸载，已清空所有视频引用')
     }
   }, [pauseAllVideos])
 
@@ -165,6 +168,33 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [pauseAllVideos])
+
+  // 定时清理机制：每2分钟检查并清理未使用的视频引用
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const ACTIVE_RANGE = 15 // 保留当前±15范围内的视频引用
+      const currentMediaId = currentMedia?.id
+      let cleanedCount = 0
+
+      Object.keys(videoRefs.current).forEach(key => {
+        const mediaIndex = allMedia.findIndex(item => item.id === key)
+        if (mediaIndex === -1 || Math.abs(mediaIndex - currentSlideIndex) > ACTIVE_RANGE) {
+          // 清理超出范围或不存在的视频引用
+          videoRefs.current[key] = null
+          delete videoRefs.current[key]
+          cleanedCount++
+        }
+      })
+
+      if (cleanedCount > 0) {
+        console.log('MediaViewer: 定时清理完成，清理了', cleanedCount, '个视频引用')
+      }
+    }, 2 * 60 * 1000) // 2分钟执行一次
+
+    return () => {
+      clearInterval(cleanupInterval)
+    }
+  }, [allMedia, currentSlideIndex, currentMedia])
 
   
   const toggleLike = async () => {
@@ -310,6 +340,23 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           playVideo(newMedia.id)
         }, 300) // 延迟播放，确保动画完成
       }
+    }
+
+    // 视频引用清理机制：每滑动30次清理一次超出范围的视频引用
+    if (newIndex > 0 && newIndex % 30 === 0) {
+      const CLEANUP_RANGE = 10 // 保留当前±10范围内的视频引用
+      const currentMediaId = allMedia[newIndex]?.id
+
+      Object.keys(videoRefs.current).forEach(key => {
+        const mediaIndex = allMedia.findIndex(item => item.id === key)
+        if (mediaIndex === -1 || Math.abs(mediaIndex - newIndex) > CLEANUP_RANGE) {
+          // 清理超出范围或不存在的视频引用
+          videoRefs.current[key] = null
+          delete videoRefs.current[key]
+        }
+      })
+
+      console.log('MediaViewer: 清理视频引用，当前索引:', newIndex, '保留范围:', CLEANUP_RANGE)
     }
 
     // 预加载机制：当接近列表末尾时，触发加载更多数据
