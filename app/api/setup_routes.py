@@ -94,10 +94,9 @@ def get_common_folders():
     return results
 
 
-@router.post("/media-root", response_model=InitializationStatusResponse, status_code=202)
+@router.post("/media-root", status_code=200)
 def set_media_root(
     request: Request,
-    response: Response,
     payload: MediaRootRequest,
     background_tasks: BackgroundTasks,
 ):
@@ -106,23 +105,48 @@ def set_media_root(
     except MediaInitializationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    coordinator = _ensure_coordinator(request)
+    # 设置媒体根路径
+    from 初始化数据库 import SessionLocal, set_setting, MEDIA_ROOT_KEY
+    db = SessionLocal()
     try:
-        coordinator.start(background_tasks, validated_path)
-    except RuntimeError:
-        raise HTTPException(status_code=409, detail="初始化已在进行中，请稍候。")
+        set_setting(db, MEDIA_ROOT_KEY, str(validated_path))
+        db.commit()
+    finally:
+        db.close()
 
-    status = coordinator.snapshot()
-    # 指示客户端可在该地址轮询状态
-    try:
-        response.headers["Location"] = "/init-status"
-    except Exception:
-        pass
-    return InitializationStatusResponse(
-        state=InitializationStateModel(status.state.value),
-        message=status.message,
-        media_root_path=status.media_root_path,
+    # 在后台任务中扫描并添加媒体数据
+    def scan_media_task():
+        from 初始化数据库 import SessionLocal, create_database_and_tables, seed_initial_data, scan_and_populate_media
+        task_db = SessionLocal()
+        try:
+            # 确保数据库表存在
+            create_database_and_tables(echo=False)
+
+            # 添加基础标签数据
+            seed_initial_data(task_db)
+
+            # 扫描并添加媒体数据
+            added_count = scan_and_populate_media(task_db, str(validated_path), limit=50)
+            task_db.commit()
+            print(f"[media-root] 后台扫描完成，添加了 {added_count} 个媒体文件")
+        except Exception as e:
+            print(f"[media-root] 后台扫描出错: {e}")
+            task_db.rollback()
+        finally:
+            task_db.close()
+
+    background_tasks.add_task(scan_media_task)
+
+    # 更新初始化协调器状态为已完成
+    coordinator = _ensure_coordinator(request)
+    from app.services.init_state import InitializationState
+    coordinator.reset(
+        state=InitializationState.COMPLETED,
+        media_root_path=str(validated_path),
+        message="媒体库初始化完成，正在扫描媒体文件..."
     )
+
+    return {"success": True, "message": "媒体根路径设置成功"}
 
 
 @router.get("/os-info", response_model=OSInfoResponse)

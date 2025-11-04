@@ -1,232 +1,361 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Sidebar } from "@/components/sidebar"
+import { MediaGrid, type MediaGridHandle } from "@/components/media-grid"
+import { MediaViewer } from "@/components/media-viewer"
+import { SearchView } from "@/components/search-view"
+import { AlbumsView } from "@/components/albums-view"
+import { SettingsView } from "@/components/settings-view"
+import { InitializationView } from "@/components/initialization-view"
+import { useToast } from "@/hooks/use-toast"
+import { apiFetch } from "@/lib/api"
 import { useTranslation } from "react-i18next"
-import { StepNavigation } from "@/components/step-navigation"
-import { StepContent } from "@/components/step-content"
-import { Button } from "@/components/ui/button"
-import { LanguageSelector } from "@/components/language-selector"
-import { ThemeToggle } from "@/components/theme-toggle"
-import { MediaSourceSelector } from "@/components/media-source-selector"
-import { MediaPathList } from "@/components/media-path-list"
 
-export default function Page() {
+export type MediaItem = {
+  id: string
+  mediaId: number
+  type: "image" | "video"
+  url: string
+  resourceUrl: string
+  thumbnailUrl?: string | null
+  filename: string
+  createdAt: string
+  liked?: boolean
+  favorited?: boolean
+  tags?: string[]
+}
+
+interface InitializationStatus {
+  state: "idle" | "running" | "completed"
+  message: string | null
+  media_root_path: string | null
+}
+
+export default function Home() {
   const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [activeView, setActiveView] = useState<"feed" | "albums" | "search" | "settings">("feed")
+  const [isInitialized, setIsInitialized] = useState<boolean | null>(null)
+  const [isCheckingInit, setIsCheckingInit] = useState(true)
 
-  const steps = [
-    {
-      id: 1,
-      title: t('init.selectLanguage'),
-      content: {
-        title: t('init.step1.title'),
-        description: "",
-        sections: [],
-      },
-    },
-    {
-      id: 2,
-      title: t('init.step2.title'),
-      content: {
-        title: t('init.step2.title'),
-        description: "",
-        sections: [],
-      },
-    },
-    {
-      id: 3,
-      title: "媒体路径清单",
-      content: {
-        title: t('init.step3.title'),
-        description: "",
-        sections: [],
-      },
-    },
-    {
-      id: 4,
-      title: "完成",
-      content: {
-        title: t('init.step4.title'),
-        description: "",
-        sections: [],
-      },
-    },
-  ]
-
-  const handleNextStep = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1)
-    }
+  // 工具：清理 URL 上的 forceInit 标记，避免热重载/二次挂载又回到初始化页
+  const clearForceInitFromUrl = () => {
+    if (typeof window === 'undefined') return
+    try {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('forceInit')) {
+        url.searchParams.delete('forceInit')
+        window.history.replaceState({}, document.title, url.pathname + (url.search ? '?' + url.searchParams.toString() : '') + url.hash)
+      }
+    } catch {}
   }
 
-  const currentStepData = steps.find((step) => step.id === currentStep)
+  // 检查初始化状态
+  const checkInitializationStatus = useCallback(async () => {
+    try {
+      // 如果URL中有forceInit参数或localStorage中有标记，强制显示初始化页面
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const forceInit = urlParams.get('forceInit')
+        const localStorageForceInit = localStorage.getItem('forceInit')
 
-  // 移除硬编码的CSS变量，使用主题系统
+        // 清除localStorage标记（只使用一次），但不拦截后续正常检查
+        if (localStorageForceInit === 'true') {
+          localStorage.removeItem('forceInit')
+        }
+
+        // 若 URL 带有 forceInit，但已完成一次页面内初始化跳转（sessionStorage 标记），忽略该参数
+        const initTransitionDone = sessionStorage.getItem('initTransitionDone') === 'true'
+        if (forceInit === 'true' && !initTransitionDone) {
+          setIsInitialized(false)
+          setIsCheckingInit(false)
+          return
+        }
+      }
+
+      console.log('[init] checking /init-status ...')
+      const response = await apiFetch("/init-status")
+      if (response.ok) {
+        const data: InitializationStatus = await response.json()
+        console.log('[init] /init-status:', data)
+        // Web 不等待扫描完成：running 也视为已初始化
+        const initialized = data.state === "completed" || data.state === "running"
+        setIsInitialized(initialized)
+        console.log('[init] setIsInitialized =', initialized)
+
+        // 如果未初始化，不需要继续执行其他逻辑
+        if (!initialized) {
+          setIsCheckingInit(false)
+          return
+        }
+      } else {
+        // 如果接口调用失败，默认认为已初始化
+        setIsInitialized(true)
+      }
+    } catch (error) {
+      console.error("检查初始化状态失败:", error)
+      // 如果无法获取状态，默认认为已初始化，避免阻塞用户
+      setIsInitialized(true)
+    } finally {
+      setIsCheckingInit(false)
+    }
+  }, [])
+
+  // 在客户端检查是否应该强制初始化
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const defaultView = urlParams.get('default')
+      const forceInit = urlParams.get('forceInit')
+
+      const initTransitionDone = sessionStorage.getItem('initTransitionDone') === 'true'
+      if (forceInit === 'true' && !initTransitionDone) {
+        // 强制显示初始化页面
+        setIsInitialized(false)
+        setIsCheckingInit(false)
+      } else if (defaultView === 'settings') {
+        setActiveView('settings')
+      }
+    }
+  }, [])
+
+  // 检查初始化状态（StrictMode 下只执行一次）
+  const checkedOnceRef = useRef(false)
+  useEffect(() => {
+    if (checkedOnceRef.current) return
+    checkedOnceRef.current = true
+    checkInitializationStatus()
+  }, [checkInitializationStatus])
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [gridItems, setGridItems] = useState<MediaItem[]>([])
+  const gridRef = useRef<MediaGridHandle | null>(null)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (isCheckingInit || !isInitialized) {
+      return
+    }
+
+    let cancelled = false
+
+    const fetchSession = async () => {
+      try {
+        const response = await apiFetch("/session", { credentials: "omit" })
+        if (!response.ok) {
+          throw new Error(t("errors.requestFailed", { status: response.status }))
+        }
+        const data = (await response.json()) as { session_seed?: string }
+        if (cancelled) {
+          return
+        }
+        const seed = data.session_seed ?? ""
+        setSessionId(seed)
+        setSessionError(null)
+        toast({
+          title: t("session.established"),
+          description: t("session.description", { seed }),
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : t("errors.unknownError")
+        if (cancelled) {
+          return
+        }
+        setSessionError(message)
+        toast({
+          title: t("session.failed"),
+          description: message,
+        })
+      }
+    }
+
+    fetchSession()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isCheckingInit, isInitialized, t, toast])
+
+  useEffect(() => {
+    if (!selectedMedia) {
+      return
+    }
+
+    if (gridItems.length === 0) {
+      setSelectedMedia(null)
+      setSelectedIndex(-1)
+      return
+    }
+
+    const currentIdx = gridItems.findIndex((item) => item.mediaId === selectedMedia.mediaId)
+    if (currentIdx >= 0) {
+      if (currentIdx !== selectedIndex) {
+        setSelectedIndex(currentIdx)
+      }
+      const updatedItem = gridItems[currentIdx]
+      if (updatedItem !== selectedMedia) {
+        setSelectedMedia(updatedItem)
+      }
+      return
+    }
+
+    const fallbackIndex = Math.min(Math.max(selectedIndex, 0), gridItems.length - 1)
+    if (fallbackIndex < 0) {
+      setSelectedMedia(null)
+      setSelectedIndex(-1)
+      return
+    }
+    const fallbackItem = gridItems[fallbackIndex]
+    setSelectedIndex(fallbackIndex)
+    setSelectedMedia(fallbackItem)
+  }, [gridItems, selectedIndex, selectedMedia])
+
+  const handleNavigate = useCallback(
+    async (direction: "prev" | "next") => {
+      if (selectedIndex < 0) {
+        return
+      }
+
+      let items = gridRef.current?.getItems() ?? gridItems
+      if (items.length === 0) {
+        return
+      }
+
+      const delta = direction === "next" ? 1 : -1
+      let targetIndex = selectedIndex + delta
+
+      if (targetIndex < 0) {
+        return
+      }
+
+      // 预加载机制：当接近边界时（距离边界5个元素以内）就开始加载更多
+      const PRELOAD_THRESHOLD = 5
+      const needsPreload = direction === "next" &&
+                          targetIndex >= items.length - PRELOAD_THRESHOLD
+
+      if (needsPreload || targetIndex >= items.length) {
+        const added = (await gridRef.current?.loadMore()) ?? 0
+        if (added > 0) {
+          items = gridRef.current?.getItems() ?? gridItems
+        }
+      }
+
+      // 加载更多数据后，重新检查边界
+      if (targetIndex >= items.length) {
+        return
+      }
+
+      const nextMedia = items[targetIndex]
+      if (!nextMedia) {
+        return
+      }
+
+      setSelectedIndex(targetIndex)
+      setSelectedMedia(nextMedia)
+    },
+    [gridItems, selectedIndex],
+  )
+
+  const handleMediaUpdate = useCallback((mediaId: number, updates: Partial<MediaItem>) => {
+    gridRef.current?.updateItem(mediaId, (prev) => ({ ...prev, ...updates }))
+    setSelectedMedia((prev) => {
+      if (!prev || prev.mediaId !== mediaId) {
+        return prev
+      }
+      return { ...prev, ...updates }
+    })
+  }, [])
+
+  const handleMediaRemove = useCallback((mediaIds: number[]) => {
+    if (mediaIds.length === 0) {
+      return
+    }
+    gridRef.current?.removeItems(mediaIds)
+  }, [])
+
+  // 如果无法获取状态，显示加载中
+  if (isCheckingInit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">正在检查系统状态...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 如果未初始化，显示初始化页面
+  if (isInitialized === false) {
+    return <InitializationView onInitialized={() => {
+      console.log('[init] onInitialized fired: entering app view')
+      try {
+        sessionStorage.setItem('initTransitionDone', 'true')
+      } catch {}
+      clearForceInitFromUrl()
+      setIsInitialized(true)
+      // 避免立即请求仍返回 idle 把状态又置回 false，延迟校验
+      setTimeout(() => {
+        console.log('[init] delayed checkInitializationStatus triggered')
+        checkInitializationStatus()
+      }, 1000)
+    }} />
+  }
 
   return (
-    <div
-      className="min-h-screen bg-background"
-    >
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, transform: 'translateZ(0)' }}>
-        {/* 上半部分 */}
-        <div
-          className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm bg-card/50"
-        />
-        {/* 下半部分 */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-sm bg-muted/50"
-        />
-        {/* 中间分割线 */}
-        <div className="absolute inset-x-0 top-1/2 h-px bg-border/70" />
-
-        {/* 内容 */}
-        <div className="relative z-10 bg-card/20 backdrop-blur-md">
-          <div className="pr-4 pl-2 lg:pl-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 lg:gap-4">
-              {/* 移动端菜单按钮 */}
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden hover:opacity-70 transition-opacity"
-              >
-                <div className="flex flex-col justify-center items-center w-5 h-5">
-                  <div className="w-4 h-0.5 bg-foreground mb-1"></div>
-                  <div className="w-4 h-0.5 bg-foreground mb-1"></div>
-                  <div className="w-4 h-0.5 bg-foreground"></div>
-                </div>
-              </button>
-              <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">{t('init.welcome')}</h1>
-            </div>
-
-            {/* 主题切换按钮 */}
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-            </div>
-          </div>
+    <div className="relative flex h-screen overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-4">
+        <div className="pointer-events-auto rounded-lg bg-card/80 px-4 py-2 text-sm shadow">
+          {sessionId ? (
+            <span className="font-mono text-muted-foreground">session: {sessionId}</span>
+          ) : sessionError ? (
+            <span className="text-destructive">{t("session.failedMessage", { error: sessionError })}</span>
+          ) : (
+            <span className="text-muted-foreground">{t("session.getting")}</span>
+          )}
         </div>
+      </div>
+      <Sidebar activeView={activeView} onViewChange={setActiveView} />
 
-        {/* 底部阴影 */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 100%)'
-          }}
-        />
-      </header>
-
-      <div className="flex py-2 pt-16">
-        {/* Mobile Sidebar Overlay */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
+      <main className="flex-1 overflow-hidden">
+        {activeView === "feed" && (
+          <MediaGrid
+            ref={gridRef}
+            sessionId={sessionId}
+            onMediaClick={(media, index) => {
+              setSelectedMedia(media)
+              setSelectedIndex(index)
+            }}
+            onItemsChange={setGridItems}
           />
         )}
-
-        {/* Sidebar Navigation - Fixed */}
-        <aside
-          className={`
-            fixed top-16 h-[calc(100vh-4rem)] z-[9999] transition-transform duration-300 ease-in-out overflow-y-auto
-            lg:translate-x-0 lg:left-0 lg:ml-0 lg:pl-0
-            ${isSidebarOpen ? 'translate-x-2 left-0' : '-translate-x-full'}
-            w-44 bg-transparent
-          `}
-          style={{
-            top: '4rem'
-          }}
-          onClick={(e) => e.stopPropagation()} // 阻止事件冒泡
-        >
-          <StepNavigation
-            steps={steps}
-            currentStep={currentStep}
-            onStepClick={(stepId) => {
-              setCurrentStep(stepId)
-              setIsSidebarOpen(false) // 点击步骤后自动关闭侧边栏
+        {activeView === "albums" && <AlbumsView />}
+        {activeView === "search" && (
+          <SearchView
+            onMediaClick={(media, index) => {
+              setSelectedMedia(media)
+              setSelectedIndex(index)
             }}
           />
-        </aside>
+        )}
+        {activeView === "settings" && <SettingsView />}
+      </main>
 
-        {/* Main Content */}
-        <main
-          className="flex-1 lg:ml-44 ml-0 lg:pl-1 pl-1 pr-1 lg:pr-1 lg:relative pb-24"
-          onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
-          style={{
-            minHeight: 'calc(100vh - 6rem)',
-            maxHeight: 'calc(100vh - 6rem)',
-            overflowY: 'auto'
+      {selectedMedia && (
+        <MediaViewer
+          media={selectedMedia}
+          currentIndex={selectedIndex}
+          onClose={() => {
+            setSelectedMedia(null)
+            setSelectedIndex(-1)
           }}
-        >
-          <div className="w-full max-w-2xl mx-auto px-2 sm:px-4 h-full">
-
-            {/* Step Content */}
-            {currentStepData && (
-              <>
-                {currentStep === 1 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80">选择语言</h2>
-                    </div>
-                    <LanguageSelector />
-                  </>
-                ) : currentStep === 2 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80">{t('init.step2.title')}</h2>
-                    </div>
-                    <MediaSourceSelector />
-                  </>
-                ) : currentStep === 3 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80 text-center">媒体路径清单</h2>
-                    </div>
-                    <MediaPathList />
-                  </>
-                ) : currentStep === 4 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80 text-center">完成</h2>
-                    </div>
-                    <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
-                  </>
-                ) : (
-                  <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
-                )}
-              </>
-            )}
-
-          </div>
-        </main>
-      </div>
-
-    {/* Fixed Bottom Navigation Button - 使用React.memo优化重渲染 */}
-    <div
-      className="fixed bottom-8 right-4 z-[99999]"
-      style={{
-        transform: 'translateZ(0)',
-        willChange: 'transform',
-        backfaceVisibility: 'hidden',
-        isolation: 'isolate' // 创建新的层叠上下文
-      }}
-    >
-      {currentStep < steps.length && (
-        <Button
-          onClick={handleNextStep}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground border border-border/50 px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-md transition-all duration-300"
-          style={{
-            transform: 'translateZ(0)',
-            willChange: 'transform'
-          }}
-        >
-          {t('init.nextStep')}
-        </Button>
+          onNavigate={handleNavigate}
+          onMediaUpdate={handleMediaUpdate}
+          onMediaRemove={handleMediaRemove}
+        />
       )}
-    </div>
     </div>
   )
 }

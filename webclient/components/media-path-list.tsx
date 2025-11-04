@@ -119,10 +119,20 @@ export function MediaPathList() {
 
           {/* 底部统计信息 */}
           <div className="pt-3 border-t border-border/20 mt-auto">
-            <div className="flex items-center justify-center text-xs text-muted-foreground/70">
+            <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground/70">
               <div>
                 共 {mediaSources.length} 个媒体路径
               </div>
+              {mediaSources.length === 0 && (
+                <div>
+                  需要至少添加一个媒体路径才能继续
+                </div>
+              )}
+              {mediaSources.length > 0 && (
+                <div>
+                  可以返回上一步继续添加更多路径
+                </div>
+              )}
             </div>
           </div>
         </div>

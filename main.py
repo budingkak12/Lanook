@@ -194,21 +194,24 @@ def _prepare_initialization_state():
         create_database_and_tables(echo=False)
     except Exception as exc:
         print("[startup] Failed to ensure tables for initialization:", exc)
-    coordinator = InitializationCoordinator()
-    media_root = get_configured_media_root()
-    if media_root and has_indexed_media():
-        coordinator.reset(
-            state=InitializationState.COMPLETED,
-            media_root_path=str(media_root),
-            message="媒体库已初始化。",
-        )
-    else:
-        coordinator.reset(
-            state=InitializationState.IDLE,
-            media_root_path=str(media_root) if media_root else None,
-            message=None,
-        )
-    app.state.init_coordinator = coordinator
+
+    # 只有在协调器不存在时才创建新的
+    if not hasattr(app.state, "init_coordinator") or app.state.init_coordinator is None:
+        coordinator = InitializationCoordinator()
+        media_root = get_configured_media_root()
+        if media_root and has_indexed_media():
+            coordinator.reset(
+                state=InitializationState.COMPLETED,
+                media_root_path=str(media_root),
+                message="媒体库已初始化。",
+            )
+        else:
+            coordinator.reset(
+                state=InitializationState.IDLE,
+                media_root_path=str(media_root) if media_root else None,
+                message=None,
+            )
+        app.state.init_coordinator = coordinator
 
 
 @app.on_event("startup")
@@ -259,11 +262,11 @@ def _display_connection_advert():
         ):
             # 如果已托管静态前端，则打开后端端口；否则回退到本地开发端口 3000
             if getattr(app.state, "frontend_available", False):
-                frontend_url = f"http://{lan_ip}:{preferred_port}/?autoShowSettings=true"
+                frontend_url = f"http://{lan_ip}:{preferred_port}/"
                 note = "static"
             else:
                 # 注意：开发模式必须用 localhost（而非局域网 IP），以便前端的 API Base 解析为 http://localhost:8000
-                frontend_url = "http://localhost:3000/?autoShowSettings=true"
+                frontend_url = "http://localhost:3000/"
                 note = "dev"
 
             print(f"[startup] 自动打开前端页面({note}): {frontend_url}")

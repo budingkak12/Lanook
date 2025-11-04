@@ -95,9 +95,9 @@ export function SettingsView() {
           description: "初始化状态已重置，即将重新进入初始化页面"
         })
 
-        // 等待2秒后刷新页面，让原始初始化逻辑处理
+        // 等待2秒后跳转到初始化页面
         setTimeout(() => {
-          window.location.reload()
+          window.location.href = window.location.origin + "?forceInit=true"
         }, 2000)
       } else {
         const errorData = await response.json()
