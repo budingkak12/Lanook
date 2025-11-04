@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Shuffle, FolderOpen, Search, Settings } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { useState } from "react"
 
 type SidebarProps = {
   activeView: "feed" | "albums" | "search" | "settings"
@@ -11,6 +12,7 @@ type SidebarProps = {
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const { t } = useTranslation()
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   const navItems = [
     { id: "feed" as const, label: t("sidebar.feed"), icon: Shuffle },
@@ -20,28 +22,58 @@ export function Sidebar({ activeView, onViewChange }: SidebarProps) {
   ]
 
   return (
-    <aside className="w-64 border-r border-border bg-sidebar flex flex-col">
-      <div className="p-6 border-b border-sidebar-border">
-        <h1 className="text-xl font-semibold text-sidebar-foreground">{t("app.title")}</h1>
+    <aside
+      className={cn(
+        "relative flex flex-col transition-all duration-300 ease-in-out",
+        isCollapsed ? "w-16" : "w-48"
+      )}
+    >
+      {/* Sidebar Background with blur effect */}
+      <div className="absolute inset-0 bg-card/30 backdrop-blur-sm border-r border-border/50" />
+
+      {/* Header */}
+      <div className="relative z-10 border-b border-border/30">
+        <div className="p-4 flex items-center justify-between">
+          {!isCollapsed && (
+            <h1 className="text-lg font-medium text-foreground">{t("app.title")}</h1>
+          )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+          >
+            <div className="w-4 h-4 flex flex-col justify-center gap-0.5">
+              <div className="h-0.5 bg-foreground rounded-full" />
+              <div className="h-0.5 bg-foreground rounded-full" />
+              <div className="h-0.5 bg-foreground rounded-full" />
+            </div>
+          </button>
+        </div>
       </div>
 
-      <nav className="flex-1 p-4">
-        <ul className="space-y-2">
+      {/* Navigation */}
+      <nav className="relative z-10 flex-1 p-2">
+        <ul className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
+            const isActive = activeView === item.id
+
             return (
               <li key={item.id}>
                 <button
                   onClick={() => onViewChange(item.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                    activeView === item.id
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300",
+                    isActive
+                      ? "bg-primary/90 text-primary-foreground shadow-lg scale-[1.02]"
+                      : "text-muted-foreground hover:bg-card/50 hover:text-foreground hover:shadow-md"
                   )}
                 >
-                  <Icon className="w-5 h-5" />
-                  {item.label}
+                  <Icon className="w-5 h-5 shrink-0" />
+                  {!isCollapsed && (
+                    <span className="truncate transition-all duration-300">
+                      {item.label}
+                    </span>
+                  )}
                 </button>
               </li>
             )

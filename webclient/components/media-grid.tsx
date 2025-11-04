@@ -386,7 +386,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto px-6 pt-6">
         {isInitialLoading && mediaItems.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">正在加载媒体...</div>
         ) : error && mediaItems.length === 0 ? (
@@ -440,7 +440,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
               ))}
             </div>
 
-            <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
+            <div ref={loadMoreRef} className="h-12 flex items-center justify-center">
               {hasMore ? (
                 <div className="text-sm text-muted-foreground">
                   {isLoadingMore ? "正在加载更多..." : "下滑加载更多"}

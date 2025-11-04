@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { MainSidebar } from "@/components/main-sidebar"
+import { MainHeader } from "@/components/main-header"
+import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { MediaGrid, type MediaGridHandle } from "@/components/media-grid"
 import { MediaViewer } from "@/components/media-viewer"
 import { SearchView } from "@/components/search-view"
@@ -37,6 +39,7 @@ export default function Home() {
   const [activeView, setActiveView] = useState<"feed" | "albums" | "search" | "settings">("feed")
   const [isInitialized, setIsInitialized] = useState<boolean | null>(null)
   const [isCheckingInit, setIsCheckingInit] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // 工具：清理 URL 上的 forceInit 标记，避免热重载/二次挂载又回到初始化页
   const clearForceInitFromUrl = () => {
@@ -264,32 +267,71 @@ export default function Home() {
   }
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-background">
-          <Sidebar activeView={activeView} onViewChange={setActiveView} />
+    <div className="relative h-screen overflow-hidden bg-background">
+      {/* Main Content Area */}
+      <div className="flex">
+        {/* Sidebar - 只在桌面端显示 */}
+        <div className="hidden lg:block">
+          <MainSidebar
+            activeView={activeView}
+            onViewChange={setActiveView}
+            isSidebarOpen={isSidebarOpen}
+            onSidebarClose={() => setIsSidebarOpen(false)}
+          />
+        </div>
 
-      <main className="flex-1 overflow-hidden">
-        {activeView === "feed" && (
-          <MediaGrid
-            ref={gridRef}
-            sessionId={sessionId}
-            onMediaClick={(media, index) => {
-              setSelectedMedia(media)
-              setSelectedIndex(index)
-            }}
-            onItemsChange={setGridItems}
-          />
-        )}
-        {activeView === "albums" && <AlbumsView />}
-        {activeView === "search" && (
-          <SearchView
-            onMediaClick={(media, index) => {
-              setSelectedMedia(media)
-              setSelectedIndex(index)
-            }}
-          />
-        )}
-        {activeView === "settings" && <SettingsView />}
-      </main>
+        {/* Main Content */}
+        <main
+          className="flex-1 lg:ml-44 ml-0 lg:pl-1 lg:pr-1 lg:relative pb-0 lg:pb-4"
+          onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
+          style={{
+            height: '100vh',
+            overflowY: 'auto'
+          }}
+        >
+          <div className="w-full h-full">
+            {activeView === "feed" && (
+              <div className="h-full">
+                <MediaGrid
+                  ref={gridRef}
+                  sessionId={sessionId}
+                  onMediaClick={(media, index) => {
+                    setSelectedMedia(media)
+                    setSelectedIndex(index)
+                  }}
+                  onItemsChange={setGridItems}
+                />
+              </div>
+            )}
+            {activeView === "albums" && (
+              <div className="h-full">
+                <AlbumsView />
+              </div>
+            )}
+            {activeView === "search" && (
+              <div className="h-full">
+                <SearchView
+                  onMediaClick={(media, index) => {
+                    setSelectedMedia(media)
+                    setSelectedIndex(index)
+                  }}
+                />
+              </div>
+            )}
+            {activeView === "settings" && (
+              <div className="h-full">
+                <SettingsView />
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* Mobile Bottom Navigation - 只在移动端显示 */}
+      <MobileBottomNav
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
 
       {selectedMedia && (
         <MediaViewer

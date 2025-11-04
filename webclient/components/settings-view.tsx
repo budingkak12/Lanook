@@ -127,43 +127,114 @@ export function SettingsView() {
   }, [isNetworkExpanded, serverInfo])
 
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="h-full overflow-y-auto p-4 sm:p-6">
+      <div className="w-full max-w-6xl mx-auto space-y-3 sm:space-y-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">{t("settings.title")}</h1>
           <p className="text-muted-foreground">{t("settings.description")}</p>
         </div>
 
-        {/* 语言设置 - 放在第一位，默认展开 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5" />
-              <CardTitle>{t("settings.language.title")}</CardTitle>
-            </div>
-            <CardDescription>
-              {t("settings.language.current")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Button
-                variant={i18n.language === "zh-CN" ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => i18n.changeLanguage("zh-CN")}
-              >
-                {t("settings.language.chinese")}
-              </Button>
-              <Button
-                variant={i18n.language === "en-US" ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => i18n.changeLanguage("en-US")}
-              >
-                {t("settings.language.english")}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* 语言设置和外观设置 - 两列布局 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* 语言设置 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                <CardTitle>{t("settings.language.title")}</CardTitle>
+              </div>
+              <CardDescription>
+                {t("settings.language.current")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Button
+                  variant={i18n.language === "zh-CN" ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => i18n.changeLanguage("zh-CN")}
+                >
+                  {t("settings.language.chinese")}
+                </Button>
+                <Button
+                  variant={i18n.language === "en-US" ? "default" : "outline"}
+                  className="w-full justify-start"
+                  onClick={() => i18n.changeLanguage("en-US")}
+                >
+                  {t("settings.language.english")}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 外观设置 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Palette className="w-5 h-5" />
+                <CardTitle>{t("settings.appearance.title")}</CardTitle>
+              </div>
+              <CardDescription>
+                {t("settings.appearance.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* 主题选择按钮 - 更紧凑的布局 */}
+                <div className="grid grid-cols-1 gap-2">
+                  <Button
+                    variant={theme === "light" ? "default" : "outline"}
+                    className="h-auto p-3 justify-start"
+                    onClick={() => setTheme("light")}
+                  >
+                    <Sun className="w-4 h-4 mr-2" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium">明亮模式</p>
+                      <p className="text-xs opacity-70">适合白天使用</p>
+                    </div>
+                  </Button>
+
+                  <Button
+                    variant={theme === "dark" ? "default" : "outline"}
+                    className="h-auto p-3 justify-start"
+                    onClick={() => setTheme("dark")}
+                  >
+                    <Moon className="w-4 h-4 mr-2" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium">黑暗模式</p>
+                      <p className="text-xs opacity-70">适合夜间使用</p>
+                    </div>
+                  </Button>
+
+                  <Button
+                    variant={theme === "system" ? "default" : "outline"}
+                    className="h-auto p-3 justify-start"
+                    onClick={() => setTheme("system")}
+                  >
+                    <Monitor className="w-4 h-4 mr-2" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium">跟随系统</p>
+                      <p className="text-xs opacity-70">自动适配系统</p>
+                    </div>
+                  </Button>
+                </div>
+
+                {/* 当前主题提示 */}
+                <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                  当前：<span className="font-medium">
+                    {theme === "light" ? "明亮" :
+                     theme === "dark" ? "黑暗" : "跟随系统"}
+                  </span>
+                  {theme === "system" && typeof window !== 'undefined' && (
+                    <span className="ml-1">
+                      (系统{window.matchMedia('(prefers-color-scheme: dark)').matches ? '黑暗' : '明亮'})
+                    </span>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* 网络连接设置 */}
         <Card>
@@ -332,158 +403,86 @@ export function SettingsView() {
           )}
         </Card>
 
-        {/* 存储设置 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <HardDrive className="w-5 h-5" />
-              <CardTitle>{t("settings.storage.title")}</CardTitle>
-            </div>
-            <CardDescription>
-              {t("settings.storage.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* 媒体库重置 */}
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <RotateCcw className="w-4 h-4" />
-                      重置媒体库
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      清除当前媒体库设置，重新选择媒体文件夹
-                    </p>
+        {/* 存储设置和安全设置 - 两列布局 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* 存储设置 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-5 h-5" />
+                <CardTitle>{t("settings.storage.title")}</CardTitle>
+              </div>
+              <CardDescription>
+                {t("settings.storage.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* 媒体库重置 */}
+                <div className="border rounded-lg p-3 sm:p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <h4 className="font-medium flex items-center gap-2 text-sm">
+                        <RotateCcw className="w-4 h-4" />
+                        重置媒体库
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        清除当前媒体库设置，重新选择媒体文件夹
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={resetInitialization}
+                      disabled={isResetting}
+                      className="w-full sm:w-auto"
+                    >
+                      {isResetting ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          重置中...
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          重置
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={resetInitialization}
-                    disabled={isResetting}
-                  >
-                    {isResetting ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        重置中...
-                      </>
-                    ) : (
-                      <>
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        重置
-                      </>
-                    )}
-                  </Button>
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                    <strong>注意：</strong>重置后需要重新设置媒体文件夹路径，当前媒体库将被清空。
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
-                  <strong>注意：</strong>重置后需要重新设置媒体文件夹路径，当前媒体库将被清空。
+
+                {/* 其他存储设置 */}
+                <div className="text-center py-6 text-muted-foreground">
+                  <HardDrive className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-xs">{t("settings.storage.developing")}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* 其他存储设置 */}
-              <div className="text-center py-8 text-muted-foreground">
-                <HardDrive className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm">{t("settings.storage.developing")}</p>
+          {/* 安全设置 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                <CardTitle>{t("settings.security.title")}</CardTitle>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 外观设置 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Palette className="w-5 h-5" />
-              <CardTitle>{t("settings.appearance.title")}</CardTitle>
-            </div>
-            <CardDescription>
-              {t("settings.appearance.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* 主题模式选择 */}
-              <div className="space-y-2">
-                <h4 className="font-medium">主题模式</h4>
-                <p className="text-sm text-muted-foreground">
-                  选择您喜欢的界面主题，可以跟随系统设置自动切换
-                </p>
+              <CardDescription>
+                {t("settings.security.description")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-6 text-muted-foreground">
+                <Shield className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p className="text-xs">{t("settings.security.developing")}</p>
               </div>
-
-              {/* 主题选择按钮 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Button
-                  variant={theme === "light" ? "default" : "outline"}
-                  className="h-auto p-4 justify-start"
-                  onClick={() => setTheme("light")}
-                >
-                  <Sun className="w-5 h-5 mr-3" />
-                  <div className="text-left">
-                    <p className="font-medium">明亮模式</p>
-                    <p className="text-xs opacity-70">适合白天使用</p>
-                  </div>
-                </Button>
-
-                <Button
-                  variant={theme === "dark" ? "default" : "outline"}
-                  className="h-auto p-4 justify-start"
-                  onClick={() => setTheme("dark")}
-                >
-                  <Moon className="w-5 h-5 mr-3" />
-                  <div className="text-left">
-                    <p className="font-medium">黑暗模式</p>
-                    <p className="text-xs opacity-70">适合夜间使用</p>
-                  </div>
-                </Button>
-
-                <Button
-                  variant={theme === "system" ? "default" : "outline"}
-                  className="h-auto p-4 justify-start"
-                  onClick={() => setTheme("system")}
-                >
-                  <Monitor className="w-5 h-5 mr-3" />
-                  <div className="text-left">
-                    <p className="font-medium">跟随系统</p>
-                    <p className="text-xs opacity-70">自动适配系统</p>
-                  </div>
-                </Button>
-              </div>
-
-              {/* 当前主题提示 */}
-              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                当前主题：<span className="font-medium">
-                  {theme === "light" ? "明亮模式" :
-                   theme === "dark" ? "黑暗模式" : "跟随系统"}
-                </span>
-                {theme === "system" && typeof window !== 'undefined' && (
-                  <span className="ml-2">
-                    (系统为{window.matchMedia('(prefers-color-scheme: dark)').matches ? '黑暗' : '明亮'}模式)
-                  </span>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 安全设置 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              <CardTitle>{t("settings.security.title")}</CardTitle>
-            </div>
-            <CardDescription>
-              {t("settings.security.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-sm">{t("settings.security.developing")}</p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
