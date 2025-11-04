@@ -568,16 +568,16 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       )}
 
       {/* Bottom Actions */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 flex items-center justify-center gap-3 sm:gap-4 bg-gradient-to-t from-black/60 to-transparent">
+      <div className="absolute bottom-32 sm:bottom-6 left-0 right-0 p-3 sm:p-6 flex items-center justify-center gap-2 sm:gap-4 bg-gradient-to-t from-black/60 to-transparent z-30">
         {/* 移动端关闭按钮 */}
         {isMobile && (
           <Button
             variant="ghost"
             size="lg"
             onClick={handleClose}
-            className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]"
+            className="text-white hover:bg-white/20 bg-red-600/80 backdrop-blur-md rounded-full p-3 sm:p-3 min-w-[44px] min-h-[44px] sm:min-w-[44px] sm:min-h-[44px] relative z-50 border-2 border-white/40 shadow-xl"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 sm:w-5 sm:h-5" />
           </Button>
         )}
         <Button
@@ -585,18 +585,18 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           size="icon"
           disabled={likeLoading || isDeleting}
           onClick={() => void toggleLike()}
-          className={`text-white hover:bg-white/20 ${isLiked ? "text-red-500" : ""} bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]`}
+          className={`text-white hover:bg-white/20 ${isLiked ? "text-red-500 bg-red-600/90" : "bg-red-600/80"} backdrop-blur-md rounded-full p-3 sm:p-3 min-w-[44px] min-h-[44px] sm:min-w-[44px] sm:min-h-[44px] relative z-50 border-2 border-white/40 shadow-xl transition-all duration-200 ${isLiked ? "scale-110 shadow-lg shadow-red-500/50" : "hover:scale-105"}`}
         >
-          <Heart className={`w-6 h-6 ${isLiked ? "fill-current" : ""}`} />
+          <Heart className={`w-6 h-6 sm:w-6 sm:h-6 ${isLiked ? "fill-current text-white" : "text-white"}`} />
         </Button>
         <Button
           variant="ghost"
           size="icon"
           disabled={favoriteLoading || isDeleting}
           onClick={() => void toggleFavorite()}
-          className={`text-white hover:bg-white/20 ${isFavorited ? "text-yellow-500" : ""} bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]`}
+          className={`text-white hover:bg-white/20 ${isFavorited ? "text-yellow-500 bg-yellow-600/90" : "bg-yellow-600/80"} backdrop-blur-md rounded-full p-3 sm:p-3 min-w-[44px] min-h-[44px] sm:min-w-[44px] sm:min-h-[44px] relative z-50 border-2 border-white/40 shadow-xl transition-all duration-200 ${isFavorited ? "scale-110 shadow-lg shadow-yellow-500/50" : "hover:scale-105"}`}
         >
-          <Star className={`w-6 h-6 ${isFavorited ? "fill-current" : ""}`} />
+          <Star className={`w-6 h-6 sm:w-6 sm:h-6 ${isFavorited ? "fill-current text-white" : "text-white"}`} />
         </Button>
       </div>
 
