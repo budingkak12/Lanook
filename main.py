@@ -46,13 +46,6 @@ from app.services.auto_scan_service import ensure_auto_scan_service, get_auto_sc
 # Pydantic 模型
 # =============================
 
-class SessionRequest(BaseModel):
-    # 允许前端传入数字或字符串的种子；后续统一转为字符串
-    seed: Optional[str | int] = None
-
-
-class SessionResponse(BaseModel):
-    session_seed: str
 
 
 class MediaItem(BaseModel):
@@ -463,15 +456,6 @@ def seeded_key(seed: str, media_id: int) -> str:
 # 路由
 # =============================
 
-@app.get("/session", response_model=SessionResponse)
-def create_session(seed: Optional[str] = Query(None)):
-    if seed is None or str(seed).strip() == "":
-        # 生成一个稳定字符串种子（可替换为 uuid 或时间戳）
-        session_seed = str(random.randint(10**12, 10**13 - 1))
-    else:
-        # 接受数字/字符串并规范化为字符串
-        session_seed = str(seed)
-    return SessionResponse(session_seed=session_seed)
 
 
 @app.delete("/media/{media_id}", status_code=204)

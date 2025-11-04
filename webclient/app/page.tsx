@@ -128,56 +128,15 @@ export default function Home() {
   }, [checkInitializationStatus])
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [sessionId] = useState<string | null>(() => {
+    // 前端生成12-13位随机数字种子，与后端格式兼容
+    return Math.floor(Math.random() * 9e12 + 1e12).toString()
+  })
   const [gridItems, setGridItems] = useState<MediaItem[]>([])
   const gridRef = useRef<MediaGridHandle | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    if (isCheckingInit || !isInitialized) {
-      return
-    }
-
-    let cancelled = false
-
-    const fetchSession = async () => {
-      try {
-        const response = await apiFetch("/session", { credentials: "omit" })
-        if (!response.ok) {
-          throw new Error(t("errors.requestFailed", { status: response.status }))
-        }
-        const data = (await response.json()) as { session_seed?: string }
-        if (cancelled) {
-          return
-        }
-        const seed = data.session_seed ?? ""
-        setSessionId(seed)
-        setSessionError(null)
-        toast({
-          title: t("session.established"),
-          description: t("session.description", { seed }),
-        })
-      } catch (err) {
-        const message = err instanceof Error ? err.message : t("errors.unknownError")
-        if (cancelled) {
-          return
-        }
-        setSessionError(message)
-        toast({
-          title: t("session.failed"),
-          description: message,
-        })
-      }
-    }
-
-    fetchSession()
-
-    return () => {
-      cancelled = true
-    }
-  }, [isCheckingInit, isInitialized, t, toast])
-
+  
   useEffect(() => {
     if (!selectedMedia) {
       return
@@ -306,18 +265,7 @@ export default function Home() {
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-4">
-        <div className="pointer-events-auto rounded-lg bg-card/80 px-4 py-2 text-sm shadow">
-          {sessionId ? (
-            <span className="font-mono text-muted-foreground">session: {sessionId}</span>
-          ) : sessionError ? (
-            <span className="text-destructive">{t("session.failedMessage", { error: sessionError })}</span>
-          ) : (
-            <span className="text-muted-foreground">{t("session.getting")}</span>
-          )}
-        </div>
-      </div>
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+          <Sidebar activeView={activeView} onViewChange={setActiveView} />
 
       <main className="flex-1 overflow-hidden">
         {activeView === "feed" && (

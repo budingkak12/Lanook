@@ -98,8 +98,9 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
   }, [])
 
   const fetchMedia = useCallback(
-    async (offset: number, mode: "replace" | "append" = "replace") => {
-      if (!sessionId) {
+    async (offset: number, mode: "replace" | "append" = "replace", currentSessionId?: string) => {
+      const effectiveSessionId = currentSessionId || sessionId
+      if (!effectiveSessionId) {
         setMediaItems([])
         setHasMore(false)
         setError("尚未获取会话，请稍候重试。")
@@ -123,7 +124,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
       try {
         const params = new URLSearchParams({
-          seed: sessionId,
+          seed: effectiveSessionId,
           offset: String(offset),
           limit: String(PAGE_SIZE),
           order: "seeded",
@@ -166,7 +167,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       }
       return 0
     },
-    [sessionId, normalizeItems, toast],
+    [normalizeItems, toast],
   )
 
   useEffect(() => {
@@ -180,9 +181,13 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       return
     }
 
-    fetchMedia(0, "replace")
+    // 使用 setTimeout 来避免 React StrictMode 的双重执行问题
+    const timeoutId = setTimeout(() => {
+      fetchMedia(0, "replace", sessionId)
+    }, 0)
 
     return () => {
+      clearTimeout(timeoutId)
       abortRef.current?.abort()
       fetchingRef.current = false
     }
