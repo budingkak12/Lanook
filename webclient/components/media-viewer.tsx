@@ -202,10 +202,11 @@ export function MediaViewer({ media, onClose, onNavigate, onMediaUpdate, onMedia
           <img
             src={resolveApiUrl(currentMedia.resourceUrl || currentMedia.url || "/file.svg")}
             alt="Media"
-            className="h-full w-auto object-cover"
+            className="h-screen w-auto object-contain"
             style={{
               maxHeight: '100vh',
-              objectFit: 'cover'
+              maxWidth: '100vw',
+              objectFit: 'contain'
             }}
             onError={(e) => {
               const target = e.currentTarget
