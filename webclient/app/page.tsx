@@ -346,6 +346,11 @@ export default function Home() {
           onMediaUpdate={handleMediaUpdate}
           onMediaRemove={handleMediaRemove}
           onIndexChange={setSelectedIndex}
+          onLoadMore={async () => {
+            return await gridRef.current?.loadMore() ?? 0
+          }}
+          hasMore={gridRef.current?.getHasMore() ?? true}
+          isLoadingMore={gridRef.current?.getIsLoadingMore() ?? false}
         />
       )}
     </div>

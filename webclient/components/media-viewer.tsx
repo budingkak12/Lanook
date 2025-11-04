@@ -31,9 +31,12 @@ type MediaViewerProps = {
   onMediaUpdate: (mediaId: number, updates: Partial<MediaItem>) => void
   onMediaRemove: (mediaIds: number[]) => void
   onIndexChange: (index: number) => void
+  onLoadMore?: () => Promise<number> // 新增：加载更多媒体的函数
+  hasMore?: boolean // 新增：是否还有更多数据
+  isLoadingMore?: boolean // 新增：是否正在加载更多
 }
 
-export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate, onMediaUpdate, onMediaRemove, onIndexChange }: MediaViewerProps) {
+export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate, onMediaUpdate, onMediaRemove, onIndexChange, onLoadMore, hasMore = true, isLoadingMore = false }: MediaViewerProps) {
   const [currentMedia, setCurrentMedia] = useState(media)
   const [currentSlideIndex, setCurrentSlideIndex] = useState(currentIndex)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -307,6 +310,17 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           playVideo(newMedia.id)
         }, 300) // 延迟播放，确保动画完成
       }
+    }
+
+    // 预加载机制：当接近列表末尾时，触发加载更多数据
+    const PRELOAD_THRESHOLD = 5 // 预加载阈值：距离末尾5个媒体时开始加载
+    const shouldPreload = newIndex >= allMedia.length - PRELOAD_THRESHOLD && hasMore && !isLoadingMore && onLoadMore
+
+    if (shouldPreload) {
+      console.log('MediaViewer: 触发预加载，当前索引:', newIndex, '总长度:', allMedia.length)
+      onLoadMore().catch(err => {
+        console.error('MediaViewer: 预加载失败:', err)
+      })
     }
   }
 

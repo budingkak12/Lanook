@@ -52,6 +52,8 @@ export type MediaGridHandle = {
   getItems: () => MediaItem[]
   updateItem: (mediaId: number, updater: Partial<MediaItem> | ((prev: MediaItem) => MediaItem)) => void
   removeItems: (mediaIds: number[]) => void
+  getHasMore: () => boolean
+  getIsLoadingMore: () => boolean
 }
 
 export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function MediaGrid(
@@ -359,6 +361,8 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
           return next
         })
       },
+      getHasMore: () => hasMore,
+      getIsLoadingMore: () => isLoadingMore,
     }),
     [error, fetchMedia, hasMore, isInitialLoading, isLoadingMore, mediaItems],
   )
