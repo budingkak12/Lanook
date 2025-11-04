@@ -282,7 +282,7 @@ export default function Home() {
 
         {/* Main Content */}
         <main
-          className="flex-1 lg:ml-44 ml-0 lg:pl-1 lg:pr-1 lg:relative pb-0 lg:pb-4"
+          className="flex-1 lg:ml-44 ml-0 lg:pl-1 lg:pr-1 lg:relative pb-16 lg:pb-4"
           onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
           style={{
             height: '100vh',
