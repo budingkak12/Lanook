@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogDescription,
+  AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
 import { MediaSourceSelector } from '@/components/media-source-selector'
 import { MediaPathList } from '@/components/media-path-list'
@@ -86,6 +87,23 @@ export function SettingsMediaManagement({ className }: SettingsMediaManagementPr
           />
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 关闭按钮 - 在弹窗外部 */}
+      {showAddSource && (
+        <div
+          className="fixed top-[3vh] left-1/2 z-[60] -translate-x-1/2 pointer-events-none"
+        >
+          <Button
+            onClick={() => setShowAddSource(false)}
+            variant="ghost"
+            className="h-10 w-10 p-0 hover:bg-gray-100 transition-colors shadow-lg !bg-white border border-gray-300 rounded-full pointer-events-auto"
+          >
+            <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
