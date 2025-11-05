@@ -49,9 +49,12 @@
       }
     },
     "storage": {
-      "title": "Storage Settings",
-      "description": "Manage media storage and cache configuration",
-      "developing": "Storage settings feature is under development..."
+      "title": "Media Path Management",
+      "description": "Manage media library paths, add and scan immediately, delete takes effect immediately",
+      "addPath": "Add Media Path",
+      "addSuccess": "Added successfully and scanning started",
+      "deleteSuccess": "Deleted successfully, media list will update immediately",
+      "lastScan": "Last Scan"
     },
     "appearance": {
       "title": "Appearance Settings",

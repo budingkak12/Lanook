@@ -240,6 +240,7 @@ export interface MediaSource {
   displayName: string | null
   rootPath: string
   createdAt: string
+  lastScanAt: string | null
 }
 
 export interface SourceValidationRequest {
@@ -291,15 +292,53 @@ export async function createMediaSource(request: CreateSourceRequest): Promise<M
   return (await ensured.json()) as MediaSource
 }
 
-// 获取媒体来源列表
-export async function getMediaSources(): Promise<MediaSource[]> {
-  const response = await apiFetch("/media-sources")
+
+// 删除媒体来源
+export async function deleteMediaSource(id: number, hard = false): Promise<void> {
+  const response = await apiFetch(`/media-sources/${id}?hard=${hard}`, { method: "DELETE" })
+  await ensureOk(response)
+}
+
+// 恢复媒体来源
+export async function restoreMediaSource(id: number): Promise<MediaSource> {
+  const response = await apiFetch(`/media-sources/${id}/restore`, { method: "POST" })
+  const ensured = await ensureOk(response)
+  return (await ensured.json()) as MediaSource
+}
+
+// 获取媒体来源列表（支持包含已停用的来源）
+export async function getMediaSources(includeInactive = false): Promise<MediaSource[]> {
+  const response = await apiFetch(`/media-sources?include_inactive=${includeInactive}`)
   const ensured = await ensureOk(response)
   return (await ensured.json()) as MediaSource[]
 }
 
-// 删除媒体来源
-export async function deleteMediaSource(id: number): Promise<void> {
-  const response = await apiFetch(`/media-sources/${id}`, { method: "DELETE" })
-  await ensureOk(response)
+// ===== 扫描相关 API =====
+
+export interface ScanStartResponse {
+  jobId: string
+}
+
+export interface ScanStatusResponse {
+  state: 'running' | 'completed' | 'failed'
+  scannedCount: number
+  message: string | null
+  startedAt: string | null
+  finishedAt: string | null
+}
+
+// 开始扫描媒体源
+export async function startScan(sourceId: number): Promise<string> {
+  const response = await apiFetch(`/scan/start?source_id=${sourceId}`, { method: "POST" })
+  const data = await ensureOk(response)
+  const result = await data.json() as ScanStartResponse
+  return result.jobId
+}
+
+// 获取扫描状态
+export async function getScanStatus(jobId: string): Promise<ScanStatusResponse | null> {
+  const response = await apiFetch(`/scan/status?job_id=${jobId}`)
+  if (!response.ok) return null
+  const data = await ensureOk(response)
+  return (await data.json()) as ScanStatusResponse
 }

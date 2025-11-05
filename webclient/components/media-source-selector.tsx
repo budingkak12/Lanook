@@ -6,9 +6,14 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, type CommonFolderEntry, type FolderItem } from '@/lib/api'
+import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, type CommonFolderEntry, type FolderItem, type MediaSource } from '@/lib/api'
 
-export function MediaSourceSelector() {
+interface MediaSourceSelectorProps {
+  mode?: 'init' | 'settings'  // 使用模式
+  onSuccess?: (source: MediaSource) => void  // 成功回调
+}
+
+export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSelectorProps = {}) {
   const { t } = useTranslation()
   const { toast } = useToast()
     const [selectedPath, setSelectedPath] = useState('')
@@ -65,10 +70,16 @@ export function MediaSourceSelector() {
           displayName: path.split('/').pop() || path
         })
 
-        toast({
-          title: "添加成功",
-          description: `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
-        })
+        // 调用成功回调
+        onSuccess?.(source)
+
+        // 仅在初始化模式下显示原有提示
+        if (mode !== 'settings') {
+          toast({
+            title: "添加成功",
+            description: `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
+          })
+        }
         console.log('成功创建媒体来源:', source)
       } else {
         toast({

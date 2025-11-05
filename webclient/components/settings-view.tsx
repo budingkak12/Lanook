@@ -9,6 +9,7 @@ import { useTheme } from "next-themes"
 import { apiFetch, getOSInfo } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "react-i18next"
+import { SettingsMediaManagement } from "@/components/settings-media-management"
 
 interface ConnectionInfo { ip: string; port: number; display_url: string }
 
@@ -410,57 +411,14 @@ export function SettingsView() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <HardDrive className="w-5 h-5" />
-                <CardTitle>{t("settings.storage.title")}</CardTitle>
+                <CardTitle>媒体路径管理</CardTitle>
               </div>
               <CardDescription>
-                {t("settings.storage.description")}
+                管理媒体库路径，添加后立即扫描，删除立即生效
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {/* 媒体库重置 */}
-                <div className="border rounded-lg p-3 sm:p-4 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="font-medium flex items-center gap-2 text-sm">
-                        <RotateCcw className="w-4 h-4" />
-                        重置媒体库
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        清除当前媒体库设置，重新选择媒体文件夹
-                      </p>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={resetInitialization}
-                      disabled={isResetting}
-                      className="w-full sm:w-auto"
-                    >
-                      {isResetting ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          重置中...
-                        </>
-                      ) : (
-                        <>
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          重置
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                    <strong>注意：</strong>重置后需要重新设置媒体文件夹路径，当前媒体库将被清空。
-                  </div>
-                </div>
-
-                {/* 其他存储设置 */}
-                <div className="text-center py-6 text-muted-foreground">
-                  <HardDrive className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                  <p className="text-xs">{t("settings.storage.developing")}</p>
-                </div>
-              </div>
+              <SettingsMediaManagement />
             </CardContent>
           </Card>
 

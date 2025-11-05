@@ -4,19 +4,27 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { getMediaSources, deleteMediaSource, type MediaSource } from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
 
-export function MediaPathList() {
+interface MediaPathListProps {
+  mode?: 'init' | 'settings'  // 使用模式
+  onRefresh?: () => void     // 刷新回调
+}
+
+export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps = {}) {
   const [mediaSources, setMediaSources] = useState<MediaSource[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [selectedSource, setSelectedSource] = useState<MediaSource | null>(null)
+  const { toast } = useToast()
 
   // 加载媒体路径清单
   useEffect(() => {
     const loadMediaSources = async () => {
       try {
         setIsLoading(true)
-        const sources = await getMediaSources()
+        // 只加载活跃的媒体源，已停用的不会显示
+        const sources = await getMediaSources(false)
         setMediaSources(sources)
       } catch (error) {
         console.error('加载媒体路径清单失败:', error)
@@ -31,11 +39,27 @@ export function MediaPathList() {
   const handleDeleteSource = async (id: number) => {
     try {
       setDeletingId(id)
-      await deleteMediaSource(id)
-      // 从列表中移除
+      await deleteMediaSource(id) // 使用默认的软删除
       setMediaSources(prev => prev.filter(source => source.id !== id))
+
+      // 设置模式下提供用户反馈
+      if (mode === 'settings') {
+        toast({
+          title: "删除成功",
+          description: "媒体路径已标记为删除，媒体列表将立即更新"
+        })
+      }
+
+      // 调用刷新回调
+      onRefresh?.()
     } catch (error) {
       console.error('删除媒体路径失败:', error)
+      if (mode === 'settings') {
+        toast({
+          title: "删除失败",
+          description: error instanceof Error ? error.message : "未知错误"
+        })
+      }
     } finally {
       setDeletingId(null)
     }
@@ -86,6 +110,18 @@ export function MediaPathList() {
                         <div className="text-xs text-muted-foreground/80 truncate" title={source.rootPath}>
                           {source.rootPath}
                         </div>
+                        {/* 设置模式下显示最后扫描时间 */}
+                        {mode === 'settings' && source.lastScanAt && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            最后扫描: {new Date(source.lastScanAt).toLocaleString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
@@ -189,7 +225,7 @@ export function MediaPathList() {
               </div>
 
               {/* 其他信息 */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">类型</div>
                   <div className="text-sm font-medium">
@@ -204,6 +240,21 @@ export function MediaPathList() {
                     #{selectedSource.id}
                   </div>
                 </div>
+                {/* 设置模式下显示最后扫描时间 */}
+                {mode === 'settings' && selectedSource.lastScanAt && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">最后扫描</div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {new Date(selectedSource.lastScanAt).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 操作按钮 */}

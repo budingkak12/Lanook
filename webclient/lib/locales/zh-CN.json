@@ -49,9 +49,12 @@
       }
     },
     "storage": {
-      "title": "存储设置",
-      "description": "管理媒体存储和缓存配置",
-      "developing": "存储设置功能开发中..."
+      "title": "媒体路径管理",
+      "description": "管理媒体库路径，添加后立即扫描，删除立即生效",
+      "addPath": "添加媒体路径",
+      "addSuccess": "添加成功并开始扫描",
+      "deleteSuccess": "删除成功，媒体列表将立即更新",
+      "lastScan": "最后扫描"
     },
     "appearance": {
       "title": "外观设置",
