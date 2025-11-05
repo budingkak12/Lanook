@@ -15,6 +15,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     UniqueConstraint,
+    text,
+    inspect,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.pool import NullPool
@@ -74,6 +76,7 @@ class Media(Base):
     absolute_path = Column(String, nullable=False, unique=True)
     media_type = Column(String, nullable=False)  # 'image' or 'video'
     created_at = Column(DateTime, default=datetime.utcnow)
+    source_id = Column(Integer, ForeignKey("media_sources.id"), nullable=True, index=True)
 
     # 建立与MediaTag的关系（全局标签，无用户）
     tags = relationship("MediaTag", back_populates="media", cascade="all, delete-orphan")
@@ -128,8 +131,47 @@ def create_database_and_tables(echo: bool = True):
     if echo:
         print("正在创建数据库表...")
     Base.metadata.create_all(bind=engine)
+    _ensure_schema_upgrades()
     if echo:
         print("✅ 表结构创建成功。")
+
+
+def _ensure_schema_upgrades() -> None:
+    inspector = inspect(engine)
+    table_names = {name for name in inspector.get_table_names()}
+
+    def _alter(statement: str) -> None:
+        with engine.begin() as conn:
+            conn.execute(text(statement))
+
+    if "media_sources" in table_names:
+        columns = {col["name"] for col in inspector.get_columns("media_sources")}
+        if "status" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN status TEXT DEFAULT 'active'")
+                _alter("UPDATE media_sources SET status = 'active' WHERE status IS NULL")
+            except Exception:
+                pass
+        if "deleted_at" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN deleted_at DATETIME")
+            except Exception:
+                pass
+        if "last_scan_at" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN last_scan_at DATETIME")
+            except Exception:
+                pass
+
+    if "media" in table_names:
+        columns = {col["name"] for col in inspector.get_columns("media")}
+        if "source_id" not in columns:
+            try:
+                _alter("ALTER TABLE media ADD COLUMN source_id INTEGER")
+            except Exception:
+                pass
+
+    _backfill_media_sources()
 
 
 def seed_initial_data(db_session):
@@ -147,7 +189,96 @@ def seed_initial_data(db_session):
     print("✅ 初始数据填充完毕。")
 
 
-def scan_and_populate_media(db_session, media_path: str, *, limit: Optional[int] = None) -> int:
+def _normalize_root_path(raw_path: str, *, type_: str) -> str:
+    if type_ == "local":
+        return str(Path(raw_path).expanduser().resolve())
+    return raw_path.rstrip("/")
+
+
+def _resolve_media_source(db_session, raw_path: str, *, source_id: Optional[int], type_: str):
+    from app.db.models_extra import MediaSource
+
+    if source_id is not None:
+        return (
+            db_session.query(MediaSource)
+            .filter(MediaSource.id == source_id)
+            .first()
+        )
+
+    normalized = _normalize_root_path(raw_path, type_=type_)
+    source = (
+        db_session.query(MediaSource)
+        .filter(MediaSource.root_path == normalized)
+        .first()
+    )
+    if source is None:
+        display_name = Path(normalized).name if type_ == "local" else normalized
+        source = MediaSource(
+            type=type_,
+            display_name=display_name,
+            root_path=normalized,
+        )
+        db_session.add(source)
+        db_session.flush()
+    else:
+        if source.status != "active":
+            source.status = "active"
+            source.deleted_at = None
+    return source
+
+
+def _backfill_media_sources() -> None:
+    from app.db.models_extra import MediaSource
+
+    session = SessionLocal()
+    try:
+        needs_backfill = (
+            session.query(Media.id)
+            .filter(Media.source_id.is_(None))
+            .limit(1)
+            .first()
+        )
+        if not needs_backfill:
+            return
+
+        sources = session.query(MediaSource).all()
+        target_source = None
+        if len(sources) == 1:
+            target_source = sources[0]
+        elif len(sources) == 0:
+            configured_root = get_setting(session, MEDIA_ROOT_KEY)
+            if configured_root:
+                target_source = _resolve_media_source(
+                    session,
+                    configured_root,
+                    source_id=None,
+                    type_="local",
+                )
+
+        if target_source is None:
+            return
+
+        session.query(Media).filter(Media.source_id.is_(None)).update(
+            {Media.source_id: target_source.id},
+            synchronize_session=False,
+        )
+        if target_source.status != "active":
+            target_source.status = "active"
+            target_source.deleted_at = None
+        if target_source.last_scan_at is None:
+            target_source.last_scan_at = datetime.utcnow()
+        session.commit()
+    finally:
+        session.close()
+
+
+def scan_and_populate_media(
+    db_session,
+    media_path: str,
+    *,
+    limit: Optional[int] = None,
+    source_id: Optional[int] = None,
+) -> int:
     """扫描指定目录并将媒体信息存入数据库。
 
     :param limit: 当设置时，最多入库指定数量的新媒体后立即返回，
@@ -158,6 +289,14 @@ def scan_and_populate_media(db_session, media_path: str, *, limit: Optional[int]
     # 检查目录是否存在
     if not os.path.isdir(media_path):
         raise FileNotFoundError(f"目录 '{media_path}' 不存在。")
+
+    source = _resolve_media_source(
+        db_session,
+        media_path,
+        source_id=source_id,
+        type_="local",
+    )
+    resolved_source_id = source.id if source else source_id
 
     # 获取数据库中已存在的所有路径，用于去重
     existing_paths = {path for (path,) in db_session.query(Media.absolute_path)}
@@ -185,6 +324,7 @@ def scan_and_populate_media(db_session, media_path: str, *, limit: Optional[int]
                         filename=filename,
                         absolute_path=absolute_path,
                         media_type=media_type,
+                        source_id=resolved_source_id,
                     )
                     db_session.add(new_media)
                     new_files_count += 1
@@ -198,12 +338,19 @@ def scan_and_populate_media(db_session, media_path: str, *, limit: Optional[int]
 
     if new_files_count > 0:
         print(f"正在将 {new_files_count} 个新媒体文件信息提交到数据库...")
-        db_session.commit()
         print("✅ 新媒体文件入库成功。")
         if limit_reached:
             print("⚡️ 首批媒体已准备，后台将继续扫描剩余文件。")
     else:
         print("✅ 没有发现新的媒体文件。")
+
+    if source is not None:
+        source.last_scan_at = datetime.utcnow()
+        if source.status != "active":
+            source.status = "active"
+            source.deleted_at = None
+
+    db_session.commit()
     return new_files_count
 
 

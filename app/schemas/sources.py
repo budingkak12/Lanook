@@ -11,6 +11,11 @@ class SourceType(str, Enum):
     SMB = "smb"
 
 
+class SourceStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
 class SourceValidateRequest(BaseModel):
     type: SourceType = Field(..., description="来源类型：local 或 smb")
     # local
@@ -58,6 +63,9 @@ class MediaSourceModel(BaseModel):
     displayName: Optional[str] = None
     rootPath: str
     createdAt: str
+    status: SourceStatus
+    deletedAt: Optional[str] = None
+    lastScanAt: Optional[str] = None
 
 
 class ScanStartResponse(BaseModel):

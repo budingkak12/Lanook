@@ -17,6 +17,7 @@ from 初始化数据库 import (
     AUTO_SCAN_ENABLED_KEY,
     SessionLocal,
     get_setting,
+    _resolve_media_source,
     scan_and_populate_media,
     set_setting,
 )
@@ -217,7 +218,17 @@ class AutoScanService:
 
         session = SessionLocal()
         try:
-            new_count = scan_and_populate_media(session, str(root))
+            source = _resolve_media_source(
+                session,
+                str(root),
+                source_id=None,
+                type_="local",
+            )
+            new_count = scan_and_populate_media(
+                session,
+                str(root),
+                source_id=source.id if source else None,
+            )
             if new_count:
                 print(f"[auto-scan] 已入库 {new_count} 个新增媒体。")
         except Exception as exc:

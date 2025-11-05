@@ -32,21 +32,25 @@ def start_scan_job(source_id: int, root_path: str, background: BackgroundTasks) 
         db.commit()
 
     # 后台执行实际扫描
-    background.add_task(_run_scan_job, job_id, root_path)
+    background.add_task(_run_scan_job, job_id, root_path, source_id)
     return job_id
 
 
-def _run_scan_job(job_id: str, root_path: str) -> None:
+def _run_scan_job(job_id: str, root_path: str, source_id: int) -> None:
     db: Optional[Session] = None
     try:
         create_database_and_tables(echo=False)
         db = SessionLocal()
         if is_smb_url(root_path):
-            scanned = _scan_smb_into_db(db, root_path)
+            scanned = _scan_smb_into_db(db, root_path, source_id)
         else:
             # 使用现有的去重扫描逻辑（不清库、不改设置）
             before = db.execute("SELECT COUNT(1) FROM media").scalar() or 0
-            added = scan_and_populate_media(db, str(Path(root_path).expanduser().resolve()))
+            added = scan_and_populate_media(
+                db,
+                str(Path(root_path).expanduser().resolve()),
+                source_id=source_id,
+            )
             after = db.execute("SELECT COUNT(1) FROM media").scalar() or 0
             scanned = (after - before) if (after - before) >= 0 else added
         job = db.query(ScanJob).filter(ScanJob.job_id == job_id).first()
@@ -69,12 +73,21 @@ def _run_scan_job(job_id: str, root_path: str) -> None:
             db.close()
 
 
-def _scan_smb_into_db(db: Session, root_url: str) -> int:
+def _scan_smb_into_db(db: Session, root_url: str, source_id: int) -> int:
     """遍历 SMB 目录并将媒体入库；按绝对 URL 去重。"""
     exts_image = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
     exts_video = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
     existing = {path for (path,) in db.query(Media.absolute_path)}
     added = 0
+    from 初始化数据库 import _resolve_media_source
+
+    source = _resolve_media_source(
+        db,
+        root_url,
+        source_id=source_id,
+        type_="smb",
+    )
+    resolved_source_id = source.id if source else source_id
     with ro_fs_for_url(root_url) as (fs, inner):
         root_prefix = root_url.rstrip("/")
         base_dir = inner.rstrip("/")
@@ -94,10 +107,22 @@ def _scan_smb_into_db(db: Session, root_url: str) -> int:
             url = f"{root_prefix}/" + rel
             if url in existing:
                 continue
-            db.add(Media(filename=name, absolute_path=url, media_type=media_type))
+            db.add(
+                Media(
+                    filename=name,
+                    absolute_path=url,
+                    media_type=media_type,
+                    source_id=resolved_source_id,
+                )
+            )
             added += 1
-        if added:
-            db.commit()
+    if source is not None:
+        source.last_scan_at = datetime.utcnow()
+        if source.status != "active":
+            source.status = "active"
+            source.deleted_at = None
+    if added or source is not None:
+        db.commit()
     return added
 
 

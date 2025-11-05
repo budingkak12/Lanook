@@ -20,6 +20,8 @@ import av  # type: ignore
 import uvicorn
 
 # 复用数据库与模型（无用户概念）
+from sqlalchemy import or_
+
 from 初始化数据库 import (
     SessionLocal,
     Media,
@@ -28,6 +30,7 @@ from 初始化数据库 import (
     create_database_and_tables,
     seed_initial_data,
 )
+from app.db.models_extra import MediaSource
 from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
 
 # 业务拆分：批量删除服务
@@ -157,6 +160,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _filter_active_media(query):
+    return query.outerjoin(MediaSource, Media.source_id == MediaSource.id).filter(
+        or_(
+            Media.source_id.is_(None),
+            MediaSource.status == "active",
+            MediaSource.status.is_(None),
+        )
+    )
 
 
 # 应用启动时可选地初始化数据库（默认跳过；设置环境变量开启）
@@ -537,6 +550,7 @@ def get_media_list(
             .filter(MediaTag.tag_name == tag)
             .order_by(MediaTag.created_at.desc())
         )
+        q = _filter_active_media(q)
         total_items = q.all()
         sliced = total_items[offset : offset + limit]
         items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
@@ -548,14 +562,16 @@ def get_media_list(
         raise HTTPException(status_code=400, detail="seed required when tag not provided")
 
     if order == "recent":
-        q = db.query(Media).order_by(Media.created_at.desc())
+        q = _filter_active_media(
+            db.query(Media).order_by(Media.created_at.desc())
+        )
         total_items = q.all()
         sliced = total_items[offset : offset + limit]
         items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
         has_more = (offset + len(items)) < len(total_items)
         return PageResponse(items=items, offset=offset, hasMore=has_more)
     else:
-        all_items = db.query(Media).all()
+        all_items = _filter_active_media(db.query(Media)).all()
         all_items.sort(key=lambda m: seeded_key(seed, m.id))
         liked_ids = {
             media_id

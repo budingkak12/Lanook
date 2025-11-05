@@ -15,6 +15,9 @@ class MediaSource(Base):
     display_name = Column(String, nullable=True)
     root_path = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, nullable=False, default="active", server_default="active")
+    deleted_at = Column(DateTime, nullable=True)
+    last_scan_at = Column(DateTime, nullable=True)
 
 
 class ScanJob(Base):
@@ -27,4 +30,3 @@ class ScanJob(Base):
     message = Column(String, nullable=True)
     started_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
-

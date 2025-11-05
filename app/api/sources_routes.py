@@ -15,12 +15,19 @@ from app.schemas.sources import (
     ScanStatusResponse,
     ScanState,
     SourceCreateRequest,
+    SourceStatus,
     SourceType,
     SourceValidateRequest,
     SourceValidateResponse,
 )
 from app.services.scan_service import get_scan_status, start_scan_job
-from app.services.sources_service import create_source, delete_source, get_source, list_sources
+from app.services.sources_service import (
+    create_source,
+    delete_source,
+    get_source,
+    list_sources,
+    restore_source,
+)
 from app.services.credentials import store_smb_password
 
 
@@ -33,6 +40,30 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _iso(dt):
+    if not dt:
+        return None
+    return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _to_media_source_model(src) -> MediaSourceModel:
+    status_value = src.status or "active"
+    try:
+        status_enum = SourceStatus(status_value)
+    except ValueError:
+        status_enum = SourceStatus.ACTIVE
+    return MediaSourceModel(
+        id=src.id,
+        type=SourceType(src.type),
+        displayName=src.display_name,
+        rootPath=src.root_path,
+        createdAt=_iso(src.created_at),
+        status=status_enum,
+        deletedAt=_iso(src.deleted_at),
+        lastScanAt=_iso(src.last_scan_at),
+    )
 
 
 @router.post("/setup/source/validate", response_model=SourceValidateResponse)
@@ -125,13 +156,7 @@ def create_media_source(payload: SourceCreateRequest, db: Session = Depends(get_
         if not p.exists() or not p.is_dir() or not os.access(p, os.R_OK):
             raise HTTPException(status_code=422, detail="无效目录或无读取权限")
         src = create_source(db, type_=payload.type.value, root_path=str(p), display_name=payload.displayName)
-        return MediaSourceModel(
-            id=src.id,
-            type=SourceType(src.type),
-            displayName=src.display_name,
-            rootPath=src.root_path,
-            createdAt=src.created_at.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
-        )
+        return _to_media_source_model(src)
     elif payload.type == SourceType.SMB:
         if not payload.host or not payload.share:
             raise HTTPException(status_code=422, detail="host/share required")
@@ -154,38 +179,38 @@ def create_media_source(payload: SourceCreateRequest, db: Session = Depends(get_
         if sub:
             root_url += f"/{sub}"
         src = create_source(db, type_=payload.type.value, root_path=root_url, display_name=payload.displayName)
-        return MediaSourceModel(
-            id=src.id,
-            type=SourceType(src.type),
-            displayName=src.display_name,
-            rootPath=src.root_path,
-            createdAt=src.created_at.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
-        )
+        return _to_media_source_model(src)
     else:
         raise HTTPException(status_code=422, detail="未知来源类型")
 
 
 @router.get("/media-sources", response_model=List[MediaSourceModel])
-def list_media_sources(db: Session = Depends(get_db)):
-    rows = list_sources(db)
-    return [
-        MediaSourceModel(
-            id=r.id,
-            type=SourceType(r.type),
-            displayName=r.display_name,
-            rootPath=r.root_path,
-            createdAt=r.created_at.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z"),
-        )
-        for r in rows
-    ]
+def list_media_sources(
+    include_inactive: bool = Query(False, description="是否包含已停用的来源"),
+    db: Session = Depends(get_db),
+):
+    rows = list_sources(db, include_inactive=include_inactive)
+    return [_to_media_source_model(r) for r in rows]
 
 
 @router.delete("/media-sources/{source_id}", status_code=204)
-def remove_media_source(source_id: int, db: Session = Depends(get_db)):
-    ok = delete_source(db, source_id)
+def remove_media_source(
+    source_id: int,
+    hard: bool = Query(False, description="是否立即彻底删除"),
+    db: Session = Depends(get_db),
+):
+    ok = delete_source(db, source_id, hard=hard)
     if not ok:
         raise HTTPException(status_code=404, detail="not found")
     return None
+
+
+@router.post("/media-sources/{source_id}/restore", response_model=MediaSourceModel)
+def restore_media_source(source_id: int, db: Session = Depends(get_db)):
+    src = restore_source(db, source_id)
+    if not src:
+        raise HTTPException(status_code=404, detail="not found")
+    return _to_media_source_model(src)
 
 
 @router.post("/scan/start", response_model=ScanStartResponse, status_code=202)
@@ -193,6 +218,8 @@ def start_scan(source_id: int = Query(..., description="来源ID"), background: 
     src = get_source(db, source_id)
     if not src:
         raise HTTPException(status_code=404, detail="source not found")
+    if src.status and src.status != "active":
+        raise HTTPException(status_code=409, detail="source inactive")
     job_id = start_scan_job(src.id, src.root_path, background)
     return ScanStartResponse(jobId=job_id)
 
@@ -209,6 +236,6 @@ def get_scan(job_id: str = Query(..., description="任务ID")):
         state=state,
         scannedCount=job.scanned_count or 0,
         message=job.message,
-        startedAt=(job.started_at and job.started_at.isoformat()),
-        finishedAt=(job.finished_at and job.finished_at.isoformat()),
+        startedAt=_iso(job.started_at),
+        finishedAt=_iso(job.finished_at),
     )
