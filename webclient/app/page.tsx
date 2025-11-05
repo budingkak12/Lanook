@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { MainSidebar } from "@/components/main-sidebar"
-import { MainHeader } from "@/components/main-header"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
-import { MediaGrid, type MediaGridHandle } from "@/components/media-grid"
-import { MediaViewer } from "@/components/media-viewer"
+import { MediaGrid } from "@/components/media-grid"
+import { MediaCollectionView, type MediaCollectionHandle } from "@/components/media-collection-view"
 import { SearchView } from "@/components/search-view"
 import { AlbumsView } from "@/components/albums-view"
 import { SettingsView } from "@/components/settings-view"
 import { InitializationView } from "@/components/initialization-view"
-import { useToast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import { useTranslation } from "react-i18next"
 
@@ -129,175 +127,14 @@ export default function Home() {
     checkedOnceRef.current = true
     checkInitializationStatus()
   }, [checkInitializationStatus])
-  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
-  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [sessionId] = useState<string | null>(() => {
     // 前端生成12-13位随机数字种子，与后端格式兼容
     return Math.floor(Math.random() * 9e12 + 1e12).toString()
   })
-  const [gridItems, setGridItems] = useState<MediaItem[]>([])
-  const [viewerItems, setViewerItems] = useState<MediaItem[]>([]) // MediaViewer专用数据快照
-  const gridRef = useRef<MediaGridHandle | null>(null)
+  const feedCollectionRef = useRef<MediaCollectionHandle | null>(null)
 
-  const { toast } = useToast()
-
-
-  useEffect(() => {
-    console.log('🔄 [主页面useEffect] 索引同步检查开始')
-    console.log('📊 selectedMedia:', selectedMedia ? {
-      id: selectedMedia.id,
-      mediaId: selectedMedia.mediaId,
-      filename: selectedMedia.filename
-    } : 'null')
-    console.log('📊 selectedIndex:', selectedIndex)
-    console.log('📊 gridItems.length:', gridItems.length)
-    console.log('📊 viewerItems.length:', viewerItems.length)
-
-    if (!selectedMedia) {
-      console.log('❌ selectedMedia为空，退出')
-      return
-    }
-
-    if (gridItems.length === 0) {
-      console.log('❌ gridItems为空，清理状态')
-      setSelectedMedia(null)
-      setSelectedIndex(-1)
-      return
-    }
-
-    // 直接查找媒体在当前列表中的位置
-    const currentIdx = gridItems.findIndex(item => item.mediaId === selectedMedia.mediaId)
-    console.log('🎯 useEffect中计算的索引:', currentIdx)
-
-    if (currentIdx >= 0) {
-      console.log('✅ 找到媒体，当前索引:', currentIdx, 'selectedIndex:', selectedIndex)
-      if (currentIdx !== selectedIndex) {
-        console.log('🔄 索引不匹配，更新selectedIndex从', selectedIndex, '到', currentIdx)
-        setSelectedIndex(currentIdx)
-      }
-      const updatedItem = gridItems[currentIdx]
-      if (updatedItem !== selectedMedia) {
-        console.log('🔄 媒体对象不同，更新selectedMedia')
-        setSelectedMedia(updatedItem)
-      }
-      return
-    }
-
-    // 如果找不到对应媒体，清理选择状态
-    console.log('❌ 未找到对应媒体，清理选择状态')
-    setSelectedMedia(null)
-    setSelectedIndex(-1)
-  }, [gridItems, selectedIndex, selectedMedia])
-
-  // 处理媒体列表变化
-  const handleItemsChange = useCallback((newItems: MediaItem[]) => {
-    setGridItems(newItems)
-  }, [])
-
-  // 基于媒体ID的点击处理函数，确保精确定位
-  const handleMediaClick = useCallback((media: MediaItem) => {
-    console.log('🔍 [handleMediaClick] 开始处理点击')
-    console.log('📸 点击的媒体:', {
-      id: media.id,
-      mediaId: media.mediaId,
-      filename: media.filename,
-      type: media.type
-    })
-    console.log('📊 当前gridItems数量:', gridItems.length)
-    console.log('📋 gridItems前5项:', gridItems.slice(0, 5).map(item => ({
-      id: item.id,
-      mediaId: item.mediaId,
-      filename: item.filename
-    })))
-
-    // 创建数据快照，确保MediaViewer使用的是点击时的数据
-    console.log('📸 创建viewerItems快照，数量:', gridItems.length)
-    setViewerItems([...gridItems])
-
-    // 直接设置选中的媒体
-    setSelectedMedia(media)
-
-    // 计算当前媒体在完整列表中的准确索引
-    const currentMediaIndex = gridItems.findIndex(item => item.mediaId === media.mediaId)
-    console.log('🎯 计算得到的索引:', currentMediaIndex)
-
-    if (currentMediaIndex >= 0 && currentMediaIndex < gridItems.length) {
-      const foundMedia = gridItems[currentMediaIndex]
-      console.log('✅ 找到的匹配媒体:', {
-        id: foundMedia.id,
-        mediaId: foundMedia.mediaId,
-        filename: foundMedia.filename,
-        是否匹配: foundMedia.mediaId === media.mediaId
-      })
-    } else {
-      console.log('❌ 未找到匹配的媒体，索引:', currentMediaIndex)
-    }
-
-    setSelectedIndex(currentMediaIndex)
-    console.log('🏁 [handleMediaClick] 处理完成，设置索引为:', currentMediaIndex)
-  }, [gridItems])
-
-  const handleNavigate = useCallback(
-    async (direction: "prev" | "next") => {
-      if (selectedIndex < 0) {
-        return
-      }
-
-      let items = gridRef.current?.getItems() ?? gridItems
-      if (items.length === 0) {
-        return
-      }
-
-      const delta = direction === "next" ? 1 : -1
-      let targetIndex = selectedIndex + delta
-
-      if (targetIndex < 0) {
-        return
-      }
-
-      // 预加载机制：当接近边界时（距离边界5个元素以内）就开始加载更多
-      const PRELOAD_THRESHOLD = 5
-      const needsPreload = direction === "next" &&
-                          targetIndex >= items.length - PRELOAD_THRESHOLD
-
-      if (needsPreload || targetIndex >= items.length) {
-        const added = (await gridRef.current?.loadMore()) ?? 0
-        if (added > 0) {
-          items = gridRef.current?.getItems() ?? gridItems
-        }
-      }
-
-      // 加载更多数据后，重新检查边界
-      if (targetIndex >= items.length) {
-        return
-      }
-
-      const nextMedia = items[targetIndex]
-      if (!nextMedia) {
-        return
-      }
-
-      setSelectedIndex(targetIndex)
-      setSelectedMedia(nextMedia)
-    },
-    [gridItems, selectedIndex],
-  )
-
-  const handleMediaUpdate = useCallback((mediaId: number, updates: Partial<MediaItem>) => {
-    gridRef.current?.updateItem(mediaId, (prev) => ({ ...prev, ...updates }))
-    setSelectedMedia((prev) => {
-      if (!prev || prev.mediaId !== mediaId) {
-        return prev
-      }
-      return { ...prev, ...updates }
-    })
-  }, [])
-
-  const handleMediaRemove = useCallback((mediaIds: number[]) => {
-    if (mediaIds.length === 0) {
-      return
-    }
-    gridRef.current?.removeItems(mediaIds)
+  const handleSearchMediaClick = useCallback((media: MediaItem) => {
+    console.log('[search] media click received but no viewer is bound yet', media.mediaId)
   }, [])
 
   // 如果无法获取状态，显示加载中
@@ -354,14 +191,18 @@ export default function Home() {
         >
           <div className="w-full h-full">
             {activeView === "feed" && (
-              <div className="h-full">
-                <MediaGrid
-                  ref={gridRef}
-                  sessionId={sessionId}
-                  onMediaClick={handleMediaClick}
-                  onItemsChange={handleItemsChange}
-                />
-              </div>
+              <MediaCollectionView
+                collectionRef={feedCollectionRef}
+                className="h-full"
+                renderList={({ listRef, onMediaClick, onItemsChange }) => (
+                  <MediaGrid
+                    ref={listRef}
+                    sessionId={sessionId}
+                    onMediaClick={onMediaClick}
+                    onItemsChange={onItemsChange}
+                  />
+                )}
+              />
             )}
             {activeView === "albums" && (
               <div className="h-full">
@@ -371,7 +212,7 @@ export default function Home() {
             {activeView === "search" && (
               <div className="h-full">
                 <SearchView
-                  onMediaClick={handleMediaClick}
+                  onMediaClick={handleSearchMediaClick}
                 />
               </div>
             )}
@@ -389,33 +230,6 @@ export default function Home() {
         activeView={activeView}
         onViewChange={setActiveView}
       />
-
-      {selectedMedia && (
-        <MediaViewer
-          media={selectedMedia}
-          currentIndex={selectedIndex}
-          allMedia={viewerItems}
-          onClose={() => {
-            setSelectedMedia(null)
-            setSelectedIndex(-1)
-            setViewerItems([])
-          }}
-          onNavigate={handleNavigate}
-          onMediaUpdate={handleMediaUpdate}
-          onMediaRemove={handleMediaRemove}
-          onIndexChange={setSelectedIndex}
-          onLoadMore={async () => {
-            const added = await gridRef.current?.loadMore() ?? 0
-            if (added > 0) {
-              // 加载更多后，更新viewerItems快照
-              setViewerItems([...gridItems])
-            }
-            return added
-          }}
-          hasMore={gridRef.current?.getHasMore() ?? true}
-          isLoadingMore={gridRef.current?.getIsLoadingMore() ?? false}
-        />
-      )}
     </div>
   )
 }

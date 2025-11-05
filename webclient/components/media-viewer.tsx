@@ -450,28 +450,24 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent z-20">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={handleClose}
-            className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]"
-          >
-            <X className="w-6 h-6" />
-          </Button>
-        </div>
-        <Button
-          variant="ghost"
-          size="lg"
+    <div className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-200">
+      {/* Close & Delete Controls */}
+      <div className="pointer-events-none absolute inset-0 flex justify-between items-start p-6 z-30">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="pointer-events-auto text-white/80 hover:text-white transition-colors"
+        >
+          <X className="w-7 h-7" />
+        </button>
+        <button
+          type="button"
           disabled={isDeleting}
           onClick={() => setShowDeleteDialog(true)}
-          className="text-white hover:bg-white/20 bg-black/30 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px]"
+          className="pointer-events-auto text-white/80 hover:text-white transition-colors disabled:opacity-50"
         >
-          <Trash2 className="w-6 h-6" />
-        </Button>
+          <Trash2 className="w-7 h-7" />
+        </button>
       </div>
 
       {/* Swiper Container */}
@@ -513,7 +509,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           }}
         >
           {allMedia.map((mediaItem, index) => (
-            <SwiperSlide key={`${mediaItem.id}-${index}`} className="flex items-center justify-center">
+            <SwiperSlide key={`${mediaItem.id}-${index}`} className="flex items-center justify-center bg-black">
               <div
                 className="w-full h-full flex items-center justify-center"
                 onDoubleClick={handleDoubleClick}
@@ -521,7 +517,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                 {mediaItem.type === "image" ? (
                   <>
                     <div
-                      className="absolute inset-0 flex items-center justify-center bg-black/10"
+                      className="absolute inset-0 flex items-center justify-center bg-black"
                       style={{
                         opacity: loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 0 : 1,
                         transition: 'opacity 0.3s ease-in-out'
@@ -532,11 +528,12 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                     <img
                       src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
                       alt="Media"
-                      className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
+                      className={`transition-opacity duration-300 ${
                         loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'
                       }`}
                       style={{
-                        maxHeight: '100vh',
+                        height: '100vh',
+                        width: 'auto',
                         maxWidth: '100vw',
                         objectFit: 'contain',
                         minWidth: '1px',
@@ -561,10 +558,10 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                     }}
                     src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url)}
                     controls
-                    className="max-w-full max-h-full object-contain"
+                    className="object-contain"
                     style={{
                       maxWidth: '100vw',
-                      maxHeight: '100vh',
+                      height: '100vh',
                       objectFit: 'contain'
                     }}
                     playsInline
@@ -618,22 +615,22 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       )}
 
       {/* Bottom Actions */}
-      <div className="absolute bottom-20 sm:bottom-6 left-0 right-0 p-3 sm:p-6 flex items-center justify-center gap-2 sm:gap-4 z-30">
+      <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center gap-4 sm:gap-6 z-30">
         <button
           type="button"
           disabled={likeLoading || isDeleting}
           onClick={() => void toggleLike()}
-          className={`text-white hover:bg-black/70 bg-black/50 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px] relative z-50 transition-all duration-200 shadow-none hover:shadow-none focus:shadow-none active:shadow-none ${isLiked ? "scale-110" : "hover:scale-105"} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`text-white/90 transition-transform ${isLiked ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
-          <Heart className={`w-6 h-6 ${isLiked ? "fill-current text-red-400" : "text-white"}`} />
+          <Heart className={`w-7 h-7 ${isLiked ? "fill-current text-red-400" : "text-white/90"}`} />
         </button>
         <button
           type="button"
           disabled={favoriteLoading || isDeleting}
           onClick={() => void toggleFavorite()}
-          className={`text-white hover:bg-black/70 bg-black/50 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px] relative z-50 transition-all duration-200 shadow-none hover:shadow-none focus:shadow-none active:shadow-none ${isFavorited ? "scale-110" : "hover:scale-105"} disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`text-white/90 transition-transform ${isFavorited ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
-          <Star className={`w-6 h-6 ${isFavorited ? "fill-current text-yellow-400" : "text-white"}`} />
+          <Star className={`w-7 h-7 ${isFavorited ? "fill-current text-yellow-400" : "text-white/90"}`} />
         </button>
       </div>
 
