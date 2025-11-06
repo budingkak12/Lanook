@@ -20,7 +20,7 @@ export function MobileBottomNav({ activeView, onViewChange }: MobileBottomNavPro
   ]
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[1000] lg:hidden border-0">
+    <div className="fixed bottom-0 left-0 right-0 z-[1000] lg:hidden border-0 pb-safe">
       {/* 底部导航背景 */}
       <div className="absolute inset-0 bg-card/80 backdrop-blur-lg border-0" />
 

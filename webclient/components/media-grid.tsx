@@ -390,7 +390,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto pt-6">
+      <div className="flex-1 overflow-y-auto pt-0 lg:pt-4">
         {isInitialLoading && mediaItems.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">正在加载媒体...</div>
         ) : error && mediaItems.length === 0 ? (

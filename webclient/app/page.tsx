@@ -185,11 +185,12 @@ export default function Home() {
           className="flex-1 lg:ml-44 ml-0 lg:relative pb-16 lg:pb-4"
           onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
           style={{
-            height: '100vh',
+            height: '100dvh', // 使用动态视口高度，避免移动端浏览器工具栏遮挡
             overflowY: 'auto'
           }}
+          id="main-content"
         >
-          <div className="w-full h-full">
+          <div className="w-full h-full flex flex-col">
             {activeView === "feed" && (
               <MediaCollectionView
                 collectionRef={feedCollectionRef}

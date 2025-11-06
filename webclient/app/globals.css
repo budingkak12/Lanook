@@ -121,9 +121,45 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
+  html, body {
+    @apply bg-background text-foreground m-0 p-0;
+    height: 100%;
+    overflow-x: hidden;
   }
+  body {
+    min-height: 100vh;
+    /* 添加安全区域支持 */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  /* 移动端视口高度支持 */
+  @supports (height: 100dvh) {
+    body {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+  }
+
+  /* 移动端主内容区域底部内边距 */
+  @media (max-width: 1024px) {
+    #main-content {
+      padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)) !important;
+    }
+  }
+  /* 安全区域工具类 */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+
   /* 暗色主题添加亚麻纹理背景图案 */
   .dark body {
     background-image: repeating-linear-gradient(
