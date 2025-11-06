@@ -128,7 +128,7 @@ export function SettingsView() {
   }, [isNetworkExpanded, serverInfo])
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 pb-6.5">
       <div className="w-full max-w-6xl mx-auto space-y-3 sm:space-y-4">
         {/* 语言设置和外观设置 - 两列布局 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
