@@ -182,7 +182,7 @@ export default function Home() {
 
         {/* Main Content */}
         <main
-          className="flex-1 lg:ml-44 ml-0 lg:relative pb-16 lg:pb-4"
+          className="flex-1 lg:ml-44 ml-0 lg:relative"
           onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
           style={{
             height: '100dvh', // 使用动态视口高度，避免移动端浏览器工具栏遮挡
