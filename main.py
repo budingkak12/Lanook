@@ -13,6 +13,7 @@ import mimetypes
 import time
 from pathlib import Path
 import socket
+import subprocess
 
 from PIL import Image
 import av  # type: ignore
@@ -807,6 +808,20 @@ if __name__ == "__main__":
     except Exception:
         port = 8000
     os.environ.setdefault("MEDIA_APP_PORT", str(port))
+
+    # 尝试执行端口清理脚本（如果存在）
+    try:
+        result = subprocess.run(['uv', 'run', 'kill_port_8000.py'],
+                              capture_output=True, text=True, check=False)
+        if result.stdout:
+            print(result.stdout.strip())
+    except FileNotFoundError:
+        # 脚本不存在，跳过端口清理
+        pass
+    except Exception as e:
+        # 其他错误，打印但不阻断启动
+        print(f"[startup] 端口清理脚本执行失败: {e}")
+
     lan_ip = _get_local_ip()
     print(f"[boot] Media App API 即将启动: http://{lan_ip}:{port}  (本机: http://localhost:{port})")
     uvicorn.run(app, host=host, port=port)

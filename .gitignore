@@ -54,6 +54,10 @@ desktop.ini
 *.tmp
 *.bak
 
+# --- Personal development files ---
+kill_port_8000.py
+requirements_dev.txt
+
 
 *.iml
 .gradle
