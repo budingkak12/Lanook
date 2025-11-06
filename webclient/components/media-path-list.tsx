@@ -85,7 +85,9 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 </div>
               ) : mediaSources.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="text-sm text-muted-foreground">暂无媒体路径，请返回上一步添加</div>
+                  <div className="text-sm text-muted-foreground">
+                    {mode === 'settings' ? '暂无媒体路径' : '暂无媒体路径，请返回上一步添加'}
+                  </div>
                 </div>
               ) : (
                 mediaSources.map((source, index) => (
