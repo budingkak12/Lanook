@@ -130,11 +130,6 @@ export function SettingsView() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6">
       <div className="w-full max-w-6xl mx-auto space-y-3 sm:space-y-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">{t("settings.title")}</h1>
-          <p className="text-muted-foreground">{t("settings.description")}</p>
-        </div>
-
         {/* 语言设置和外观设置 - 两列布局 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* 语言设置 */}
