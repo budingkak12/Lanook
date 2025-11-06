@@ -190,7 +190,7 @@ export default function Home() {
           }}
           id="main-content"
         >
-          <div className="w-full h-full flex flex-col">
+          <div className="w-full h-full flex flex-col overflow-hidden">
             {activeView === "feed" && (
               <MediaCollectionView
                 collectionRef={feedCollectionRef}
