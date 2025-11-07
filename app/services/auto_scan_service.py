@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 from sqlalchemy import or_
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from 初始化数据库 import (
     AUTO_SCAN_ENABLED_KEY,
@@ -14,6 +17,7 @@ from 初始化数据库 import (
     get_setting,
     set_setting,
     create_database_and_tables,
+    Media,
 )
 from app.db.models_extra import MediaSource
 from app.services.fs_providers import is_smb_url
@@ -71,6 +75,157 @@ def _normalize_path_key(raw: str | Path) -> str:
     return str(Path(raw_str).expanduser().resolve())
 
 
+def _is_media_file(file_path: str) -> bool:
+    """检查文件是否为支持的媒体文件类型"""
+    ext = os.path.splitext(file_path)[1].lower()
+    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+    video_exts = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
+    return ext in image_exts or ext in video_exts
+
+
+def _is_file_complete(file_path: str, check_interval: float = 0.5, max_checks: int = 6) -> bool:
+    """检查文件是否已完整写入（通过检查文件大小是否稳定）"""
+    try:
+        path = Path(file_path)
+        if not path.exists():
+            return False
+
+        last_size = -1
+        checks = 0
+
+        while checks < max_checks:
+            current_size = path.stat().st_size
+            if current_size == last_size and current_size > 0:
+                return True
+            last_size = current_size
+            time.sleep(check_interval)
+            checks += 1
+
+        return last_size > 0
+    except (OSError, PermissionError):
+        return False
+
+
+def _is_file_in_database(file_path: str, source_id: Optional[int] = None) -> bool:
+    """检查文件是否已在数据库中"""
+    session = SessionLocal()
+    try:
+        query = session.query(Media).filter(Media.absolute_path == file_path)
+        if source_id is not None:
+            query = query.filter(Media.source_id == source_id)
+        return query.first() is not None
+    finally:
+        session.close()
+
+
+class _MediaFileHandler(FileSystemEventHandler):
+    """媒体文件系统事件处理器"""
+
+    def __init__(self, root_path: str, source_id: Optional[int] = None):
+        super().__init__()
+        self.root_path = root_path
+        self.source_id = source_id
+        self._pending_files: Dict[str, float] = {}  # 文件路径 -> 首次检测时间
+        self._processed_files: Set[str] = set()  # 已处理的文件，避免重复
+
+    def on_created(self, event: FileSystemEvent) -> None:
+        """处理文件创建事件"""
+        if event.is_directory:
+            return
+
+        file_path = event.src_path
+        if not _is_media_file(file_path):
+            return
+
+        # 避免重复处理
+        if file_path in self._processed_files:
+            return
+
+        # 记录待处理文件
+        self._pending_files[file_path] = time.time()
+        print(f"[auto-scan] 检测到新文件: {file_path}")
+
+    def on_moved(self, event: FileSystemEvent) -> None:
+        """处理文件移动事件"""
+        if event.is_directory:
+            return
+
+        dest_path = event.dest_path
+        if not _is_media_file(dest_path):
+            return
+
+        # 避免重复处理
+        if dest_path in self._processed_files:
+            return
+
+        # 记录待处理文件
+        self._pending_files[dest_path] = time.time()
+        print(f"[auto-scan] 检测到文件移动: {dest_path}")
+
+    def process_pending_files(self) -> None:
+        """处理待检测的文件"""
+        current_time = time.time()
+        files_to_process = []
+
+        for file_path, first_seen in list(self._pending_files.items()):
+            # 等待2秒后再检查文件完整性
+            if current_time - first_seen >= 2.0:
+                files_to_process.append(file_path)
+
+        for file_path in files_to_process:
+            if self._process_file_if_ready(file_path):
+                self._pending_files.pop(file_path, None)
+                self._processed_files.add(file_path)
+
+    def _process_file_if_ready(self, file_path: str) -> bool:
+        """如果文件就绪则处理入库"""
+        try:
+            # 检查文件完整性
+            if not _is_file_complete(file_path):
+                return False
+
+            # 检查是否已在数据库中
+            if _is_file_in_database(file_path, self.source_id):
+                print(f"[auto-scan] 文件已存在，跳过: {file_path}")
+                return True
+
+            # 文件入库
+            session = SessionLocal()
+            try:
+                # 获取文件信息并创建Media记录
+                path_obj = Path(file_path)
+                filename = path_obj.name
+
+                # 判断媒体类型
+                ext = os.path.splitext(file_path)[1].lower()
+                image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+                media_type = "image" if ext in image_exts else "video"
+
+                # 创建媒体记录
+                media = Media(
+                    filename=filename,
+                    absolute_path=file_path,
+                    media_type=media_type,
+                    source_id=self.source_id,
+                )
+
+                session.add(media)
+                session.commit()
+                print(f"[auto-scan] 新媒体文件入库: {filename}")
+                return True
+
+            except Exception as exc:
+                session.rollback()
+                print(f"[auto-scan] 入库失败 {file_path}: {exc}")
+                return False
+            finally:
+                session.close()
+
+        except Exception as exc:
+            print(f"[auto-scan] 处理文件失败 {file_path}: {exc}")
+            return False
+
+
 class AutoScanService:
     def __init__(self, *, idle_seconds: float = DEFAULT_IDLE_SECONDS) -> None:
         self._lock = threading.RLock()
@@ -109,7 +264,7 @@ class AutoScanService:
             self._running = True
             self._last_error = None
             self._sync_workers(targets)
-            print(f"[auto-scan] 已启动 {len(self._workers)} 个目录扫描任务。")
+            print(f"[auto-scan] 已启动 {len(self._workers)} 个目录实时监控任务。")
             return True, None
 
     def stop(self, *, clear_error: bool = True) -> None:
@@ -120,6 +275,7 @@ class AutoScanService:
             self._running = False
             if clear_error:
                 self._last_error = None
+        print("[auto-scan] 所有实时监控任务已停止。")
 
     def register_path(self, path: str | Path) -> None:
         """注册新的扫描路径；服务运行时会立即创建/唤醒对应 worker。"""
@@ -194,73 +350,148 @@ class AutoScanService:
         if worker and worker.is_alive:
             worker.trigger()
             return
-        worker = _ScanWorker(raw, idle_seconds=self._idle_seconds)
+
+        # 获取source_id（如果有的话）
+        source_id = self._get_source_id_for_path(raw)
+        worker = _ScanWorker(raw, source_id=source_id)
         worker.start()
         self._workers[key] = worker
         worker.trigger()
 
+    def _get_source_id_for_path(self, path: str) -> Optional[int]:
+        """根据路径获取对应的媒体源ID"""
+        with SessionLocal() as session:
+            source = session.query(MediaSource).filter(MediaSource.root_path == path).first()
+            return source.id if source else None
+
 
 class _ScanWorker:
-    def __init__(self, path: str, *, idle_seconds: float) -> None:
+    """基于文件系统监控的扫描工作器"""
+
+    def __init__(self, path: str, *, source_id: Optional[int] = None) -> None:
         self._path = path
-        self._idle_seconds = idle_seconds
+        self._source_id = source_id
+        self._observer = Observer()
+        self._handler = _MediaFileHandler(path, source_id=source_id)
+        self._monitor_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
-        self._wake_event = threading.Event()
-        self._thread = threading.Thread(target=self._run, name=f"AutoScan[{path}]", daemon=True)
         self._last_error: Optional[str] = None
 
     @property
     def is_alive(self) -> bool:
-        return self._thread.is_alive()
+        return self._monitor_thread is not None and self._monitor_thread.is_alive()
 
     @property
     def last_error(self) -> Optional[str]:
         return self._last_error
 
     def start(self) -> None:
-        if not self._thread.is_alive():
-            self._thread.start()
+        if self.is_alive:
+            return
+
+        # SMB路径不支持文件系统监控，回退到定期扫描
+        if is_smb_url(self._path):
+            print(f"[auto-scan] SMB路径使用定期扫描: {self._path}")
+            self._monitor_thread = threading.Thread(
+                target=self._run_smb_scan,
+                name=f"SMBScanner[{self._path}]",
+                daemon=True
+            )
+            self._monitor_thread.start()
+            return
+
+        try:
+            # 设置文件系统监控（仅适用于本地路径）
+            self._observer.schedule(self._handler, self._path, recursive=True)
+            self._observer.start()
+
+            # 启动处理待处理文件的线程
+            self._monitor_thread = threading.Thread(
+                target=self._run_monitor,
+                name=f"FileSystemMonitor[{self._path}]",
+                daemon=True
+            )
+            self._monitor_thread.start()
+            print(f"[auto-scan] 开始监控目录: {self._path}")
+
+        except Exception as exc:
+            self._last_error = f"启动监控失败：{exc}"
+            print(f"[auto-scan] 启动监控失败 {self._path}: {exc}")
+            self.stop()
 
     def stop(self) -> None:
         self._stop_event.set()
-        self._wake_event.set()
-        if self._thread.is_alive():
-            self._thread.join(timeout=5)
+
+        if self._observer.is_alive():
+            self._observer.stop()
+            self._observer.join(timeout=5)
+
+        if self._monitor_thread and self._monitor_thread.is_alive():
+            self._monitor_thread.join(timeout=5)
+
+        print(f"[auto-scan] 停止监控目录: {self._path}")
 
     def trigger(self) -> None:
-        self._wake_event.set()
-
-    def _run(self) -> None:
-        while not self._stop_event.is_set():
-            triggered = self._wake_event.wait(timeout=self._idle_seconds)
-            if not triggered and not self._wake_event.is_set():
-                # 周期性自动扫描
-                self._wake_event.set()
-            self._wake_event.clear()
-            if self._stop_event.is_set():
-                break
-
-            try:
-                self._scan_until_idle()
-            except Exception as exc:  # pragma: no cover - 防御性记录
-                self._last_error = f"自动扫描失败：{exc}"
-                print(f"[auto-scan] 扫描 {self._path} 失败：{exc}")
-                time.sleep(min(self._idle_seconds, 5.0))
-
-    def _scan_until_idle(self) -> None:
-        while not self._stop_event.is_set():
+        """手动触发处理待处理文件"""
+        if is_smb_url(self._path):
+            # SMB路径没有文件系统事件处理器，但可以手动触发扫描
+            print(f"[auto-scan] 手动触发SMB路径扫描: {self._path}")
             session = SessionLocal()
             try:
-                added = scan_source_once(session, self._path)
+                added = scan_source_once(session, self._path, source_id=self._source_id)
                 session.commit()
-            except Exception:
+                if added > 0:
+                    print(f"[auto-scan] 手动扫描新增 {added} 个文件: {self._path}")
+            except Exception as exc:
                 session.rollback()
-                raise
+                print(f"[auto-scan] 手动扫描失败 {self._path}: {exc}")
             finally:
                 session.close()
+        elif self._handler:
+            self._handler.process_pending_files()
 
-            if added <= 0:
-                break
+    def _run_monitor(self) -> None:
+        """监控线程：定期处理待处理的文件"""
+        while not self._stop_event.is_set():
+            try:
+                self._handler.process_pending_files()
+            except Exception as exc:  # pragma: no cover - 防御性记录
+                self._last_error = f"处理待处理文件失败：{exc}"
+                print(f"[auto-scan] 处理待处理文件失败: {exc}")
+
+            # 每秒检查一次
+            self._stop_event.wait(1.0)
+
+    def _run_smb_scan(self) -> None:
+        """SMB路径定期扫描（回退方案）"""
+        scan_interval = 300.0  # 5分钟扫描一次SMB路径
+        last_scan_time = 0
+
+        while not self._stop_event.is_set():
+            current_time = time.time()
+
+            try:
+                # 每隔5分钟扫描一次SMB路径
+                if current_time - last_scan_time >= scan_interval:
+                    session = SessionLocal()
+                    try:
+                        added = scan_source_once(session, self._path, source_id=self._source_id)
+                        session.commit()
+                        if added > 0:
+                            print(f"[auto-scan] SMB路径扫描新增 {added} 个文件: {self._path}")
+                        last_scan_time = current_time
+                    except Exception:
+                        session.rollback()
+                        raise
+                    finally:
+                        session.close()
+
+            except Exception as exc:  # pragma: no cover - 防御性记录
+                self._last_error = f"SMB扫描失败：{exc}"
+                print(f"[auto-scan] SMB扫描失败 {self._path}: {exc}")
+
+            # 每30秒检查一次是否需要停止
+            self._stop_event.wait(30.0)
 
 
 def ensure_auto_scan_service(app) -> AutoScanService:
