@@ -42,6 +42,10 @@ SUPPORTED_VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
 MEDIA_ROOT_KEY = "media_root_path"
 # 设置键：自动扫描开关（"1" / "0"）
 AUTO_SCAN_ENABLED_KEY = "auto_scan_enabled"
+# 设置键：扫描模式（"realtime" / "scheduled" / "disabled"）
+SCAN_MODE_KEY = "scan_mode"
+# 设置键：定时扫描间隔（"hourly" / "daily" / "weekly"）
+SCAN_INTERVAL_KEY = "scan_interval"
 
 
 # ===================================================================
@@ -184,6 +188,19 @@ def seed_initial_data(db_session):
         if not existing_tag:
             db_session.add(TagDefinition(name=tag_name))
             print(f"  - 添加标签类型: '{tag_name}'")
+
+    # 设置文件索引服务的默认值
+    default_settings = {
+        AUTO_SCAN_ENABLED_KEY: "1",  # 默认开启
+        SCAN_MODE_KEY: "realtime",   # 默认实时模式
+        SCAN_INTERVAL_KEY: "hourly"  # 默认每小时扫描（如果启用的话）
+    }
+
+    for key, value in default_settings.items():
+        existing_setting = db_session.query(AppSetting).filter(AppSetting.key == key).first()
+        if not existing_setting:
+            db_session.add(AppSetting(key=key, value=value))
+            print(f"  - 添加默认设置: '{key}' = '{value}'")
 
     db_session.commit()
     print("✅ 初始数据填充完毕。")

@@ -13,6 +13,8 @@ from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 from 初始化数据库 import (
     AUTO_SCAN_ENABLED_KEY,
+    SCAN_MODE_KEY,
+    SCAN_INTERVAL_KEY,
     SessionLocal,
     get_setting,
     set_setting,
@@ -53,6 +55,61 @@ def set_auto_scan_enabled(enabled: bool) -> None:
     session = SessionLocal()
     try:
         set_setting(session, AUTO_SCAN_ENABLED_KEY, "1" if enabled else "0")
+        session.commit()
+    finally:
+        session.close()
+
+
+def get_scan_mode(*, default: str = "realtime") -> str:
+    """获取扫描模式：realtime/scheduled/disabled"""
+    session = SessionLocal()
+    try:
+        stored = get_setting(session, SCAN_MODE_KEY)
+        if stored is None:
+            # 兼容旧版本，如果只有enabled设置则推断模式
+            enabled = get_auto_scan_enabled(default=False)
+            mode = "realtime" if enabled else "disabled"
+            set_setting(session, SCAN_MODE_KEY, mode)
+            session.commit()
+            return mode
+        return stored
+    finally:
+        session.close()
+
+
+def set_scan_mode(mode: str) -> None:
+    """设置扫描模式"""
+    if mode not in ["realtime", "scheduled", "disabled"]:
+        raise ValueError(f"Invalid scan mode: {mode}")
+    session = SessionLocal()
+    try:
+        set_setting(session, SCAN_MODE_KEY, mode)
+        session.commit()
+    finally:
+        session.close()
+
+
+def get_scan_interval(*, default: str = "hourly") -> str:
+    """获取定时扫描间隔：hourly/daily/weekly"""
+    session = SessionLocal()
+    try:
+        stored = get_setting(session, SCAN_INTERVAL_KEY)
+        if stored is None:
+            set_setting(session, SCAN_INTERVAL_KEY, default)
+            session.commit()
+            return default
+        return stored
+    finally:
+        session.close()
+
+
+def set_scan_interval(interval: str) -> None:
+    """设置定时扫描间隔"""
+    if interval not in ["hourly", "daily", "weekly"]:
+        raise ValueError(f"Invalid scan interval: {interval}")
+    session = SessionLocal()
+    try:
+        set_setting(session, SCAN_INTERVAL_KEY, interval)
         session.commit()
     finally:
         session.close()
@@ -230,6 +287,7 @@ class AutoScanService:
     def __init__(self, *, idle_seconds: float = DEFAULT_IDLE_SECONDS) -> None:
         self._lock = threading.RLock()
         self._workers: Dict[str, _ScanWorker] = {}
+        self._scheduled_workers: Dict[str, _ScheduledScanWorker] = {}
         self._idle_seconds = idle_seconds
         self._last_error: Optional[str] = None
         self._running = False
@@ -239,7 +297,10 @@ class AutoScanService:
         with self._lock:
             if not self._running:
                 return False
-            return any(worker.is_alive for worker in self._workers.values())
+            # 检查实时监控workers和定时扫描workers
+            realtime_active = any(worker.is_alive for worker in self._workers.values())
+            scheduled_active = any(worker.is_alive for worker in self._scheduled_workers.values())
+            return realtime_active or scheduled_active
 
     @property
     def last_error(self) -> Optional[str]:
@@ -255,27 +316,52 @@ class AutoScanService:
         with self._lock:
             targets = self._collect_targets()
             if not targets:
-                message = "尚未配置媒体目录，自动扫描暂不可用。"
+                message = "尚未配置媒体目录，文件索引服务暂不可用。"
                 self._last_error = message
                 self._running = False
                 return False, message
 
+            scan_mode = get_scan_mode()
             create_database_and_tables(echo=False)
             self._running = True
             self._last_error = None
-            self._sync_workers(targets)
-            print(f"[auto-scan] 已启动 {len(self._workers)} 个目录实时监控任务。")
+
+            if scan_mode == "realtime":
+                self._sync_workers(targets)
+                print(f"[auto-scan] 已启动 {len(self._workers)} 个目录实时监控任务。")
+            elif scan_mode == "scheduled":
+                self._sync_scheduled_workers(targets)
+                print(f"[auto-scan] 已启动 {len(self._scheduled_workers)} 个目录定时扫描任务。")
+            else:
+                # 默认使用实时模式
+                self._sync_workers(targets)
+                print(f"[auto-scan] 已启动 {len(self._workers)} 个目录实时监控任务。")
+
             return True, None
 
     def stop(self, *, clear_error: bool = True) -> None:
         with self._lock:
+            # 停止实时监控workers
             for worker in self._workers.values():
                 worker.stop()
             self._workers.clear()
+
+            # 停止定时扫描workers
+            for worker in self._scheduled_workers.values():
+                worker.stop()
+            self._scheduled_workers.clear()
+
             self._running = False
             if clear_error:
                 self._last_error = None
-        print("[auto-scan] 所有实时监控任务已停止。")
+
+        scan_mode = get_scan_mode()
+        if scan_mode == "realtime":
+            print("[auto-scan] 实时监控任务已停止。")
+        elif scan_mode == "scheduled":
+            print("[auto-scan] 定时扫描任务已停止。")
+        else:
+            print("[auto-scan] 文件索引服务已停止。")
 
     def register_path(self, path: str | Path) -> None:
         """注册新的扫描路径；服务运行时会立即创建/唤醒对应 worker。"""
@@ -310,7 +396,15 @@ class AutoScanService:
             if not self._running:
                 return
             targets = self._collect_targets()
-            self._sync_workers(targets)
+            scan_mode = get_scan_mode()
+
+            if scan_mode == "realtime":
+                self._sync_workers(targets)
+            elif scan_mode == "scheduled":
+                self._sync_scheduled_workers(targets)
+            else:
+                # 默认使用实时模式
+                self._sync_workers(targets)
 
     def _collect_targets(self) -> Dict[str, str]:
         targets: Dict[str, str] = {}
@@ -363,6 +457,110 @@ class AutoScanService:
         with SessionLocal() as session:
             source = session.query(MediaSource).filter(MediaSource.root_path == path).first()
             return source.id if source else None
+
+    def _sync_scheduled_workers(self, targets: Dict[str, str]) -> None:
+        """同步定时扫描workers"""
+        scan_interval = get_scan_interval()
+
+        # 停止已不存在的scheduled workers
+        for key in list(self._scheduled_workers.keys()):
+            if key not in targets:
+                self._scheduled_workers[key].stop()
+                del self._scheduled_workers[key]
+
+        # 确保目标路径均有scheduled worker
+        for key, raw in targets.items():
+            self._ensure_scheduled_worker(key, raw, scan_interval)
+
+    def _ensure_scheduled_worker(self, key: str, raw: str, scan_interval: str) -> None:
+        """确保定时扫描worker存在并运行"""
+        worker = self._scheduled_workers.get(key)
+        if worker and worker.is_alive:
+            return
+
+        # 获取source_id（如果有的话）
+        source_id = self._get_source_id_for_path(raw)
+        worker = _ScheduledScanWorker(raw, scan_interval, source_id=source_id)
+        worker.start()
+        self._scheduled_workers[key] = worker
+
+
+class _ScheduledScanWorker:
+    """定时扫描工作器"""
+
+    def __init__(self, path: str, scan_interval: str, *, source_id: Optional[int] = None) -> None:
+        self._path = path
+        self._scan_interval = scan_interval
+        self._source_id = source_id
+        self._scan_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+        self._last_error: Optional[str] = None
+
+    @property
+    def is_alive(self) -> bool:
+        return self._scan_thread is not None and self._scan_thread.is_alive()
+
+    @property
+    def last_error(self) -> Optional[str]:
+        return self._last_error
+
+    def start(self) -> None:
+        if self.is_alive:
+            return
+
+        self._scan_thread = threading.Thread(
+            target=self._run_scheduled_scan,
+            name=f"ScheduledScanner[{self._path}:{self._scan_interval}]",
+            daemon=True
+        )
+        self._scan_thread.start()
+        print(f"[auto-scan] 开始定时扫描目录: {self._path} (间隔: {self._scan_interval})")
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+        if self._scan_thread and self._scan_thread.is_alive():
+            self._scan_thread.join(timeout=5)
+
+        print(f"[auto-scan] 停止定时扫描目录: {self._path}")
+
+    def _run_scheduled_scan(self) -> None:
+        """定时扫描线程主循环"""
+        # 计算扫描间隔（秒）
+        interval_map = {
+            "hourly": 3600,      # 1小时
+            "daily": 86400,      # 24小时
+            "weekly": 604800,    # 7天
+        }
+        scan_interval_seconds = interval_map.get(self._scan_interval, 3600)
+
+        last_scan_time = 0
+
+        while not self._stop_event.is_set():
+            current_time = time.time()
+
+            try:
+                # 检查是否需要执行扫描
+                if current_time - last_scan_time >= scan_interval_seconds:
+                    session = SessionLocal()
+                    try:
+                        added = scan_source_once(session, self._path, source_id=self._source_id)
+                        session.commit()
+                        if added > 0:
+                            print(f"[auto-scan] 定时扫描新增 {added} 个文件: {self._path}")
+                        last_scan_time = current_time
+                    except Exception:
+                        session.rollback()
+                        raise
+                    finally:
+                        session.close()
+
+            except Exception as exc:
+                self._last_error = f"定时扫描失败：{exc}"
+                print(f"[auto-scan] 定时扫描失败 {self._path}: {exc}")
+
+            # 每30秒检查一次是否需要停止
+            self._stop_event.wait(30.0)
 
 
 class _ScanWorker:
@@ -507,6 +705,14 @@ def gather_runtime_status(app) -> AutoScanRuntimeStatus:
     service = ensure_auto_scan_service(app)
     active = service.is_active if enabled else False
     message = service.last_error
+
     if enabled and not active and message is None:
-        message = "自动扫描已启用，但监听任务尚未运行。请确认媒体目录有效。"
+        scan_mode = get_scan_mode()
+        if scan_mode == "realtime":
+            message = "实时监控已启用，但监听任务尚未运行。请确认媒体目录有效。"
+        elif scan_mode == "scheduled":
+            message = "定时扫描已启用，但扫描任务尚未运行。请确认媒体目录有效。"
+        else:
+            message = "文件索引服务已启用，但扫描任务尚未运行。"
+
     return AutoScanRuntimeStatus(enabled=enabled, active=active, message=message)

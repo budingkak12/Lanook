@@ -5,10 +5,14 @@ from app.services.auto_scan_service import (
     ensure_auto_scan_service,
     gather_runtime_status,
     set_auto_scan_enabled,
+    set_scan_mode,
+    set_scan_interval,
+    get_scan_mode,
+    get_scan_interval,
 )
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
-from 初始化数据库 import SessionLocal, Media, MediaTag
+from 初始化数据库 import SessionLocal, Media, MediaTag, SCAN_MODE_KEY, SCAN_INTERVAL_KEY
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -17,9 +21,14 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 @router.get("/auto-scan", response_model=AutoScanStatusResponse)
 def get_auto_scan_status(request: Request):
     runtime = gather_runtime_status(request.app)
+    scan_mode = get_scan_mode()
+    scan_interval = get_scan_interval()
+
     return AutoScanStatusResponse(
         enabled=runtime.enabled,
         active=runtime.active,
+        scan_mode=scan_mode,
+        scan_interval=scan_interval,
         message=runtime.message,
     )
 
@@ -29,26 +38,62 @@ def update_auto_scan_setting(payload: AutoScanUpdateRequest, request: Request):
     service = ensure_auto_scan_service(request.app)
     before = gather_runtime_status(request.app)
 
-    if payload.enabled:
-        set_auto_scan_enabled(True)
-        success, message = service.start()
-        if not success:
-            # 回滚状态
-            set_auto_scan_enabled(before.enabled)
-            runtime = gather_runtime_status(request.app)
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=message or runtime.message or "自动扫描暂不可用，请稍后再试。",
-            )
-        service.refresh()
-    else:
-        set_auto_scan_enabled(False)
-        service.stop()
+    try:
+        if payload.enabled:
+            # 启用功能时必须指定扫描模式
+            if not payload.scan_mode:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="启用文件索引服务时必须指定扫描模式（实时或定时）"
+                )
+
+            # 如果是定时模式，必须指定间隔
+            if payload.scan_mode == "scheduled" and not payload.scan_interval:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="定时扫描模式必须指定扫描间隔"
+                )
+
+            # 应用设置
+            set_auto_scan_enabled(True)
+            set_scan_mode(payload.scan_mode)
+            if payload.scan_interval:
+                set_scan_interval(payload.scan_interval)
+
+            # 启动服务
+            success, message = service.start()
+            if not success:
+                # 回滚状态
+                set_auto_scan_enabled(before.enabled)
+                runtime = gather_runtime_status(request.app)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=message or runtime.message or "文件索引服务暂不可用，请稍后再试。",
+                )
+            service.refresh()
+        else:
+            # 禁用功能
+            set_auto_scan_enabled(False)
+            set_scan_mode("disabled")
+            service.stop()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # 其他异常时的回滚
+        set_auto_scan_enabled(before.enabled)
+        runtime = gather_runtime_status(request.app)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"设置更新失败：{str(e)}"
+        )
 
     runtime = gather_runtime_status(request.app)
     return AutoScanStatusResponse(
         enabled=runtime.enabled,
         active=runtime.active,
+        scan_mode=get_scan_mode(),
+        scan_interval=get_scan_interval(),
         message=runtime.message,
     )
 

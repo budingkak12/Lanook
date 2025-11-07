@@ -10,6 +10,7 @@ import { apiFetch, getOSInfo } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "react-i18next"
 import { SettingsMediaManagement } from "@/components/settings-media-management"
+import { SettingsFileScan } from "@/components/settings-file-scan"
 
 interface ConnectionInfo { ip: string; port: number; display_url: string }
 
@@ -414,42 +415,8 @@ export function SettingsView() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* 媒体库重置 */}
-                <div className="border rounded-lg p-3 sm:p-4 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="font-medium flex items-center gap-2 text-sm">
-                        <RotateCcw className="w-4 h-4" />
-                        重置媒体库
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        清除当前媒体库设置，重新选择媒体文件夹
-                      </p>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={resetInitialization}
-                      disabled={isResetting}
-                      className="w-full sm:w-auto"
-                    >
-                      {isResetting ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          重置中...
-                        </>
-                      ) : (
-                        <>
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          重置
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                    <strong>注意：</strong>重置后需要重新设置媒体文件夹路径，当前媒体库将被清空。
-                  </div>
-                </div>
+                {/* 文件扫描设置 */}
+                <SettingsFileScan />
 
                 {/* 媒体路径管理 */}
                 <div className="border-t pt-4">
@@ -458,6 +425,45 @@ export function SettingsView() {
                     <h4 className="text-sm font-medium">媒体路径管理</h4>
                   </div>
                   <SettingsMediaManagement />
+                </div>
+
+                {/* 媒体库重置 */}
+                <div className="border-t pt-4">
+                  <div className="border rounded-lg p-3 sm:p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <h4 className="font-medium flex items-center gap-2 text-sm">
+                          <RotateCcw className="w-4 h-4" />
+                          重置媒体库
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          清除当前媒体库设置，重新选择媒体文件夹
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={resetInitialization}
+                        disabled={isResetting}
+                        className="w-full sm:w-auto"
+                      >
+                        {isResetting ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            重置中...
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            重置
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                      <strong>注意：</strong>重置后，软件将回到初始状态。这将清空所有数据库信息（点赞、标签等），但不会删除媒体文件夹内的实际文件。
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
