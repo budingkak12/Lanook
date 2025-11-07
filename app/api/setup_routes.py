@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from app.schemas.setup import (
     DirectoryEntryModel,
@@ -26,6 +26,8 @@ from app.services.media_initializer import (
     has_indexed_media,
     validate_media_root,
 )
+from app.services.auto_scan_service import ensure_auto_scan_service
+from app.services.scan_service import scan_source_once
 
 router = APIRouter(tags=["setup"])
 
@@ -98,7 +100,6 @@ def get_common_folders():
 def set_media_root(
     request: Request,
     payload: MediaRootRequest,
-    background_tasks: BackgroundTasks,
 ):
     try:
         validated_path = validate_media_root(Path(payload.path))
@@ -114,28 +115,31 @@ def set_media_root(
     finally:
         db.close()
 
-    # 在后台任务中扫描并添加媒体数据
-    def scan_media_task():
-        from 初始化数据库 import SessionLocal, create_database_and_tables, seed_initial_data, scan_and_populate_media
+    # 先同步导入一小批媒体，确保前端立即可见
+    initial_batch = 0
+    try:
+        from 初始化数据库 import seed_initial_data, create_database_and_tables
+
+        create_database_and_tables(echo=False)
         task_db = SessionLocal()
         try:
-            # 确保数据库表存在
-            create_database_and_tables(echo=False)
-
-            # 添加基础标签数据
             seed_initial_data(task_db)
-
-            # 扫描并添加媒体数据
-            added_count = scan_and_populate_media(task_db, str(validated_path), limit=50)
+            initial_batch = scan_source_once(task_db, str(validated_path), limit=50)
             task_db.commit()
-            print(f"[media-root] 后台扫描完成，添加了 {added_count} 个媒体文件")
-        except Exception as e:
-            print(f"[media-root] 后台扫描出错: {e}")
+            if initial_batch:
+                print(f"[media-root] 首批导入 {initial_batch} 个媒体文件。")
+        except Exception as exc:
             task_db.rollback()
+            print(f"[media-root] 首批导入失败：{exc}")
         finally:
             task_db.close()
+    except Exception as exc:
+        print(f"[media-root] 初始化首批扫描失败：{exc}")
 
-    background_tasks.add_task(scan_media_task)
+    # 注册后台持续扫描
+    service = ensure_auto_scan_service(request.app)
+    service.register_path(str(validated_path))
+    service.trigger_path(str(validated_path))
 
     # 更新初始化协调器状态为已完成
     coordinator = _ensure_coordinator(request)
@@ -143,7 +147,11 @@ def set_media_root(
     coordinator.reset(
         state=InitializationState.COMPLETED,
         media_root_path=str(validated_path),
-        message="媒体库初始化完成，正在扫描媒体文件..."
+        message=(
+            f"媒体库初始化完成，首批导入 {initial_batch} 个文件，后台持续扫描中。"
+            if initial_batch
+            else "媒体库初始化完成，后台持续扫描中。"
+        ),
     )
 
     return {"success": True, "message": "媒体根路径设置成功"}

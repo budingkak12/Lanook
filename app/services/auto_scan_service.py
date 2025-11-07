@@ -4,24 +4,21 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
-try:  # watchdog 可能在尚未安装依赖时缺失
-    from watchdog.events import FileSystemEventHandler
-    from watchdog.observers import Observer
-except ImportError:  # pragma: no cover - 仅在缺失依赖时触发
-    FileSystemEventHandler = object  # type: ignore
-    Observer = None  # type: ignore
+from sqlalchemy import or_
 
 from 初始化数据库 import (
     AUTO_SCAN_ENABLED_KEY,
     SessionLocal,
     get_setting,
-    _resolve_media_source,
-    scan_and_populate_media,
     set_setting,
+    create_database_and_tables,
 )
+from app.db.models_extra import MediaSource
+from app.services.fs_providers import is_smb_url
 from app.services.media_initializer import get_configured_media_root
+from app.services.scan_service import scan_source_once
 
 
 _STATE_ATTR = "auto_scan_service"
@@ -64,178 +61,206 @@ class AutoScanRuntimeStatus:
     message: Optional[str]
 
 
-class _MediaEventHandler(FileSystemEventHandler):
-    def __init__(self, trigger: threading.Event) -> None:
-        self._trigger = trigger
+DEFAULT_IDLE_SECONDS = 60.0
 
-    def on_created(self, event):  # type: ignore[override]
-        if getattr(event, "is_directory", False):
-            return
-        self._trigger.set()
 
-    def on_moved(self, event):  # type: ignore[override]
-        if getattr(event, "is_directory", False):
-            return
-        self._trigger.set()
-
-    def on_modified(self, event):  # type: ignore[override]
-        if getattr(event, "is_directory", False):
-            return
-        self._trigger.set()
+def _normalize_path_key(raw: str | Path) -> str:
+    raw_str = str(raw)
+    if is_smb_url(raw_str):
+        return raw_str.rstrip("/")
+    return str(Path(raw_str).expanduser().resolve())
 
 
 class AutoScanService:
-    def __init__(self, *, debounce_seconds: float = 1.5) -> None:
+    def __init__(self, *, idle_seconds: float = DEFAULT_IDLE_SECONDS) -> None:
         self._lock = threading.RLock()
-        self._observer: Optional[Observer] = None
-        self._worker: Optional[threading.Thread] = None
-        self._trigger_event = threading.Event()
-        self._stop_event = threading.Event()
+        self._workers: Dict[str, _ScanWorker] = {}
+        self._idle_seconds = idle_seconds
         self._last_error: Optional[str] = None
-        self._debounce_seconds = debounce_seconds
-        self._current_root: Optional[Path] = None
+        self._running = False
 
     @property
     def is_active(self) -> bool:
-        worker_alive = self._worker is not None and self._worker.is_alive()
-        observer_alive = self._observer is not None and getattr(self._observer, "is_alive", lambda: False)()
-        return worker_alive and observer_alive
+        with self._lock:
+            if not self._running:
+                return False
+            return any(worker.is_alive for worker in self._workers.values())
+
+    @property
+    def last_error(self) -> Optional[str]:
+        with self._lock:
+            if self._last_error:
+                return self._last_error
+            for worker in self._workers.values():
+                if worker.last_error:
+                    return worker.last_error
+            return None
+
+    def start(self) -> tuple[bool, Optional[str]]:
+        with self._lock:
+            targets = self._collect_targets()
+            if not targets:
+                message = "尚未配置媒体目录，自动扫描暂不可用。"
+                self._last_error = message
+                self._running = False
+                return False, message
+
+            create_database_and_tables(echo=False)
+            self._running = True
+            self._last_error = None
+            self._sync_workers(targets)
+            print(f"[auto-scan] 已启动 {len(self._workers)} 个目录扫描任务。")
+            return True, None
+
+    def stop(self, *, clear_error: bool = True) -> None:
+        with self._lock:
+            for worker in self._workers.values():
+                worker.stop()
+            self._workers.clear()
+            self._running = False
+            if clear_error:
+                self._last_error = None
+
+    def register_path(self, path: str | Path) -> None:
+        """注册新的扫描路径；服务运行时会立即创建/唤醒对应 worker。"""
+        normalized = _normalize_path_key(path)
+        with self._lock:
+            if self._running:
+                self._ensure_worker(normalized, str(path))
+                return
+
+        # 自动扫描未运行，若开关开启则尝试启动
+        if get_auto_scan_enabled():
+            started, message = self.start()
+            if started:
+                self.trigger_path(path)
+            else:
+                with self._lock:
+                    self._last_error = message
+        else:
+            with self._lock:
+                self._last_error = "自动扫描已关闭，未启动后台扫描线程。"
+
+    def trigger_path(self, path: str | Path) -> None:
+        normalized = _normalize_path_key(path)
+        with self._lock:
+            worker = self._workers.get(normalized)
+            if worker:
+                worker.trigger()
+
+    def refresh(self) -> None:
+        """重新同步所有已知路径的 worker（用于新增/删除来源后）。"""
+        with self._lock:
+            if not self._running:
+                return
+            targets = self._collect_targets()
+            self._sync_workers(targets)
+
+    def _collect_targets(self) -> Dict[str, str]:
+        targets: Dict[str, str] = {}
+
+        def _add(raw: str | Path) -> None:
+            key = _normalize_path_key(raw)
+            targets.setdefault(key, str(raw))
+
+        media_root = get_configured_media_root()
+        if media_root is not None:
+            _add(media_root)
+
+        with SessionLocal() as session:
+            rows = (
+                session.query(MediaSource)
+                .filter(or_(MediaSource.status.is_(None), MediaSource.status == "active"))
+                .all()
+            )
+            for row in rows:
+                _add(row.root_path)
+
+        return targets
+
+    def _sync_workers(self, targets: Dict[str, str]) -> None:
+        # 停止已不存在的 worker
+        for key in list(self._workers.keys()):
+            if key not in targets:
+                self._workers[key].stop()
+                del self._workers[key]
+
+        # 确保目标路径均有 worker
+        for key, raw in targets.items():
+            self._ensure_worker(key, raw)
+
+    def _ensure_worker(self, key: str, raw: str) -> None:
+        worker = self._workers.get(key)
+        if worker and worker.is_alive:
+            worker.trigger()
+            return
+        worker = _ScanWorker(raw, idle_seconds=self._idle_seconds)
+        worker.start()
+        self._workers[key] = worker
+        worker.trigger()
+
+
+class _ScanWorker:
+    def __init__(self, path: str, *, idle_seconds: float) -> None:
+        self._path = path
+        self._idle_seconds = idle_seconds
+        self._stop_event = threading.Event()
+        self._wake_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, name=f"AutoScan[{path}]", daemon=True)
+        self._last_error: Optional[str] = None
+
+    @property
+    def is_alive(self) -> bool:
+        return self._thread.is_alive()
 
     @property
     def last_error(self) -> Optional[str]:
         return self._last_error
 
-    def start(self) -> tuple[bool, Optional[str]]:
-        with self._lock:
-            if Observer is None:
-                message = "watchdog 未安装，无法开启自动扫描。请先安装依赖。"
-                self._last_error = message
-                return False, message
+    def start(self) -> None:
+        if not self._thread.is_alive():
+            self._thread.start()
 
-            target_root = get_configured_media_root()
-            if target_root is None:
-                message = "尚未配置媒体目录，自动扫描暂不可用。"
-                self._last_error = message
-                return False, message
-
-            target_root = target_root.expanduser().resolve()
-            if not target_root.exists() or not target_root.is_dir():
-                message = f"媒体目录不可达：{target_root}"
-                self._last_error = message
-                return False, message
-
-            if self.is_active and self._current_root and self._current_root == target_root:
-                return True, None
-
-            if self.is_active:
-                self._stop_locked()
-
-            handler = _MediaEventHandler(self._trigger_event)
-            observer = Observer()
-            try:
-                observer.schedule(handler, str(target_root), recursive=True)
-                observer.start()
-            except Exception as exc:  # pragma: no cover - watchdog 启动异常
-                message = f"启动目录监听失败：{exc}"
-                self._last_error = message
-                try:
-                    observer.stop()
-                except Exception:
-                    pass
-                return False, message
-
-            self._observer = observer
-            self._current_root = target_root
-            self._last_error = None
-            self._trigger_event.clear()
-            self._stop_event.clear()
-            worker = threading.Thread(target=self._worker_loop, name="AutoScanWorker", daemon=True)
-            worker.start()
-            self._worker = worker
-            print(f"[auto-scan] 已启动目录监听：{target_root}")
-            return True, None
-
-    def stop(self, *, clear_error: bool = True) -> None:
-        with self._lock:
-            self._stop_locked()
-            if clear_error:
-                self._last_error = None
-
-    def _stop_locked(self) -> None:
-        observer = self._observer
-        worker = self._worker
-        self._observer = None
-        self._worker = None
-        self._current_root = None
+    def stop(self) -> None:
         self._stop_event.set()
-        self._trigger_event.set()
+        self._wake_event.set()
+        if self._thread.is_alive():
+            self._thread.join(timeout=5)
 
-        if observer is not None:
-            try:
-                observer.stop()
-                observer.join(timeout=5)
-            except Exception:
-                pass
+    def trigger(self) -> None:
+        self._wake_event.set()
 
-        if worker is not None and worker.is_alive():
-            worker.join(timeout=5)
-
-        self._trigger_event = threading.Event()
-        self._stop_event = threading.Event()
-
-    def _worker_loop(self) -> None:
+    def _run(self) -> None:
         while not self._stop_event.is_set():
-            triggered = self._trigger_event.wait(timeout=1.0)
-            if not triggered:
-                continue
-
-            self._trigger_event.clear()
-            # 去抖动：合并短时间内的连续文件事件
-            waited = 0.0
-            while waited < self._debounce_seconds and not self._stop_event.is_set():
-                time.sleep(0.2)
-                waited += 0.2
-
+            triggered = self._wake_event.wait(timeout=self._idle_seconds)
+            if not triggered and not self._wake_event.is_set():
+                # 周期性自动扫描
+                self._wake_event.set()
+            self._wake_event.clear()
             if self._stop_event.is_set():
                 break
 
             try:
-                self._perform_scan()
-            except Exception as exc:  # pragma: no cover - 后台错误记录
+                self._scan_until_idle()
+            except Exception as exc:  # pragma: no cover - 防御性记录
                 self._last_error = f"自动扫描失败：{exc}"
-                print(f"[auto-scan] 扫描失败：{exc}")
+                print(f"[auto-scan] 扫描 {self._path} 失败：{exc}")
+                time.sleep(min(self._idle_seconds, 5.0))
 
-    def _perform_scan(self) -> None:
-        root = self._current_root or get_configured_media_root()
-        if root is None:
-            self._last_error = "媒体目录未配置，已暂停自动扫描。"
-            return
+    def _scan_until_idle(self) -> None:
+        while not self._stop_event.is_set():
+            session = SessionLocal()
+            try:
+                added = scan_source_once(session, self._path)
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
 
-        root = root.expanduser().resolve()
-        if not root.exists():
-            self._last_error = f"媒体目录已丢失：{root}"
-            return
-
-        session = SessionLocal()
-        try:
-            source = _resolve_media_source(
-                session,
-                str(root),
-                source_id=None,
-                type_="local",
-            )
-            new_count = scan_and_populate_media(
-                session,
-                str(root),
-                source_id=source.id if source else None,
-            )
-            if new_count:
-                print(f"[auto-scan] 已入库 {new_count} 个新增媒体。")
-        except Exception as exc:
-            session.rollback()
-            raise exc
-        finally:
-            session.close()
+            if added <= 0:
+                break
 
 
 def ensure_auto_scan_service(app) -> AutoScanService:

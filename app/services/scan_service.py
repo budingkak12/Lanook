@@ -7,9 +7,15 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import BackgroundTasks
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from 初始化数据库 import SessionLocal, create_database_and_tables, scan_and_populate_media, Media
+from 初始化数据库 import (
+    SessionLocal,
+    create_database_and_tables,
+    scan_and_populate_media,
+    Media,
+)
 from app.services.fs_providers import is_smb_url, ro_fs_for_url
 from app.db.models_extra import ScanJob
 
@@ -41,18 +47,7 @@ def _run_scan_job(job_id: str, root_path: str, source_id: int) -> None:
     try:
         create_database_and_tables(echo=False)
         db = SessionLocal()
-        if is_smb_url(root_path):
-            scanned = _scan_smb_into_db(db, root_path, source_id)
-        else:
-            # 使用现有的去重扫描逻辑（不清库、不改设置）
-            before = db.execute("SELECT COUNT(1) FROM media").scalar() or 0
-            added = scan_and_populate_media(
-                db,
-                str(Path(root_path).expanduser().resolve()),
-                source_id=source_id,
-            )
-            after = db.execute("SELECT COUNT(1) FROM media").scalar() or 0
-            scanned = (after - before) if (after - before) >= 0 else added
+        scanned = scan_source_once(db, root_path, source_id=source_id)
         job = db.query(ScanJob).filter(ScanJob.job_id == job_id).first()
         if job:
             job.scanned_count = scanned
@@ -73,7 +68,38 @@ def _run_scan_job(job_id: str, root_path: str, source_id: int) -> None:
             db.close()
 
 
-def _scan_smb_into_db(db: Session, root_url: str, source_id: int) -> int:
+def scan_source_once(
+    db: Session,
+    root_path: str,
+    *,
+    source_id: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> int:
+    """执行一次扫描（本地目录或 SMB），返回新增条目数量。"""
+    if is_smb_url(root_path):
+        return _scan_smb_into_db(db, root_path, source_id=source_id, limit=limit)
+
+    resolved = str(Path(root_path).expanduser().resolve())
+    before = db.execute(text("SELECT COUNT(1) FROM media")).scalar() or 0
+    added = scan_and_populate_media(
+        db,
+        resolved,
+        source_id=source_id,
+        limit=limit,
+    )
+    after = db.execute(text("SELECT COUNT(1) FROM media")).scalar() or 0
+    delta = (after - before) if (after - before) >= 0 else added
+    # delta 是本轮真实新增条目数，scan_and_populate_media 返回的是扫描阶段新增
+    return delta if delta >= 0 else 0
+
+
+def _scan_smb_into_db(
+    db: Session,
+    root_url: str,
+    *,
+    source_id: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> int:
     """遍历 SMB 目录并将媒体入库；按绝对 URL 去重。"""
     exts_image = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
     exts_video = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
@@ -116,6 +142,8 @@ def _scan_smb_into_db(db: Session, root_url: str, source_id: int) -> int:
                 )
             )
             added += 1
+            if limit is not None and added >= limit:
+                break
     if source is not None:
         source.last_scan_at = datetime.utcnow()
         if source.status != "active":

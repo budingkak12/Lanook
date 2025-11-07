@@ -5,7 +5,7 @@ from datetime import timezone
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from 初始化数据库 import SessionLocal
@@ -20,7 +20,7 @@ from app.schemas.sources import (
     SourceValidateRequest,
     SourceValidateResponse,
 )
-from app.services.scan_service import get_scan_status, start_scan_job
+from app.services.scan_service import get_scan_status, start_scan_job, scan_source_once
 from app.services.sources_service import (
     create_source,
     delete_source,
@@ -29,6 +29,8 @@ from app.services.sources_service import (
     restore_source,
 )
 from app.services.credentials import store_smb_password
+from app.services.auto_scan_service import ensure_auto_scan_service
+from 初始化数据库 import create_database_and_tables
 
 
 router = APIRouter(tags=["sources"])
@@ -46,6 +48,24 @@ def _iso(dt):
     if not dt:
         return None
     return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _bootstrap_source_scan(root_path: str, *, limit: int = 50) -> None:
+    try:
+        create_database_and_tables(echo=False)
+        with SessionLocal() as session:
+            added = scan_source_once(session, root_path, limit=limit)
+            session.commit()
+            if added:
+                print(f"[media-source] 首批导入 {added} 个媒体文件 ({root_path})。")
+    except Exception as exc:
+        print(f"[media-source] 首批扫描失败 ({root_path}): {exc}")
+
+
+def _ensure_background_scan(request: Request, root_path: str) -> None:
+    service = ensure_auto_scan_service(request.app)
+    service.register_path(root_path)
+    service.trigger_path(root_path)
 
 
 def _to_media_source_model(src) -> MediaSourceModel:
@@ -148,7 +168,11 @@ def validate_source(req: SourceValidateRequest):
 
 
 @router.post("/setup/source", response_model=MediaSourceModel, status_code=201)
-def create_media_source(payload: SourceCreateRequest, db: Session = Depends(get_db)):
+def create_media_source(
+    payload: SourceCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     if payload.type == SourceType.LOCAL:
         if not payload.rootPath:
             raise HTTPException(status_code=422, detail="rootPath required")
@@ -156,6 +180,8 @@ def create_media_source(payload: SourceCreateRequest, db: Session = Depends(get_
         if not p.exists() or not p.is_dir() or not os.access(p, os.R_OK):
             raise HTTPException(status_code=422, detail="无效目录或无读取权限")
         src = create_source(db, type_=payload.type.value, root_path=str(p), display_name=payload.displayName)
+        _bootstrap_source_scan(src.root_path)
+        _ensure_background_scan(request, src.root_path)
         return _to_media_source_model(src)
     elif payload.type == SourceType.SMB:
         if not payload.host or not payload.share:
@@ -179,6 +205,8 @@ def create_media_source(payload: SourceCreateRequest, db: Session = Depends(get_
         if sub:
             root_url += f"/{sub}"
         src = create_source(db, type_=payload.type.value, root_path=root_url, display_name=payload.displayName)
+        _bootstrap_source_scan(src.root_path)
+        _ensure_background_scan(request, src.root_path)
         return _to_media_source_model(src)
     else:
         raise HTTPException(status_code=422, detail="未知来源类型")

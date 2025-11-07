@@ -30,6 +30,7 @@ def update_auto_scan_setting(payload: AutoScanUpdateRequest, request: Request):
     before = gather_runtime_status(request.app)
 
     if payload.enabled:
+        set_auto_scan_enabled(True)
         success, message = service.start()
         if not success:
             # 回滚状态
@@ -39,7 +40,7 @@ def update_auto_scan_setting(payload: AutoScanUpdateRequest, request: Request):
                 status_code=status.HTTP_409_CONFLICT,
                 detail=message or runtime.message or "自动扫描暂不可用，请稍后再试。",
             )
-        set_auto_scan_enabled(True)
+        service.refresh()
     else:
         set_auto_scan_enabled(False)
         service.stop()
