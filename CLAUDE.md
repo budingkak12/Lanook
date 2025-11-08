@@ -2,7 +2,7 @@
 ## 正在做的事情
 - 正在开发一个无用户概念的局域网相册，支持媒体浏览/管理，
 - 安卓前端：androidclient/
-- web前端 ：webclient，项目使用yarn管理
+- web前端 ：webclient，使用yarn dev启动前端
 ## web前端
 - 使用http://localhost:3000/开发/调试功能
 - 禁止自行启动前端
