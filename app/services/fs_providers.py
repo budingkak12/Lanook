@@ -75,10 +75,12 @@ def ro_fs_for_url(url: str) -> Generator[Tuple[FS, str], None, None]:
         netloc = f"{userinfo}{parts.host}"
         base_url = f"smb://{netloc}/{parts.share}"
         # open_fs 支持 smb://user:pass@host/share
+        # 附加 smbfs 连接参数，兼容部分环境需要明确 server_name/直连端口
+        q = f"?server_name={parts.host}&port=445&direct_tcp=true"
         if parts.username and password:
-            fs_url = f"smb://{parts.username}:{password}@{parts.host}/{parts.share}"
+            fs_url = f"smb://{parts.username}:{password}@{parts.host}/{parts.share}{q}"
         else:
-            fs_url = base_url
+            fs_url = base_url + q
         fs = read_only(open_fs(fs_url))
         try:
             yield fs, parts.path
@@ -134,4 +136,3 @@ def stat_url(url: str) -> Tuple[int, int]:
         size = int(info.get("details", {}).get("size", 0))
         mtime = int(info.get("details", {}).get("modified", 0))
         return mtime, size
-

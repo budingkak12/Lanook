@@ -259,10 +259,15 @@ def _display_connection_advert():
 
     # 将探测到的 LAN IP 打印即可；实际接口使用带 TTL 的快速探测与缓存
 
-    # 自动打开前端（默认显示设置）
-    auto_open_flag = str(os.environ.get("MEDIA_APP_OPEN_BROWSER", "1")).strip().lower()
-    should_open = auto_open_flag in {"1", "true", "yes", "on"}
-    if should_open:
+    # 自动打开前端开关（硬编码控制）
+    AUTO_OPEN_BROWSER = False  # 修改这里来控制是否自动打开前端页面
+
+    # 显示启动提示信息
+    print(f"[startup] 前端自动打开: {'已启用' if AUTO_OPEN_BROWSER else '已禁用'} (修改 main.py 中的 AUTO_OPEN_BROWSER 变量)")
+    if not AUTO_OPEN_BROWSER:
+        print(f"[startup] 提示: 将 AUTO_OPEN_BROWSER 改为 True 可启用自动打开前端")
+
+    if AUTO_OPEN_BROWSER:
         # 避免热重载子进程重复打开浏览器
         if os.environ.get("RUN_MAIN") == "true" or os.environ.get("UVICORN_RUN_MAIN") == "true" or not (
             os.environ.get("RUN_MAIN") or os.environ.get("UVICORN_RUN_MAIN")

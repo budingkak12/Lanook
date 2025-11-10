@@ -268,6 +268,8 @@ export interface CreateSourceRequest {
   type: SourceType
   rootPath: string
   displayName?: string
+  // 是否在创建时立即扫描（初始化向导中应传 false）
+  scan?: boolean
   // SMB fields
   host?: string
   share?: string

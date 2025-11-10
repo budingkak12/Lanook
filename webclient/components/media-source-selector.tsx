@@ -98,12 +98,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
     password: isNasAnonymous ? undefined : nasPassword
   })
 
-  // 模拟局域网设备
-  const networkDevices = [
-    { name: 'NAS-测试', host: '10.175.87.74', type: 'NAS' },
-    { name: '办公室服务器', host: '192.168.1.20', type: 'Server' },
-    { name: 'Backup-NAS', host: '192.168.1.30', type: 'NAS' },
-  ]
+  // 已移除设备列表与搜索入口：不再维护本地模拟设备清单
 
   // 初始化：加载常用文件夹
   useEffect(() => {
@@ -813,55 +808,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             </div>
           )}
 
-          {/* 设备列表 */}
-          <div className="space-y-4 pt-3 border-t border-border/20">
-            <h4 className="text-sm font-medium text-foreground/90">
-              {t('init.sourceType.network.deviceList')}
-            </h4>
-            <div className="space-y-2">
-              {networkDevices.slice(0, 3).map((device, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: 0.2 + index * 0.05 }}
-                  className="flex items-center justify-between p-3 bg-background/60 border border-border/30 rounded-lg hover:bg-background/80 transition-all duration-200 cursor-pointer hover:border-border/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-green-500/20 rounded flex items-center justify-center">
-                      <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-foreground">{device.name}</div>
-                      <div className="text-xs text-muted-foreground/80">{device.host} • {device.type}</div>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 px-2 hover:bg-background/50 text-xs"
-                    onClick={() => {
-                      setNasHost(device.host)
-                      handleNasConnect(device.host)
-                    }}
-                    disabled={isConnectingNas || isBrowsingNas}
-                  >
-                    {isConnectingNas && nasHost === device.host ? '连接中...' : '连接'}
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* 搜索设备 */}
-          <div>
-            <Input
-              placeholder={t('init.sourceType.network.searchPlaceholder')}
-              className="bg-background/60 border-border/40 focus:border-border/60 text-sm"
-            />
-          </div>
+          {/* 设备列表与搜索入口已移除 */}
         </div>
       </motion.div>
 

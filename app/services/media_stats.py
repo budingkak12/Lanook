@@ -5,6 +5,7 @@ from pathlib import Path
 from threading import Lock
 
 from 初始化数据库 import SUPPORTED_IMAGE_EXTS, SUPPORTED_VIDEO_EXTS
+from app.services.fs_providers import is_smb_url, ro_fs_for_url
 
 
 @dataclass
@@ -54,6 +55,24 @@ def _count_supported_media_files(directory: Path) -> int:
 _GLOBAL_STATS = MediaDirectoryStats()
 
 
-def count_supported_media(directory: Path, *, force_refresh: bool = False) -> int:
-    """统计指定目录中受支持的媒体文件数量，默认带 30 秒缓存。"""
+def count_supported_media(directory: Path | str, *, force_refresh: bool = False) -> int:
+    """统计指定目录中受支持的媒体文件数量。
+    - 本地目录：使用带缓存的统计。
+    - SMB URL：即时统计（不缓存），以避免将 URL 当作本地路径。
+    """
+    if isinstance(directory, str) and is_smb_url(directory):
+        # 简单遍历 SMB 目录统计受支持的媒体文件数量
+        exts = SUPPORTED_IMAGE_EXTS | SUPPORTED_VIDEO_EXTS
+        total = 0
+        with ro_fs_for_url(directory) as (fs, inner):
+            base = inner.rstrip('/')
+            walker = fs.walk.files(base) if base else fs.walk.files()
+            for path in walker:
+                name = path.rsplit('/', 1)[-1]
+                if ('.' in name) and ('.' + name.rsplit('.', 1)[-1].lower()) in exts:
+                    total += 1
+        return total
+    # 其余情况按本地目录处理
+    if isinstance(directory, str):
+        directory = Path(directory)
     return _GLOBAL_STATS.count_supported_media(directory, force_refresh=force_refresh)

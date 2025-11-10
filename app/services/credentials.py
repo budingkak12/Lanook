@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
+import os
 
 import keyring
 
@@ -24,5 +25,20 @@ def get_smb_password(host: str, share: str, username: str | None) -> Optional[st
     if not username:
         return None
     key = _smb_secret_key(host, share, username)
-    return keyring.get_password(SERVICE_NAME, key)
-
+    pwd = keyring.get_password(SERVICE_NAME, key)
+    if pwd:
+        return pwd
+    # 环境变量兜底（便于无钥匙串/CI 环境）
+    # 精确匹配：MEDIAAPP_SMB_PASSWORD_<HOST>_<SHARE>_<USER>
+    def norm(s: str) -> str:
+        return "".join(ch if ch.isalnum() else "_" for ch in s)
+    candidates = [
+        f"MEDIAAPP_SMB_PASSWORD_{norm(host)}_{norm(share)}_{norm(username)}",
+        f"MEDIAAPP_SMB_PASSWORD_{norm(host)}_{norm(username)}",
+        "MEDIAAPP_SMB_PASSWORD",
+    ]
+    for env_key in candidates:
+        val = os.environ.get(env_key)
+        if val:
+            return val
+    return None

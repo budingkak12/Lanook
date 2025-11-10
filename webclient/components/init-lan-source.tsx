@@ -63,7 +63,7 @@ export function InitLanSource({ onDone }: Props) {
     }
     setCreating(true)
     try {
-      const body: any = { type: "smb", host, share, subPath: subPath || undefined, displayName: `${host}/${share}${subPath ? '/' + subPath : ''}` }
+      const body: any = { type: "smb", host, share, subPath: subPath || undefined, displayName: `${host}/${share}${subPath ? '/' + subPath : ''}`, scan: false }
       if (!anonymous) { body.username = username; body.password = password; if (domain) body.domain = domain }
       else { body.anonymous = true }
       const resp = await apiFetch("/setup/source", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })

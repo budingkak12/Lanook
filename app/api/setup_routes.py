@@ -102,7 +102,8 @@ def set_media_root(
     payload: MediaRootRequest,
 ):
     try:
-        validated_path = validate_media_root(Path(payload.path))
+        # 允许本地目录或 SMB URL
+        validated_path = validate_media_root(payload.path)
     except MediaInitializationError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

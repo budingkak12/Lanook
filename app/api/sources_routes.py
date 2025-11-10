@@ -211,6 +211,8 @@ def create_media_source(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    # 控制是否立即扫描（默认 True 以兼容旧调用）
+    scan_now = True if payload.scan is None else bool(payload.scan)
     if payload.type == SourceType.LOCAL:
         if not payload.rootPath:
             raise HTTPException(status_code=422, detail="rootPath required")
@@ -218,8 +220,9 @@ def create_media_source(
         if not p.exists() or not p.is_dir() or not os.access(p, os.R_OK):
             raise HTTPException(status_code=422, detail="无效目录或无读取权限")
         src = create_source(db, type_=payload.type.value, root_path=str(p), display_name=payload.displayName)
-        _bootstrap_source_scan(src.root_path)
-        _ensure_background_scan(request, src.root_path)
+        if scan_now:
+            _bootstrap_source_scan(src.root_path)
+            _ensure_background_scan(request, src.root_path)
         return _to_media_source_model(src)
     elif payload.type == SourceType.SMB:
         if not payload.host or not payload.share:
@@ -243,8 +246,9 @@ def create_media_source(
         if sub:
             root_url += f"/{sub}"
         src = create_source(db, type_=payload.type.value, root_path=root_url, display_name=payload.displayName)
-        _bootstrap_source_scan(src.root_path)
-        _ensure_background_scan(request, src.root_path)
+        if scan_now:
+            _bootstrap_source_scan(src.root_path)
+            _ensure_background_scan(request, src.root_path)
         return _to_media_source_model(src)
     else:
         raise HTTPException(status_code=422, detail="未知来源类型")

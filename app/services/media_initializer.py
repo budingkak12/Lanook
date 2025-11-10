@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,8 @@ from 初始化数据库 import (
     seed_initial_data,
     set_setting,
 )
+from app.services.fs_providers import is_smb_url, ro_fs_for_url, parse_smb_url
+from app.services.credentials import get_smb_password
 
 
 class MediaInitializationError(Exception):
@@ -90,14 +92,21 @@ def run_full_initialization(target_path: Path, *, preview_batch_size: int = INIT
         session.close()
 
 
-def get_configured_media_root() -> Optional[Path]:
-    """读取数据库中保存的媒体根路径。若不存在，返回 None。"""
+def get_configured_media_root() -> Optional[Union[Path, str]]:
+    """读取数据库中保存的媒体根路径。
+    - 本地目录返回 Path
+    - SMB 返回原始 URL 字符串
+    若不存在，返回 None。
+    """
     session: Session = SessionLocal()
     try:
         value = get_setting(session, MEDIA_ROOT_KEY)
         if not value:
             return None
-        return Path(value)
+        v = str(value)
+        if v.strip().lower().startswith("smb://"):
+            return v
+        return Path(v)
     finally:
         session.close()
 
@@ -111,6 +120,69 @@ def has_indexed_media() -> bool:
         session.close()
 
 
-def validate_media_root(path: Path) -> Path:
-    """对外暴露的目录校验接口，确保路径存在且可访问。"""
+def validate_media_root(path: Union[Path, str]) -> Union[Path, str]:
+    """校验媒体根路径：
+    - 本地目录：返回规范化后的 Path；
+    - SMB URL（smb://...）：尝试列目录验证可达，返回原始 URL 字符串。
+    """
+    # SMB URL 字符串
+    if isinstance(path, str) and is_smb_url(path):
+        # 优先在 macOS 使用 mount_smbfs 验证，失败再回退到 fs.open_fs
+        try:
+            import platform, shutil, subprocess, tempfile, os as _os
+            if platform.system().lower() == 'darwin' and shutil.which('mount_smbfs') and shutil.which('umount'):
+                parts = parse_smb_url(path)
+                # 取出凭据（若没有则尝试匿名）
+                password = get_smb_password(parts.host, parts.share, parts.username)
+                if parts.username and password:
+                    auth = f"{parts.username}:{password}@{parts.host}"
+                elif parts.username:
+                    # 没有存储密码则回退匿名
+                    auth = parts.host
+                else:
+                    auth = parts.host
+                share = parts.share
+                mount_point = tempfile.mkdtemp(prefix='mediaroot_smb_')
+                try:
+                    url = f"//{auth}/{share}"
+                    # 尝试挂载
+                    subprocess.check_call(['mount_smbfs', url, mount_point], timeout=8)
+                    # 验证目录可读
+                    entries = list(_os.scandir(mount_point))
+                    # 通过即返回；无需继续用 FS 层
+                    return path
+                except subprocess.TimeoutExpired:
+                    raise MediaInitializationError("SMB 挂载超时")
+                except subprocess.CalledProcessError as exc:
+                    raise MediaInitializationError(f"SMB 挂载失败: {exc}")
+                finally:
+                    try:
+                        subprocess.run(['umount', mount_point], timeout=5)
+                    except Exception:
+                        pass
+                    try:
+                        _os.rmdir(mount_point)
+                    except Exception:
+                        pass
+        except MediaInitializationError:
+            raise
+        except Exception as exc:
+            # 兜底日志：进入回退
+            pass
+
+        # 回退到 FS 层验证
+        try:
+            with ro_fs_for_url(path) as (fs, inner):
+                target = inner or "."
+                info = fs.getinfo(target)
+                if not info.is_dir:
+                    raise MediaInitializationError(f"路径不是文件夹：" + path)
+                _ = list(fs.scandir(target))
+            return path
+        except Exception as exc:
+            raise MediaInitializationError(f"无法访问 SMB 目录：{path}，原因：{exc}")
+
+    # 其他情况按本地目录处理
+    if isinstance(path, str):
+        return _ensure_directory_accessible(Path(path))
     return _ensure_directory_accessible(path)

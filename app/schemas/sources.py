@@ -55,6 +55,8 @@ class SourceCreateRequest(BaseModel):
     anonymous: Optional[bool] = None
     # common
     displayName: Optional[str] = None
+    # control
+    scan: Optional[bool] = Field(default=True, description="是否立即触发扫描与后台监控")
 
 
 class MediaSourceModel(BaseModel):
