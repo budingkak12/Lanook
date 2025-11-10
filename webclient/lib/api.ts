@@ -342,3 +342,64 @@ export async function getScanStatus(jobId: string): Promise<ScanStatusResponse |
   const data = await ensureOk(response)
   return (await data.json()) as ScanStatusResponse
 }
+
+// ===== NAS 相关 API =====
+
+export interface NasDiscoverRequest {
+  host: string
+  username?: string
+  password?: string
+  anonymous?: boolean
+}
+
+export interface NasShareInfo {
+  name: string
+  path: string
+  accessible: boolean
+}
+
+export interface NasDiscoverResponse {
+  success: boolean
+  shares: NasShareInfo[]
+  error?: string
+}
+
+export interface NasBrowseRequest {
+  host: string
+  share: string
+  path?: string
+  username?: string
+  password?: string
+  anonymous?: boolean
+}
+
+export interface NasFolderItem {
+  name: string
+  path: string
+}
+
+export interface NasFileItem {
+  name: string
+  path: string
+  size?: number
+}
+
+export interface NasBrowseResponse {
+  success: boolean
+  folders: NasFolderItem[]
+  files: NasFileItem[]
+  error?: string
+}
+
+export async function discoverNasShares(request: NasDiscoverRequest): Promise<NasDiscoverResponse> {
+  const response = await apiFetch("/network/discover", buildJsonRequestInit("POST", request))
+  const ensured = await ensureOk(response)
+  return (await ensured.json()) as NasDiscoverResponse
+}
+
+// 浏览NAS文件夹
+export async function browseNasFolders(request: NasBrowseRequest): Promise<NasBrowseResponse> {
+  const response = await apiFetch("/network/browse", buildJsonRequestInit("POST", request))
+  const ensured = await ensureOk(response)
+  return (await ensured.json()) as NasBrowseResponse
+}

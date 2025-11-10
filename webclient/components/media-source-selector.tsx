@@ -6,7 +6,45 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, type CommonFolderEntry, type FolderItem, type MediaSource } from '@/lib/api'
+import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem } from '@/lib/api'
+
+interface ParsedSmbPath {
+  host: string
+  share: string
+  subPath: string
+}
+
+const SMB_SCHEME = 'smb:'
+
+function parseSmbUrl(value: string): ParsedSmbPath | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== SMB_SCHEME) return null
+    const host = url.hostname
+    const rawPath = url.pathname.replace(/^\/+/, '')
+    if (!host || !rawPath) return null
+    const segments = rawPath.split('/')
+    const share = segments.shift() ?? ''
+    if (!share) return null
+    const subPath = segments.join('/')
+    return { host, share, subPath }
+  } catch {
+    return null
+  }
+}
+
+function buildNasDisplayName(share: string, subPath: string): string {
+  if (!subPath) return `NAS-${share}`
+  const parts = subPath.split('/').filter(Boolean)
+  const last = parts[parts.length - 1] || subPath
+  return `NAS-${share}/${last}`
+}
+
+function buildSmbPath(host: string, share: string, subPath: string): string {
+  const normalized = subPath ? subPath.replace(/^\/+/, '') : ''
+  const base = `smb://${host}/${share}`
+  return normalized ? `${base}/${normalized}` : base
+}
 
 interface MediaSourceSelectorProps {
   mode?: 'init' | 'settings'  // 使用模式
@@ -16,7 +54,7 @@ interface MediaSourceSelectorProps {
 export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSelectorProps = {}) {
   const { t } = useTranslation()
   const { toast } = useToast()
-    const [selectedPath, setSelectedPath] = useState('')
+  const [selectedPath, setSelectedPath] = useState('')
   const [isValidating, setIsValidating] = useState(false)
   const [currentFolderPath, setCurrentFolderPath] = useState('')
   const [folderContents, setFolderContents] = useState<FolderItem[]>([])
@@ -26,9 +64,43 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
   const [isLoadingContents, setIsLoadingContents] = useState(false)
   const [browsingPath, setBrowsingPath] = useState('') // 新增：当前浏览的路径，不显示在地址栏
 
+  // NAS连接状态管理
+  const [nasHost, setNasHost] = useState('10.175.87.74')
+  const [nasUsername, setNasUsername] = useState('testuser')
+  const [nasPassword, setNasPassword] = useState('testpass')
+  const [isConnectingNas, setIsConnectingNas] = useState(false)
+  const [nasShares, setNasShares] = useState<NasShareInfo[]>([])
+  const [selectedNasShare, setSelectedNasShare] = useState('')
+  const [connectedNasPath, setConnectedNasPath] = useState('')
+  const [currentNasSubPath, setCurrentNasSubPath] = useState('')
+  const [isBrowsingNas, setIsBrowsingNas] = useState(false)
+  const [isLoadingNasContents, setIsLoadingNasContents] = useState(false)
+  const [nasFolderContents, setNasFolderContents] = useState<NasFolderItem[]>([])
+  const [nasFileContents, setNasFileContents] = useState<NasFileItem[]>([])
+
+  const isNasAnonymous = nasUsername.trim() === '' && nasPassword.trim() === ''
+  const currentNasPath = connectedNasPath ? (currentNasSubPath ? `${connectedNasPath}/${currentNasSubPath}` : connectedNasPath) : ''
+
+  const resetNasState = () => {
+    setNasShares([])
+    setSelectedNasShare('')
+    setConnectedNasPath('')
+    setCurrentNasSubPath('')
+    setNasFolderContents([])
+    setNasFileContents([])
+    setIsBrowsingNas(false)
+  }
+
+  const buildNasAuthPayload = () => ({
+    host: nasHost.trim(),
+    anonymous: isNasAnonymous,
+    username: isNasAnonymous ? undefined : nasUsername.trim(),
+    password: isNasAnonymous ? undefined : nasPassword
+  })
+
   // 模拟局域网设备
   const networkDevices = [
-    { name: 'NAS-家庭', host: '192.168.1.10', type: 'NAS' },
+    { name: 'NAS-测试', host: '10.175.87.74', type: 'NAS' },
     { name: '办公室服务器', host: '192.168.1.20', type: 'Server' },
     { name: 'Backup-NAS', host: '192.168.1.30', type: 'NAS' },
   ]
@@ -51,41 +123,88 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
   
   const handleSelectPath = async (path: string) => {
-    if (!path.trim()) return
+    const trimmedPath = path.trim()
+    if (!trimmedPath) return
 
     try {
       setIsValidating(true)
+      const isSmbPath = trimmedPath.toLowerCase().startsWith('smb://')
 
-      // 1. 验证路径
-      const validation = await validateMediaSource({
-        type: 'local',
-        path: path.trim()
-      })
+      if (isSmbPath) {
+        const parsed = parseSmbUrl(trimmedPath)
+        if (!parsed) {
+          toast({ title: "添加失败", description: "SMB 路径格式不正确" })
+          return
+        }
 
-      if (validation.ok && validation.readable) {
-        // 2. 创建媒体来源
-        const source = await createMediaSource({
-          type: 'local',
-          rootPath: validation.absPath,
-          displayName: path.split('/').pop() || path
+        const validation = await validateMediaSource({
+          type: 'smb',
+          host: parsed.host,
+          share: parsed.share,
+          subPath: parsed.subPath || undefined,
+          anonymous: isNasAnonymous,
+          username: isNasAnonymous ? undefined : nasUsername.trim(),
+          password: isNasAnonymous ? undefined : nasPassword
         })
 
-        // 调用成功回调
-        onSuccess?.(source)
+        if (validation.ok && validation.readable) {
+          const source = await createMediaSource({
+            type: 'smb',
+            rootPath: validation.absPath,
+            displayName: buildNasDisplayName(parsed.share, parsed.subPath),
+            host: parsed.host,
+            share: parsed.share,
+            subPath: parsed.subPath || undefined,
+            anonymous: isNasAnonymous,
+            username: isNasAnonymous ? undefined : nasUsername.trim(),
+            password: isNasAnonymous ? undefined : nasPassword
+          })
 
-        // 仅在初始化模式下显示原有提示
-        if (mode !== 'settings') {
+          onSuccess?.(source)
+
+          if (mode !== 'settings') {
+            toast({
+              title: "添加成功",
+              description: `成功添加NAS媒体来源: ${source.displayName} (扫描到 ${validation.estimatedCount} 个文件)`
+            })
+          }
+          console.log('成功创建NAS媒体来源:', source)
+          setSelectedPath('')
+        } else {
           toast({
-            title: "添加成功",
-            description: `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
+            title: "添加失败",
+            description: `NAS 路径验证失败: ${validation.note}`
           })
         }
-        console.log('成功创建媒体来源:', source)
       } else {
-        toast({
-          title: "添加失败",
-          description: `路径验证失败: ${validation.note}`
+        const validation = await validateMediaSource({
+          type: 'local',
+          path: trimmedPath
         })
+
+        if (validation.ok && validation.readable) {
+          const source = await createMediaSource({
+            type: 'local',
+            rootPath: validation.absPath,
+            displayName: trimmedPath.split('/').pop() || trimmedPath
+          })
+
+          onSuccess?.(source)
+
+          if (mode !== 'settings') {
+            toast({
+              title: "添加成功",
+              description: `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
+            })
+          }
+          console.log('成功创建媒体来源:', source)
+          setSelectedPath('')
+        } else {
+          toast({
+            title: "添加失败",
+            description: `路径验证失败: ${validation.note}`
+          })
+        }
       }
     } catch (error) {
       console.error('添加媒体来源失败:', error)
@@ -174,7 +293,151 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
     }
   }
 
-  
+  // NAS连接处理函数
+  const handleNasConnect = async (hostOverride?: string) => {
+    const base = (typeof hostOverride === 'string' ? hostOverride : nasHost) as string
+    const targetHost = (base || '').trim()
+    if (!targetHost) {
+      toast({ title: "连接失败", description: "请输入 NAS 主机地址" })
+      return
+    }
+
+    try {
+      setIsConnectingNas(true)
+      resetNasState()
+
+      // 临时使用传入 host 覆盖到 payload
+      const payload = { ...buildNasAuthPayload(), host: targetHost }
+      const result = await discoverNasShares(payload)
+      if (result.success) {
+        setNasShares(result.shares)
+        setNasHost(targetHost)
+        if (result.shares.length === 0) {
+          toast({ title: "未发现共享", description: "NAS 未返回任何共享，请确认该地址是否正确" })
+        } else {
+          toast({
+            title: "已获取共享",
+            description: `找到 ${result.shares.length} 个共享，请选择其一继续浏览`
+          })
+        }
+      } else {
+        toast({ title: "连接失败", description: result.error || 'NAS 探测失败' })
+      }
+    } catch (error) {
+      console.error('NAS连接失败:', error)
+      toast({
+        title: "连接失败",
+        description: `NAS连接失败: ${error instanceof Error ? error.message : '未知错误'}`
+      })
+    } finally {
+      setIsConnectingNas(false)
+    }
+  }
+
+  const handleSelectNasShare = async (shareName: string) => {
+    if (!nasHost.trim()) {
+      toast({ title: "连接失败", description: "请先输入 NAS IP 或主机名" })
+      return
+    }
+
+    try {
+      setIsLoadingNasContents(true)
+      const validation = await validateMediaSource({
+        type: 'smb',
+        host: nasHost.trim(),
+        share: shareName,
+        anonymous: isNasAnonymous,
+        username: isNasAnonymous ? undefined : nasUsername.trim(),
+        password: isNasAnonymous ? undefined : nasPassword
+      })
+
+      if (validation.ok && validation.readable) {
+        setSelectedNasShare(shareName)
+        setConnectedNasPath(validation.absPath)
+        setCurrentNasSubPath('')
+        setIsBrowsingNas(true)
+
+        toast({
+          title: "共享已验证",
+          description: `成功连接 ${shareName}，发现 ${validation.estimatedCount} 个媒体文件`
+        })
+
+        await loadNasFolderContents('', shareName)
+      } else {
+        toast({ title: "共享不可用", description: validation.note })
+      }
+    } catch (error) {
+      console.error('NAS共享验证失败:', error)
+      toast({
+        title: "共享验证失败",
+        description: `无法访问共享: ${error instanceof Error ? error.message : '未知错误'}`
+      })
+    } finally {
+      setIsLoadingNasContents(false)
+    }
+  }
+
+  // 加载NAS文件夹内容
+  const loadNasFolderContents = async (subPath: string, shareOverride?: string) => {
+    const normalizedSubPath = subPath.replace(/^\/+/, '')
+    const targetShare = shareOverride || selectedNasShare
+    if (!nasHost.trim() || !targetShare) return
+
+    try {
+      setIsLoadingNasContents(true)
+      const response = await browseNasFolders({
+        host: nasHost.trim(),
+        share: targetShare,
+        path: normalizedSubPath || undefined,
+        anonymous: isNasAnonymous,
+        username: isNasAnonymous ? undefined : nasUsername.trim(),
+        password: isNasAnonymous ? undefined : nasPassword
+      })
+
+      if (response.success) {
+        setNasFolderContents(response.folders || [])
+        setNasFileContents(response.files || [])
+        setCurrentNasSubPath(normalizedSubPath)
+        setIsBrowsingNas(true)
+      } else {
+        toast({ title: "浏览失败", description: response.error || '无法浏览 NAS 目录' })
+      }
+    } catch (error) {
+      console.error('加载NAS文件夹内容失败:', error)
+      toast({ title: "浏览失败", description: error instanceof Error ? error.message : '未知错误' })
+    } finally {
+      setIsLoadingNasContents(false)
+    }
+  }
+
+  // NAS文件夹导航
+  const handleNasFolderNavigate = async (folder: NasFolderItem) => {
+    await loadNasFolderContents(folder.path)
+  }
+
+  // NAS返回上级
+  const handleNasBackToParent = async () => {
+    if (!currentNasSubPath) {
+      setIsBrowsingNas(false)
+      setNasFolderContents([])
+      setNasFileContents([])
+      return
+    }
+    const parentParts = currentNasSubPath.split('/').filter(Boolean)
+    parentParts.pop()
+    await loadNasFolderContents(parentParts.join('/'))
+  }
+
+  const handleUseCurrentNasFolder = () => {
+    if (!nasHost.trim() || !selectedNasShare) {
+      toast({ title: "请选择共享", description: "请先连接 NAS 并选择可用共享" })
+      return
+    }
+    const smbPath = buildSmbPath(nasHost.trim(), selectedNasShare, currentNasSubPath)
+    setSelectedPath(smbPath)
+    toast({ title: "路径已填充", description: `已选择 ${smbPath}` })
+  }
+
   // 格式化路径显示，省略前半部分，适应小屏幕
   const formatPath = (path: string): string => {
     const parts = path.split('/').filter(part => part !== '') // 过滤掉空部分
@@ -398,31 +661,157 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
-                  placeholder="192.168.1.10"
+                  value={nasHost}
+                  onChange={(e) => setNasHost(e.target.value)}
+                  placeholder="IP 或主机名 (如 192.168.1.10 或 nas.local)"
                   className="flex-1 bg-background/60 border-border/40 focus:border-border/60 text-sm"
+                  disabled={isConnectingNas}
                 />
                 <Input
-                  placeholder="共享名称"
+                  value={nasUsername}
+                  onChange={(e) => setNasUsername(e.target.value)}
+                  placeholder="用户名 (留空=匿名)"
                   className="flex-1 bg-background/60 border-border/40 focus:border-border/60 text-sm"
-                />
-                <Button variant="outline" className="shrink-0 bg-background/40 border-border/40 hover:bg-background/60 text-sm px-3 w-full sm:w-auto">
-                  连接
-                </Button>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  type="text"
-                  placeholder="用户名 (可选)"
-                  className="flex-1 bg-background/60 border-border/40 focus:border-border/60 text-sm"
+                  disabled={isConnectingNas}
                 />
                 <Input
                   type="password"
-                  placeholder="密码 (可选)"
+                  value={nasPassword}
+                  onChange={(e) => setNasPassword(e.target.value)}
+                  placeholder="密码 (留空=匿名)"
                   className="flex-1 bg-background/60 border-border/40 focus:border-border/60 text-sm"
+                  disabled={isConnectingNas}
                 />
+                <Button
+                  variant="outline"
+                  className="shrink-0 bg-background/40 border-border/40 hover:bg-background/60 text-sm px-3 w-full sm:w-auto"
+                  onClick={() => handleNasConnect()}
+                  disabled={isConnectingNas || !nasHost.trim()}
+                >
+                  {isConnectingNas ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 animate-spin border border-current border-t-transparent rounded-full" />
+                      连接中...
+                    </div>
+                  ) : (
+                    '连接'
+                  )}
+                </Button>
               </div>
+
+              {/* 匿名访问：通过留空用户名/密码实现，无需额外勾选 */}
             </div>
           </div>
+
+          {/* NAS共享列表 */}
+          {nasShares.length > 0 && !isBrowsingNas && (
+            <div className="space-y-2 pt-3 border-t border-border/20">
+              <h4 className="text-sm font-medium text-foreground/90">选择共享</h4>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {nasShares.map((share, idx) => (
+                  <motion.div
+                    key={share.name + idx}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: idx * 0.02 }}
+                    className="flex items-center justify-between p-2 h-12 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-background/80 hover:border-border/50 transition-all duration-200 cursor-pointer group"
+                    onClick={() => handleSelectNasShare(share.name)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 bg-blue-500/20 rounded flex items-center justify-center">
+                        <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                        </svg>
+                      </div>
+                      <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{share.name}</div>
+                    </div>
+                    <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* NAS文件夹浏览 */}
+          {isBrowsingNas && (
+            <div className="space-y-4 pt-3 border-t border-border/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <h4 className="text-sm font-medium text-foreground/90">浏览NAS文件夹</h4>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNasBackToParent}
+                  className="h-8 px-2 hover:bg-background/50 text-xs"
+                >
+                  ← 返回上级
+                </Button>
+              </div>
+
+              {/* 连接信息和当前路径 */}
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground/70">已连接: {nasHost}/{selectedNasShare}</div>
+                <div className="text-xs text-muted-foreground/80 truncate" title={currentNasPath}>
+                  当前路径: {formatPath(currentNasPath)}
+                </div>
+              </div>
+
+              {/* 文件夹列表 */}
+              <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                {isLoadingNasContents ? (
+                  <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">加载中...</div>
+                ) : (
+                  <>
+                    {nasFolderContents.map((folder, index) => (
+                      <motion.div
+                        key={folder.name + index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, delay: index * 0.02 }}
+                        className="flex items-center justify-between p-2 h-12 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-background/80 hover:border-border/50 transition-all duration-200 cursor-pointer group"
+                        onClick={() => handleNasFolderNavigate(folder)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 bg-blue-500/20 rounded flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                            <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                            </svg>
+                          </div>
+                          <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{folder.name}</div>
+                        </div>
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </motion.div>
+                    ))}
+                    {nasFileContents.length > 0 && (
+                      <div className="text-xs text-muted-foreground/80 pt-2">此目录包含 {nasFileContents.length} 个媒体文件</div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* 选择按钮 */}
+              <Button
+                onClick={handleUseCurrentNasFolder}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={isValidating || !currentNasPath}
+              >
+                {isValidating ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 animate-spin border border-current border-t-transparent rounded-full" />
+                    添加中...
+                  </div>
+                ) : (
+                  `选择当前文件夹: ${currentNasPath.split('/').pop() || '根目录'}`
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* 设备列表 */}
           <div className="space-y-4 pt-3 border-t border-border/20">
@@ -449,8 +838,17 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                       <div className="text-xs text-muted-foreground/80">{device.host} • {device.type}</div>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" className="h-8 px-2 hover:bg-background/50 text-xs">
-                    连接
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 hover:bg-background/50 text-xs"
+                    onClick={() => {
+                      setNasHost(device.host)
+                      handleNasConnect(device.host)
+                    }}
+                    disabled={isConnectingNas || isBrowsingNas}
+                  >
+                    {isConnectingNas && nasHost === device.host ? '连接中...' : '连接'}
                   </Button>
                 </motion.div>
               ))}

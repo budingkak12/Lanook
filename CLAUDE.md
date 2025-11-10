@@ -17,7 +17,7 @@
 
 ## 构建、测试与本地开发
 - 安装后端依赖：`uv pip install -r requirements.txt`。
-- 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
+- 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run  初始化数据库.py`。
 - 启动后端：`uv run main.py`。
 - 构建调试 APK：`cd androidclient && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r androidclient/app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
 
@@ -32,7 +32,7 @@
 - 评审与 CI 应检查拆分规则（建议在 lint 配置中启用模块行数限制）。
 
 ## 测试指南
-- 后端流程测试：先杀掉 8000 端口，然后启动 main.py，然后执行`uv run python api_flow_test.py`
+- 后端流程测试：先杀掉 8000 端口，然后启动 main.py，然后执行`uv run  api_flow_test.py`
 - 提交前确保后端可启动且关键接口可用。
 
 ## 提交与 Pull Request

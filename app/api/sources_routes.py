@@ -120,36 +120,74 @@ def validate_source(req: SourceValidateRequest):
         # 基础参数校验
         if not req.host or not req.share:
             raise HTTPException(status_code=422, detail="host/share required")
-        import fs
-        from urllib.parse import quote
 
-        # 组装连接 URL（仅用于校验；创建时凭证写入 keyring）
-        if req.anonymous:
-            fs_url = f"smb://{req.host}/{req.share}"
-        elif req.username and req.password:
-            user = req.username
-            pw = req.password
-            fs_url = f"smb://{quote(user)}:{quote(pw)}@{req.host}/{req.share}"
-        else:
-            raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
-        sub = (req.subPath or "").lstrip("/")
+        # 优先在 macOS 使用 mount_smbfs 验证（本地开发更稳定），失败再回退到 fs.open_fs
         try:
-            vfs = fs.open_fs(fs_url)
-        except Exception as exc:
-            raise HTTPException(status_code=403, detail=f"连接失败：{exc}")
+            import platform, shutil, subprocess, tempfile
+            from pathlib import Path as _P
+            if platform.system().lower() == 'darwin' and shutil.which('mount_smbfs') and shutil.which('umount'):
+                mount_point = tempfile.mkdtemp(prefix='nas_validate_')
+                try:
+                    auth = '' if req.anonymous else f"{req.username}:{req.password}@"
+                    url = f"//{auth}{req.host}/{req.share}"
+                    subprocess.check_call(['mount_smbfs', url, mount_point], timeout=8)
+                    target = _P(mount_point) / (req.subPath.lstrip('/') if req.subPath else '')
+                    if not target.exists() or not target.is_dir():
+                        raise HTTPException(status_code=404, detail="子路径不存在或不是目录")
+                    total = 0
+                    samples: list[str] = []
+                    for root, _dirs, files in os.walk(target):
+                        for f in files:
+                            if _P(f).suffix.lower() in exts:
+                                total += 1
+                                if len(samples) < 10:
+                                    rel_root = _P(root).relative_to(target)
+                                    rel = '' if str(rel_root) == '.' else str(rel_root) + '/'
+                                    prefix = (req.subPath.strip('/') + '/') if req.subPath else ''
+                                    samples.append(f"smb://{req.host}/{req.share}/" + prefix + rel + f)
+                    return SourceValidateResponse(
+                        ok=True,
+                        readable=True,
+                        absPath=f"smb://{req.host}/{req.share}/" + ((req.subPath or '').strip('/')),
+                        estimatedCount=total,
+                        samples=samples,
+                        note="只读验证通过，不会写入或删除此目录下文件",
+                    )
+                finally:
+                    try:
+                        subprocess.run(['umount', mount_point], timeout=5)
+                    except Exception:
+                        pass
+                    try:
+                        os.rmdir(mount_point)
+                    except Exception:
+                        pass
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+        # 回退方案：fs.open_fs（在部分平台可能不支持 SMB2）
         try:
-            # 进入子路径（如果提供）
-            if sub:
-                if not vfs.isdir(sub):
-                    raise HTTPException(status_code=404, detail="子路径不存在或不是目录")
-                root_fs = vfs.opendir(sub)
+            import fs
+            from urllib.parse import quote
+            if req.anonymous:
+                base = f"smb://{req.host}"
+            elif req.username and req.password:
+                base = f"smb://{quote(req.username)}:{quote(req.password)}@{req.host}"
             else:
-                root_fs = vfs
+                raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
+            vfs = fs.open_fs(base)
+            root_fs = vfs.opendir(req.share)
+            sub = (req.subPath or "").lstrip("/")
+            if sub:
+                if not root_fs.isdir(sub):
+                    raise HTTPException(status_code=404, detail="子路径不存在或不是目录")
+                root_fs = root_fs.opendir(sub)
             total = 0
             samples: list[str] = []
             for path in root_fs.walk.files():
-                ext = os.path.splitext(path)[1].lower()
-                if ext in exts:
+                if Path(path).suffix.lower() in exts:
                     total += 1
                     if len(samples) < 10:
                         samples.append(f"smb://{req.host}/{req.share}/" + (sub + "/" if sub else "") + path)
@@ -161,8 +199,8 @@ def validate_source(req: SourceValidateRequest):
                 samples=samples,
                 note="只读验证通过，不会写入或删除此目录下文件",
             )
-        finally:
-            vfs.close()
+        except Exception as exc:
+            raise HTTPException(status_code=403, detail=f"连接失败：{exc}")
     else:
         raise HTTPException(status_code=422, detail="未知来源类型")
 
@@ -272,62 +310,60 @@ def discover_network_shares(request: dict):
         raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
 
     try:
+        # 优先使用 macOS 自带 smbutil（在本地开发更稳定，避免 pysmb 方言协商问题）
+        import platform, shutil, subprocess, re
+        shares: list[dict] = []
+        if platform.system().lower() == 'darwin' and shutil.which('smbutil'):
+            if anonymous:
+                cmd = ['smbutil', 'view', '-g', '-N', f'//{host}']
+            else:
+                cmd = ['smbutil', 'view', f'//{username}:{password}@{host}']
+            try:
+                out = subprocess.check_output(cmd, text=True, timeout=8)
+            except subprocess.CalledProcessError as exc:
+                raise HTTPException(status_code=500, detail=f"smbutil 失败: {exc}")
+            except subprocess.TimeoutExpired:
+                raise HTTPException(status_code=504, detail="smbutil 超时")
+
+            for line in out.splitlines():
+                # 形如：PublicShare                                     Disk
+                m = re.match(r"^([A-Za-z0-9_.$-]+)\s+Disk", line.strip())
+                if not m:
+                    continue
+                name = m.group(1)
+                if name.lower() in {'ipc$', 'admin$', 'print$'}:
+                    continue
+                shares.append({
+                    'name': name,
+                    'path': f"smb://{host}/{name}",
+                    'accessible': True,
+                })
+            return { 'success': True, 'shares': shares }
+
+        # 回退到 fs.open_fs（Linux/Windows 或无 smbutil 时）
         import fs
         from urllib.parse import quote
-
-        # 构建SMB连接URL
-        # SMBFS需要指定端口，通常使用445
-        if anonymous:
-            fs_url = f"smb://{host}:445"
-        else:
-            fs_url = f"smb://{quote(username)}:{quote(password)}@{host}:445"
-
-        # 尝试连接
+        fs_url = f"smb://{quote(username)}:{quote(password)}@{host}" if not anonymous else f"smb://{host}"
         try:
             smb_fs = fs.open_fs(fs_url)
-        except Exception as e:
-            # 如果445端口失败，尝试不指定端口
-            try:
-                if anonymous:
-                    fs_url = f"smb://{host}"
-                else:
-                    fs_url = f"smb://{quote(username)}:{quote(password)}@{host}"
-                smb_fs = fs.open_fs(fs_url)
-            except Exception as e2:
-                raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
-
+        except Exception as e2:
+            raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
         try:
-            # 获取共享列表
             shares = []
-            for share_name in smb_fs.listdir("/"):
+            for share_name in smb_fs.listdir('/'):
                 try:
-                    # 过滤隐藏文件夹（以.开头的文件夹）和系统文件夹
                     if share_name.startswith('.') or share_name.lower() in ['ipc$', 'admin$', 'print$']:
                         continue
-
-                    # 检查是否是目录（共享）
                     if smb_fs.isdir(share_name):
-                        share_path = f"smb://{host}/{share_name}"
-                        # 不检查权限，直接添加为可访问
-                        shares.append({
-                            "name": share_name,
-                            "path": share_path,
-                            "accessible": True
-                        })
+                        shares.append({'name': share_name, 'path': f"smb://{host}/{share_name}", 'accessible': True})
                 except Exception:
-                    # 跳过无法访问的共享
                     continue
-
-            smb_fs.close()
-
-            return {
-                "success": True,
-                "shares": shares
-            }
-
-        except Exception as e:
-            smb_fs.close()
-            raise HTTPException(status_code=500, detail=f"获取共享列表失败: {str(e)}")
+            return { 'success': True, 'shares': shares }
+        finally:
+            try:
+                smb_fs.close()
+            except Exception:
+                pass
 
     except Exception as e:
         error_msg = str(e)
@@ -358,81 +394,90 @@ def browse_network_folder(request: dict):
     anonymous = request.get("anonymous", False)
 
     try:
+        import platform, shutil, subprocess, os, tempfile, json
+        from pathlib import Path
+        # macOS 优先用 mount_smbfs 挂载后遍历
+        if platform.system().lower() == 'darwin' and shutil.which('mount_smbfs') and shutil.which('umount'):
+            mount_point = tempfile.mkdtemp(prefix='nas_mount_')
+            try:
+                # 构建凭证 URL：//user:pass@host/share
+                auth = '' if anonymous else f"{username}:{password}@"
+                url = f"//{auth}{host}/{share}"
+                subprocess.check_call(['mount_smbfs', url, mount_point], timeout=8)
+                base = Path(mount_point)
+                target = base / (path or '')
+                if not target.exists() or not target.is_dir():
+                    raise HTTPException(status_code=404, detail="路径不存在或不是目录")
+                folders = []
+                files = []
+                for entry in sorted(target.iterdir()):
+                    name = entry.name
+                    if name.startswith('.'):
+                        continue
+                    rel = str(Path(path)/name) if path else name
+                    if entry.is_dir():
+                        folders.append({ 'name': name, 'path': rel })
+                    else:
+                        ext = name.rsplit('.',1)[-1].lower() if '.' in name else ''
+                        if ext in ['jpg','jpeg','png','gif','bmp','webp','mp4','mov','avi','mkv','wmv','flv']:
+                            try:
+                                size = entry.stat().st_size
+                            except Exception:
+                                size = 0
+                            files.append({ 'name': name, 'path': rel, 'size': size })
+                return { 'success': True, 'folders': folders, 'files': files }
+            except subprocess.TimeoutExpired:
+                raise HTTPException(status_code=504, detail="挂载超时")
+            except subprocess.CalledProcessError as exc:
+                raise HTTPException(status_code=500, detail=f"挂载失败: {exc}")
+            finally:
+                try:
+                    subprocess.run(['umount', mount_point], timeout=5)
+                except Exception:
+                    pass
+                try:
+                    os.rmdir(mount_point)
+                except Exception:
+                    pass
+
+        # 其他平台回退到 fs.open_fs（可能不支持 SMB2，尽力而为）
         import fs
         from urllib.parse import quote
-
-        # 构建SMB连接URL
-        if anonymous:
-            fs_url = f"smb://{host}:445"
-        else:
-            fs_url = f"smb://{quote(username)}:{quote(password)}@{host}:445"
-
-        # 尝试连接
+        fs_url = f"smb://{quote(username)}:{quote(password)}@{host}" if not anonymous else f"smb://{host}"
         try:
             smb_fs = fs.open_fs(fs_url)
-        except Exception as e:
-            # 如果445端口失败，尝试不指定端口
-            try:
-                if anonymous:
-                    fs_url = f"smb://{host}"
-                else:
-                    fs_url = f"smb://{quote(username)}:{quote(password)}@{host}"
-                smb_fs = fs.open_fs(fs_url)
-            except Exception as e2:
-                raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
-
+        except Exception as e2:
+            raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
         try:
-            # 打开共享
             share_fs = smb_fs.opendir(share)
-
-            # 如果有子路径，进一步打开
             if path:
                 share_fs = share_fs.opendir(path)
-
             folders = []
             files = []
-
-            # 获取当前路径下的所有条目
-            for entry in share_fs.scandir("."):
-                entry_name = entry.name
-                entry_path = f"{path}/{entry_name}" if path else entry_name
-
-                # 过滤隐藏文件/文件夹
-                if entry_name.startswith('.'):
-                    continue
-
+            for entry in share_fs.scandir('.'):
+                name = entry.name
+                if name.startswith('.'): continue
+                rel = f"{path}/{name}" if path else name
                 if entry.is_dir:
-                    folders.append({
-                        "name": entry_name,
-                        "path": entry_path
-                    })
+                    folders.append({'name': name, 'path': rel})
                 else:
-                    # 检查是否是媒体文件
-                    ext = entry_name.split('.')[-1].lower() if '.' in entry_name else ''
-                    if ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv']:
+                    ext = name.rsplit('.',1)[-1].lower() if '.' in name else ''
+                    if ext in ['jpg','jpeg','png','gif','bmp','webp','mp4','mov','avi','mkv','wmv','flv']:
                         try:
                             size = entry.size
-                        except:
+                        except Exception:
                             size = 0
-                        files.append({
-                            "name": entry_name,
-                            "path": entry_path,
-                            "size": size
-                        })
-
-            share_fs.close()
-            smb_fs.close()
-
-            return {
-                "success": True,
-                "folders": sorted(folders, key=lambda x: x['name'].lower()),
-                "files": sorted(files, key=lambda x: x['name'].lower())
-            }
-
-        except Exception as e:
-            share_fs.close()
-            smb_fs.close()
-            raise HTTPException(status_code=500, detail=f"浏览文件夹失败: {str(e)}")
+                        files.append({'name': name, 'path': rel, 'size': size})
+            return { 'success': True, 'folders': sorted(folders, key=lambda x: x['name'].lower()), 'files': sorted(files, key=lambda x: x['name'].lower()) }
+        finally:
+            try:
+                share_fs.close()
+            except Exception:
+                pass
+            try:
+                smb_fs.close()
+            except Exception:
+                pass
 
     except Exception as e:
         error_msg = str(e)

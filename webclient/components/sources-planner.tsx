@@ -76,7 +76,7 @@ function LocalForm({ onAdd }: { onAdd: (src: PlannedSource) => void }) {
 
 function LanForm({ onAdd }: { onAdd: (src: PlannedSource) => void }) {
   const { toast } = useToast()
-  const [host, setHost] = useState("")
+  const [host, setHost] = useState("10.175.87.74")
   const [share, setShare] = useState("")
   const [subPath, setSubPath] = useState("")
   const [anonymous, setAnonymous] = useState(true)
@@ -92,7 +92,7 @@ function LanForm({ onAdd }: { onAdd: (src: PlannedSource) => void }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm mb-1">主机/IP</label>
-            <input className="w-full border rounded px-3 py-2" value={host} onChange={(e) => setHost(e.target.value)} placeholder="例如 192.168.1.10 或 nas.local" />
+            <input className="w-full border rounded px-3 py-2" value={host} onChange={(e) => setHost(e.target.value)} placeholder="例如 10.175.87.74 或 nas.local" />
           </div>
           <div>
             <label className="block text-sm mb-1">共享名</label>
@@ -188,4 +188,3 @@ export function SourcesPlanner() {
     </div>
   )
 }
-
