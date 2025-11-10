@@ -252,6 +252,198 @@ def start_scan(source_id: int = Query(..., description="来源ID"), background: 
     return ScanStartResponse(jobId=job_id)
 
 
+@router.post("/network/discover")
+def discover_network_shares(request: dict):
+    """
+    发现网络设备的SMB共享
+    输入: {host, username?, password?, anonymous: bool}
+    输出: {success: bool, shares: [{name, path, accessible}], error?: string}
+    """
+    host = request.get("host")
+    if not host:
+        raise HTTPException(status_code=422, detail="host required")
+
+    username = request.get("username")
+    password = request.get("password")
+    anonymous = request.get("anonymous", False)
+
+    # 验证认证参数
+    if not anonymous and not (username and password):
+        raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
+
+    try:
+        import fs
+        from urllib.parse import quote
+
+        # 构建SMB连接URL
+        # SMBFS需要指定端口，通常使用445
+        if anonymous:
+            fs_url = f"smb://{host}:445"
+        else:
+            fs_url = f"smb://{quote(username)}:{quote(password)}@{host}:445"
+
+        # 尝试连接
+        try:
+            smb_fs = fs.open_fs(fs_url)
+        except Exception as e:
+            # 如果445端口失败，尝试不指定端口
+            try:
+                if anonymous:
+                    fs_url = f"smb://{host}"
+                else:
+                    fs_url = f"smb://{quote(username)}:{quote(password)}@{host}"
+                smb_fs = fs.open_fs(fs_url)
+            except Exception as e2:
+                raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
+
+        try:
+            # 获取共享列表
+            shares = []
+            for share_name in smb_fs.listdir("/"):
+                try:
+                    # 过滤隐藏文件夹（以.开头的文件夹）和系统文件夹
+                    if share_name.startswith('.') or share_name.lower() in ['ipc$', 'admin$', 'print$']:
+                        continue
+
+                    # 检查是否是目录（共享）
+                    if smb_fs.isdir(share_name):
+                        share_path = f"smb://{host}/{share_name}"
+                        # 不检查权限，直接添加为可访问
+                        shares.append({
+                            "name": share_name,
+                            "path": share_path,
+                            "accessible": True
+                        })
+                except Exception:
+                    # 跳过无法访问的共享
+                    continue
+
+            smb_fs.close()
+
+            return {
+                "success": True,
+                "shares": shares
+            }
+
+        except Exception as e:
+            smb_fs.close()
+            raise HTTPException(status_code=500, detail=f"获取共享列表失败: {str(e)}")
+
+    except Exception as e:
+        error_msg = str(e)
+        if "Connection refused" in error_msg or "No route to host" in error_msg:
+            raise HTTPException(status_code=404, detail="无法连接到设备，请检查IP地址")
+        elif "Authentication failed" in error_msg or "Access denied" in error_msg:
+            raise HTTPException(status_code=403, detail="认证失败，请检查用户名和密码")
+        else:
+            raise HTTPException(status_code=500, detail=f"连接失败: {error_msg}")
+
+
+@router.post("/network/browse")
+def browse_network_folder(request: dict):
+    """
+    浏览网络文件夹内容
+    输入: {host, share, path, username?, password?, anonymous: bool}
+    输出: {success: bool, folders: [{name, path}], files: [{name, path, size}], error?: string}
+    """
+    host = request.get("host")
+    share = request.get("share")
+    path = request.get("path", "")
+
+    if not host or not share:
+        raise HTTPException(status_code=422, detail="host and share required")
+
+    username = request.get("username")
+    password = request.get("password")
+    anonymous = request.get("anonymous", False)
+
+    try:
+        import fs
+        from urllib.parse import quote
+
+        # 构建SMB连接URL
+        if anonymous:
+            fs_url = f"smb://{host}:445"
+        else:
+            fs_url = f"smb://{quote(username)}:{quote(password)}@{host}:445"
+
+        # 尝试连接
+        try:
+            smb_fs = fs.open_fs(fs_url)
+        except Exception as e:
+            # 如果445端口失败，尝试不指定端口
+            try:
+                if anonymous:
+                    fs_url = f"smb://{host}"
+                else:
+                    fs_url = f"smb://{quote(username)}:{quote(password)}@{host}"
+                smb_fs = fs.open_fs(fs_url)
+            except Exception as e2:
+                raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
+
+        try:
+            # 打开共享
+            share_fs = smb_fs.opendir(share)
+
+            # 如果有子路径，进一步打开
+            if path:
+                share_fs = share_fs.opendir(path)
+
+            folders = []
+            files = []
+
+            # 获取当前路径下的所有条目
+            for entry in share_fs.scandir("."):
+                entry_name = entry.name
+                entry_path = f"{path}/{entry_name}" if path else entry_name
+
+                # 过滤隐藏文件/文件夹
+                if entry_name.startswith('.'):
+                    continue
+
+                if entry.is_dir:
+                    folders.append({
+                        "name": entry_name,
+                        "path": entry_path
+                    })
+                else:
+                    # 检查是否是媒体文件
+                    ext = entry_name.split('.')[-1].lower() if '.' in entry_name else ''
+                    if ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv']:
+                        try:
+                            size = entry.size
+                        except:
+                            size = 0
+                        files.append({
+                            "name": entry_name,
+                            "path": entry_path,
+                            "size": size
+                        })
+
+            share_fs.close()
+            smb_fs.close()
+
+            return {
+                "success": True,
+                "folders": sorted(folders, key=lambda x: x['name'].lower()),
+                "files": sorted(files, key=lambda x: x['name'].lower())
+            }
+
+        except Exception as e:
+            share_fs.close()
+            smb_fs.close()
+            raise HTTPException(status_code=500, detail=f"浏览文件夹失败: {str(e)}")
+
+    except Exception as e:
+        error_msg = str(e)
+        if "Connection refused" in error_msg or "No route to host" in error_msg:
+            raise HTTPException(status_code=404, detail="无法连接到设备，请检查IP地址")
+        elif "Authentication failed" in error_msg or "Access denied" in error_msg:
+            raise HTTPException(status_code=403, detail="认证失败，请检查用户名和密码")
+        else:
+            raise HTTPException(status_code=500, detail=f"连接失败: {error_msg}")
+
+
 @router.get("/scan/status", response_model=ScanStatusResponse)
 def get_scan(job_id: str = Query(..., description="任务ID")):
     job = get_scan_status(job_id)
