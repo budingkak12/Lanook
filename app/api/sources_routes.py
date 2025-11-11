@@ -5,7 +5,7 @@ from datetime import timezone
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from 初始化数据库 import SessionLocal
@@ -209,6 +209,7 @@ def validate_source(req: SourceValidateRequest):
 def create_media_source(
     payload: SourceCreateRequest,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db),
 ):
     # 控制是否立即扫描（默认 True 以兼容旧调用）
@@ -219,6 +220,26 @@ def create_media_source(
         p = Path(payload.rootPath).expanduser().resolve()
         if not p.exists() or not p.is_dir() or not os.access(p, os.R_OK):
             raise HTTPException(status_code=422, detail="无效目录或无读取权限")
+        # 幂等：相同 rootPath 已存在时返回 200，并跳过扫描
+        from app.db.models_extra import MediaSource as _MediaSource
+        existing = db.query(_MediaSource).filter(_MediaSource.root_path == str(p)).first()
+        if existing is not None:
+            changed = False
+            if existing.status != "active":
+                existing.status = "active"
+                existing.deleted_at = None
+                changed = True
+            if payload.displayName and existing.display_name != payload.displayName:
+                existing.display_name = payload.displayName
+                changed = True
+            if changed:
+                db.commit()
+                db.refresh(existing)
+            response.status_code = 200
+            response.headers["X-Resource-Existed"] = "true"
+            response.headers["X-Message"] = "路径已存在"
+            return _to_media_source_model(existing)
+        # 新建来源
         src = create_source(db, type_=payload.type.value, root_path=str(p), display_name=payload.displayName)
         if scan_now:
             _bootstrap_source_scan(src.root_path)
@@ -245,6 +266,26 @@ def create_media_source(
         root_url = f"smb://{user_part}{payload.host}/{payload.share}"
         if sub:
             root_url += f"/{sub}"
+        # 幂等：相同 root_url 已存在时返回 200，并跳过扫描
+        from app.db.models_extra import MediaSource as _MediaSource
+        existing = db.query(_MediaSource).filter(_MediaSource.root_path == root_url.rstrip("/")).first()
+        if existing is not None:
+            changed = False
+            if existing.status != "active":
+                existing.status = "active"
+                existing.deleted_at = None
+                changed = True
+            if payload.displayName and existing.display_name != payload.displayName:
+                existing.display_name = payload.displayName
+                changed = True
+            if changed:
+                db.commit()
+                db.refresh(existing)
+            response.status_code = 200
+            response.headers["X-Resource-Existed"] = "true"
+            response.headers["X-Message"] = "路径已存在"
+            return _to_media_source_model(existing)
+        # 新建来源
         src = create_source(db, type_=payload.type.value, root_path=root_url, display_name=payload.displayName)
         if scan_now:
             _bootstrap_source_scan(src.root_path)

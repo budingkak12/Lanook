@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { validateMediaSource, createMediaSource, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem } from '@/lib/api'
+import { validateMediaSource, createMediaSourceWithMeta, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem } from '@/lib/api'
 
 interface ParsedSmbPath {
   host: string
@@ -54,8 +54,11 @@ interface MediaSourceSelectorProps {
 export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSelectorProps = {}) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const [selectedPath, setSelectedPath] = useState('')
-  const [isValidating, setIsValidating] = useState(false)
+  // 本机面板的独立输入状态（与 NAS 独立）
+  const [localInputPath, setLocalInputPath] = useState('')
+  // 验证状态拆分：本机与 NAS 独立，避免互相联动
+  const [isValidatingLocal, setIsValidatingLocal] = useState(false)
+  const [isValidatingNas, setIsValidatingNas] = useState(false)
   const [currentFolderPath, setCurrentFolderPath] = useState('')
   const [folderContents, setFolderContents] = useState<FolderItem[]>([])
   const [isBrowsingFolder, setIsBrowsingFolder] = useState(false)
@@ -122,7 +125,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
     if (!trimmedPath) return
 
     try {
-      setIsValidating(true)
+      setIsValidatingLocal(true)
       const isSmbPath = trimmedPath.toLowerCase().startsWith('smb://')
 
       if (isSmbPath) {
@@ -143,7 +146,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         })
 
         if (validation.ok && validation.readable) {
-          const source = await createMediaSource({
+          const { source, existed, message } = await createMediaSourceWithMeta({
             type: 'smb',
             rootPath: validation.absPath,
             displayName: buildNasDisplayName(parsed.share, parsed.subPath),
@@ -159,12 +162,12 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
           if (mode !== 'settings') {
             toast({
-              title: "添加成功",
-              description: `成功添加NAS媒体来源: ${source.displayName} (扫描到 ${validation.estimatedCount} 个文件)`
+              title: existed ? '路径已存在' : '添加成功',
+              description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加NAS媒体来源: ${source.displayName} (扫描到 ${validation.estimatedCount} 个文件)`
             })
           }
           console.log('成功创建NAS媒体来源:', source)
-          setSelectedPath('')
+          setLocalInputPath('')
         } else {
           toast({
             title: "添加失败",
@@ -178,7 +181,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         })
 
         if (validation.ok && validation.readable) {
-          const source = await createMediaSource({
+          const { source, existed, message } = await createMediaSourceWithMeta({
             type: 'local',
             rootPath: validation.absPath,
             displayName: trimmedPath.split('/').pop() || trimmedPath
@@ -188,12 +191,12 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
           if (mode !== 'settings') {
             toast({
-              title: "添加成功",
-              description: `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
+              title: existed ? '路径已存在' : '添加成功',
+              description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
             })
           }
           console.log('成功创建媒体来源:', source)
-          setSelectedPath('')
+          setLocalInputPath('')
         } else {
           toast({
             title: "添加失败",
@@ -208,7 +211,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         description: `添加失败: ${error instanceof Error ? error.message : '未知错误'}`
       })
     } finally {
-      setIsValidating(false)
+      setIsValidatingLocal(false)
     }
   }
 
@@ -284,7 +287,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
   // 新增：选择当前文件夹按钮点击处理
   const handleSelectCurrentFolder = () => {
     if (browsingPath) {
-      setSelectedPath(browsingPath) // 只有点击按钮才填充到地址栏
+      setLocalInputPath(browsingPath) // 只有点击按钮才填充到地址栏
     }
   }
 
@@ -423,15 +426,57 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
     await loadNasFolderContents(parentParts.join('/'))
   }
 
-  const handleUseCurrentNasFolder = () => {
+  // 直接在 NAS 面板完成“添加至媒体路径清单”
+  const handleAddCurrentNasFolder = async () => {
     if (!nasHost.trim() || !selectedNasShare) {
       toast({ title: "请选择共享", description: "请先连接 NAS 并选择可用共享" })
       return
     }
-    const smbPath = buildSmbPath(nasHost.trim(), selectedNasShare, currentNasSubPath)
-    setSelectedPath(smbPath)
-    toast({ title: "路径已填充", description: `已选择 ${smbPath}` })
+    try {
+      setIsValidatingNas(true)
+      const validation = await validateMediaSource({
+        type: 'smb',
+        host: nasHost.trim(),
+        share: selectedNasShare,
+        subPath: currentNasSubPath || undefined,
+        anonymous: isNasAnonymous,
+        username: isNasAnonymous ? undefined : nasUsername.trim(),
+        password: isNasAnonymous ? undefined : nasPassword
+      })
+
+      if (validation.ok && validation.readable) {
+        const { source, existed, message } = await createMediaSourceWithMeta({
+          type: 'smb',
+          rootPath: validation.absPath,
+          displayName: buildNasDisplayName(selectedNasShare, currentNasSubPath),
+          host: nasHost.trim(),
+          share: selectedNasShare,
+          subPath: currentNasSubPath || undefined,
+          anonymous: isNasAnonymous,
+          username: isNasAnonymous ? undefined : nasUsername.trim(),
+          password: isNasAnonymous ? undefined : nasPassword,
+          scan: mode === 'init' ? false : undefined
+        })
+
+        onSuccess?.(source)
+        if (mode !== 'settings') {
+          toast({
+            title: existed ? '路径已存在' : '添加成功',
+            description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加NAS媒体来源: ${source.displayName}`
+          })
+        }
+      } else {
+        toast({ title: "添加失败", description: validation.note || 'NAS 路径验证失败' })
+      }
+    } catch (error) {
+      console.error('NAS 直接添加失败:', error)
+      toast({ title: "添加失败", description: error instanceof Error ? error.message : '未知错误' })
+    } finally {
+      setIsValidatingNas(false)
+    }
   }
+
+  // 注意：NAS 模块不再改变本机输入框（selectedPath），两侧状态完全独立
 
   // 格式化路径显示，省略前半部分，适应小屏幕
   const formatPath = (path: string): string => {
@@ -587,13 +632,13 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
             {/* 浏览模式下选择按钮 */}
             {isBrowsingFolder && browsingPath && (
-              <Button
-                onClick={handleSelectCurrentFolder}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={isValidating}
-              >
-                {isValidating ? '验证中...' : `选择当前文件夹: ${browsingPath.split('/').pop() || browsingPath}`}
-              </Button>
+                <Button
+                  onClick={handleSelectCurrentFolder}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={isValidatingLocal}
+                >
+                {isValidatingLocal ? '验证中...' : `选择当前文件夹: ${browsingPath.split('/').pop() || browsingPath}`}
+                </Button>
             )}
           </div>
 
@@ -604,21 +649,21 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             </p>
             <div className="flex gap-2">
               <Input
-                value={selectedPath}
-                onChange={(e) => setSelectedPath(e.target.value)}
+                value={localInputPath}
+                onChange={(e) => setLocalInputPath(e.target.value)}
                 placeholder={t('init.sourceType.local.pathPlaceholder')}
                 className="flex-1 bg-background/60 border-border/40 focus:border-border/60"
-                disabled={isValidating}
+                disabled={isValidatingLocal}
               />
             </div>
 
             {/* 添加按钮 - 始终存在，有地址时才可点击 */}
             <Button
-              onClick={() => selectedPath && handleSelectPath(selectedPath)}
+              onClick={() => localInputPath && handleSelectPath(localInputPath)}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:opacity-60 disabled:cursor-not-allowed disabled:border-border/50 disabled:text-muted-foreground"
-              disabled={!selectedPath || isValidating}
+              disabled={!localInputPath || isValidatingLocal}
             >
-              {isValidating ? '验证中...' : '添加至媒体路径清单'}
+              {isValidatingLocal ? '验证中...' : '添加至媒体路径清单'}
             </Button>
           </div>
         </div>
@@ -630,8 +675,9 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
         className="flex-shrink-0"
+        style={{ height: '600px' }}
       >
-        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-4 w-full">
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-4 w-full h-full flex flex-col">
           {/* 局域网设备板块标题 */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -698,29 +744,48 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             </div>
           </div>
 
-          {/* NAS共享列表 */}
+          {/* NAS共享列表（顶部也显示连接信息；列表项样式与本机一致） */}
           {nasShares.length > 0 && !isBrowsingNas && (
-            <div className="space-y-2 pt-3 border-t border-border/20">
-              <h4 className="text-sm font-medium text-foreground/90">选择共享</h4>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+            <div className="space-y-4 pt-3 border-t border-border/20 flex-1 min-h-0 flex flex-col">
+              {/* 连接信息（固定占位） */}
+              <div className="space-y-2 flex-shrink-0 min-h-[64px]">
+                <div className="text-xs text-muted-foreground/70">已连接: {nasHost}</div>
+                <div className="text-xs text-muted-foreground/80 truncate" title={`smb://${nasHost}/`}>
+                  当前路径: {`smb://${nasHost}/`}
+                </div>
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-accent/20 flex-shrink-0"
+                    disabled
+                    aria-label="返回上级"
+                  >
+                    ←
+                  </Button>
+                </div>
+              </div>
+
+              {/* 共享列表（固定滚动区域） */}
+              <div className="overflow-y-auto flex-1 min-h-0 space-y-2 justify-start">
                 {nasShares.map((share, idx) => (
                   <motion.div
                     key={share.name + idx}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: idx * 0.02 }}
-                    className="flex items-center justify-between p-2 h-12 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-background/80 hover:border-border/50 transition-all duration-200 cursor-pointer group"
+                    className="flex items-center justify-between p-2 h-12 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-accent/40 hover:border-border/50 transition-all duration-200 cursor-pointer group"
                     onClick={() => handleSelectNasShare(share.name)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 bg-blue-500/20 rounded flex items-center justify-center">
-                        <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
+                        <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
                       </div>
                       <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{share.name}</div>
                     </div>
-                    <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </motion.div>
@@ -731,32 +796,30 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
           {/* NAS文件夹浏览 */}
           {isBrowsingNas && (
-            <div className="space-y-4 pt-3 border-t border-border/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <h4 className="text-sm font-medium text-foreground/90">浏览NAS文件夹</h4>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNasBackToParent}
-                  className="h-8 px-2 hover:bg-background/50 text-xs"
-                >
-                  ← 返回上级
-                </Button>
-              </div>
+            <div className="space-y-4 pt-3 border-t border-border/20 flex-1 min-h-0 flex flex-col">
+              {/* 去掉标题与绿色提示点，保持与本机面板一致的简洁头部 */}
 
-              {/* 连接信息和当前路径 */}
-              <div className="space-y-1">
+              {/* 连接信息和当前路径（固定占位，避免布局抖动） */}
+              <div className="space-y-2 flex-shrink-0 min-h-[64px]">
                 <div className="text-xs text-muted-foreground/70">已连接: {nasHost}/{selectedNasShare}</div>
                 <div className="text-xs text-muted-foreground/80 truncate" title={currentNasPath}>
                   当前路径: {formatPath(currentNasPath)}
                 </div>
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNasBackToParent}
+                    className="h-8 w-8 p-0 hover:bg-accent/20 flex-shrink-0"
+                    aria-label="返回上级"
+                  >
+                    ←
+                  </Button>
+                </div>
               </div>
 
-              {/* 文件夹列表 */}
-              <div className="space-y-2 max-h-[220px] overflow-y-auto">
+              {/* 文件夹列表（样式与本机保持一致，固定滚动区域） */}
+              <div className="overflow-y-auto flex-1 min-h-0 space-y-2 justify-start">
                 {isLoadingNasContents ? (
                   <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">加载中...</div>
                 ) : (
@@ -767,18 +830,18 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.2, delay: index * 0.02 }}
-                        className="flex items-center justify-between p-2 h-12 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-background/80 hover:border-border/50 transition-all duration-200 cursor-pointer group"
+                        className="flex items-center justify-between p-2 h-12 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-accent/40 hover:border-border/50 transition-all duration-200 cursor-pointer group"
                         onClick={() => handleNasFolderNavigate(folder)}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 bg-blue-500/20 rounded flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
-                            <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
+                            <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                             </svg>
                           </div>
                           <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{folder.name}</div>
                         </div>
-                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </motion.div>
@@ -790,20 +853,13 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                 )}
               </div>
 
-              {/* 选择按钮 */}
+              {/* 添加按钮（文案统一为 添加至媒体路径清单） */}
               <Button
-                onClick={handleUseCurrentNasFolder}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={isValidating || !currentNasPath}
+                onClick={handleAddCurrentNasFolder}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={isValidatingNas || !currentNasPath}
               >
-                {isValidating ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 animate-spin border border-current border-t-transparent rounded-full" />
-                    添加中...
-                  </div>
-                ) : (
-                  `选择当前文件夹: ${currentNasPath.split('/').pop() || '根目录'}`
-                )}
+                {isValidatingNas ? '验证中...' : '添加至媒体路径清单'}
               </Button>
             </div>
           )}

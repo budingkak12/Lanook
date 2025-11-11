@@ -294,6 +294,17 @@ export async function createMediaSource(request: CreateSourceRequest): Promise<M
   return (await ensured.json()) as MediaSource
 }
 
+// 带额外元信息的创建：识别“已存在”并透出消息
+export async function createMediaSourceWithMeta(request: CreateSourceRequest): Promise<{ source: MediaSource; existed: boolean; message: string | null }>{
+  const resp = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
+  const ensured = await ensureOk(resp)
+  const data = (await ensured.json()) as MediaSource
+  const existedHeader = resp.headers.get('X-Resource-Existed') === 'true'
+  const existed = (resp.status === 200) || existedHeader
+  const message = resp.headers.get('X-Message') || null
+  return { source: data, existed, message }
+}
+
 
 // 删除媒体来源
 export async function deleteMediaSource(id: number, hard = false): Promise<void> {

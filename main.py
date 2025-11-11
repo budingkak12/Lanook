@@ -106,6 +106,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Resource-Existed", "X-Message"],
 )
 
 app.include_router(setup_router)
