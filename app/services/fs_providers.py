@@ -13,6 +13,26 @@ from fs.errors import ResourceNotFound
 from fs.osfs import OSFS
 from fs.wrap import read_only
 
+# smbprotocol for reliable SMB2/3 access
+from smbprotocol.connection import Connection  # type: ignore
+from smbprotocol.session import Session  # type: ignore
+from smbprotocol.tree import TreeConnect  # type: ignore
+from smbprotocol.open import (
+    Open,
+    FilePipePrinterAccessMask,
+    CreateDisposition,
+    CreateOptions,
+    ShareAccess,
+    ImpersonationLevel,
+)  # type: ignore
+from smbprotocol.file_info import (
+    FileInformationClass,
+    FileStandardInformation,
+    FileBasicInformation,
+    FileAttributes,
+)  # type: ignore
+import uuid
+
 from app.services.credentials import get_smb_password
 
 
@@ -74,9 +94,9 @@ def ro_fs_for_url(url: str) -> Generator[Tuple[FS, str], None, None]:
             userinfo = f"{parts.username}@"
         netloc = f"{userinfo}{parts.host}"
         base_url = f"smb://{netloc}/{parts.share}"
-        # open_fs 支持 smb://user:pass@host/share
-        # 附加 smbfs 连接参数，兼容部分环境需要明确 server_name/直连端口
-        q = f"?server_name={parts.host}&port=445&direct_tcp=true"
+        # open_fs 的参数名为 hostname / direct-tcp / name-port / port
+        # 这里将 hostname 显式指定为我们传入的原始 host，避免 127.0.0.1/localhost 反查失败。
+        q = f"?hostname={parts.host}&port=445&direct-tcp=true"
         if parts.username and password:
             fs_url = f"smb://{parts.username}:{password}@{parts.host}/{parts.share}{q}"
         else:
@@ -102,15 +122,84 @@ def ro_fs_for_url(url: str) -> Generator[Tuple[FS, str], None, None]:
             fs.close()
 
 
+def _smb_open_for_read(parts: SMBParts):
+    """建立 SMB 连接并打开文件，返回 (connection, session, tree, file). 调用方负责关闭。"""
+    password = get_smb_password(parts.host, parts.share, parts.username) or ""
+    server = parts.host
+    port = parts.port or 445
+    conn = Connection(uuid.uuid4(), server, port)
+    conn.connect()
+    sess = Session(conn, username=parts.username or "", password=password, require_encryption=False)
+    sess.connect()
+    tree = TreeConnect(sess, fr"\\{parts.host}\{parts.share}")
+    tree.connect()
+    file = Open(tree, parts.path.replace("/", "\\"))
+    file.create(
+        impersonation_level=ImpersonationLevel.Impersonation,
+        desired_access=FilePipePrinterAccessMask.GENERIC_READ,
+        file_attributes=FileAttributes.FILE_ATTRIBUTE_NORMAL,
+        share_access=ShareAccess.FILE_SHARE_READ,
+        create_disposition=CreateDisposition.FILE_OPEN,
+        create_options=CreateOptions.FILE_NON_DIRECTORY_FILE,
+    )
+    return conn, sess, tree, file
+
+
+def _smb_close(conn, sess, tree, file):
+    try:
+        try:
+            file.close()
+        finally:
+            tree.disconnect()
+    finally:
+        try:
+            sess.disconnect()
+        finally:
+            conn.disconnect(True)
+
+
 def read_bytes(url: str, max_bytes: Optional[int] = None) -> bytes:
+    if is_smb_url(url):
+        parts = parse_smb_url(url)
+        conn, sess, tree, file = _smb_open_for_read(parts)
+        try:
+            if max_bytes is None:
+                total = int(file.end_of_file or 0)
+                return file.read(0, total)
+            else:
+                return file.read(0, max_bytes)
+        finally:
+            _smb_close(conn, sess, tree, file)
+    # fallback to local/other fs
     with ro_fs_for_url(url) as (fs, inner):
         with fs.openbin(inner, "r") as f:
-            if max_bytes is None:
-                return f.read()
-            return f.read(max_bytes)
+            return f.read() if max_bytes is None else f.read(max_bytes)
 
 
 def iter_bytes(url: str, start: int = 0, length: Optional[int] = None, chunk_size: int = 1024 * 1024):
+    if is_smb_url(url):
+        parts = parse_smb_url(url)
+        conn, sess, tree, file = _smb_open_for_read(parts)
+        try:
+            std = file.query_info(FileInformationClass.FileStandardInformation, 0, 0, 48)
+            size = FileStandardInformation.unpack(std).end_of_file
+            if start < 0:
+                start = 0
+            end = size - 1 if length is None else min(start + length - 1, size - 1)
+            pos = start
+            remaining = end - start + 1
+            while remaining > 0:
+                n = min(chunk_size, remaining)
+                data = file.read(pos, n)
+                if not data:
+                    break
+                yield data
+                pos += len(data)
+                remaining -= len(data)
+        finally:
+            _smb_close(conn, sess, tree, file)
+        return
+    # fallback to local/other fs
     with ro_fs_for_url(url) as (fs, inner):
         info = fs.getinfo(inner, namespaces=["details"]).raw
         size = int(info.get("details", {}).get("size", 0))
@@ -131,6 +220,19 @@ def iter_bytes(url: str, start: int = 0, length: Optional[int] = None, chunk_siz
 
 def stat_url(url: str) -> Tuple[int, int]:
     """返回 (mtime_epoch, size)。找不到抛出 ResourceNotFound。"""
+    if is_smb_url(url):
+        parts = parse_smb_url(url)
+        conn, sess, tree, file = _smb_open_for_read(parts)
+        try:
+            size = int(file.end_of_file or 0)
+            # last_write_time 是 datetime
+            try:
+                mtime = int(file.last_write_time.timestamp())
+            except Exception:
+                mtime = 0
+            return mtime, size
+        finally:
+            _smb_close(conn, sess, tree, file)
     with ro_fs_for_url(url) as (fs, inner):
         info = fs.getinfo(inner, namespaces=["details"]).raw
         size = int(info.get("details", {}).get("size", 0))

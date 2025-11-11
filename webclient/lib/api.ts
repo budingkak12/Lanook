@@ -192,10 +192,24 @@ export async function getOSInfo(): Promise<OSInfo | null> {
   return fetchingOSInfo
 }
 
+// 缓存与去重：避免 React StrictMode 下开发环境重复触发 useEffect 产生的双请求
+let cachedCommonFolders: CommonFolderEntry[] | null = null
+let fetchingCommonFolders: Promise<CommonFolderEntry[]> | null = null
 export async function getCommonFolders(): Promise<CommonFolderEntry[]> {
-  const resp = await apiFetch("/filesystem/common-folders")
-  if (!resp.ok) return []
-  return (await resp.json()) as CommonFolderEntry[]
+  if (cachedCommonFolders) return cachedCommonFolders
+  if (fetchingCommonFolders) return fetchingCommonFolders
+  fetchingCommonFolders = (async () => {
+    try {
+      const resp = await apiFetch("/filesystem/common-folders")
+      if (!resp.ok) return []
+      const data = (await resp.json()) as CommonFolderEntry[]
+      cachedCommonFolders = data
+      return data
+    } finally {
+      fetchingCommonFolders = null
+    }
+  })()
+  return fetchingCommonFolders
 }
 
 export async function probePermissions(paths: string[]): Promise<ProbeResult[]> {
@@ -294,7 +308,7 @@ export async function createMediaSource(request: CreateSourceRequest): Promise<M
   return (await ensured.json()) as MediaSource
 }
 
-// 带额外元信息的创建：识别“已存在”并透出消息
+// 带额外元信息的创建：识别"已存在"并透出消息
 export async function createMediaSourceWithMeta(request: CreateSourceRequest): Promise<{ source: MediaSource; existed: boolean; message: string | null }>{
   const resp = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
   if (resp.status === 409) {
@@ -354,10 +368,25 @@ export async function restoreMediaSource(id: number): Promise<MediaSource> {
 }
 
 // 获取媒体来源列表（支持包含已停用的来源）
+// 针对不同 includeInactive 维度做独立缓存
+const cachedMediaSources: Record<string, MediaSource[] | null> = {}
+const fetchingMediaSources: Record<string, Promise<MediaSource[]> | null> = {}
 export async function getMediaSources(includeInactive = false): Promise<MediaSource[]> {
-  const response = await apiFetch(`/media-sources?include_inactive=${includeInactive}`)
-  const ensured = await ensureOk(response)
-  return (await ensured.json()) as MediaSource[]
+  const key = includeInactive ? "1" : "0"
+  if (cachedMediaSources[key]) return cachedMediaSources[key] as MediaSource[]
+  if (fetchingMediaSources[key]) return fetchingMediaSources[key] as Promise<MediaSource[]>
+  fetchingMediaSources[key] = (async () => {
+    try {
+      const response = await apiFetch(`/media-sources?include_inactive=${includeInactive}`)
+      const ensured = await ensureOk(response)
+      const data = (await ensured.json()) as MediaSource[]
+      cachedMediaSources[key] = data
+      return data
+    } finally {
+      fetchingMediaSources[key] = null
+    }
+  })()
+  return fetchingMediaSources[key] as Promise<MediaSource[]>
 }
 
 // ===== 扫描相关 API =====

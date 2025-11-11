@@ -51,7 +51,42 @@ def _iso(dt):
     return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _normalize_host_input(host: str) -> str:
+    """将前端传入的 host 规范化为纯主机/IP 字符串。
+
+    兼容以下异常形式：
+    - "('10.0.0.1', None)"（错误传入的元组字符串）→ "10.0.0.1"
+    - "('nas.local', 445)" → "nas.local"
+    - "10.0.0.1:445" → "10.0.0.1"
+    - "[fe80::1]" → "fe80::1"
+    - 带多余引号/空白 → 去除
+    """
+    s = str(host).strip()
+    # 去掉包裹引号
+    if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
+        s = s[1:-1].strip()
+    # 处理形如 "('10.0.0.1', None)" 的字符串
+    if s.startswith("(") and s.endswith(")"):
+        import ast
+        try:
+            tup = ast.literal_eval(s)
+            if isinstance(tup, (list, tuple)) and len(tup) >= 1:
+                s = str(tup[0]).strip()
+        except Exception:
+            pass
+    # IPv6 方括号
+    if s.startswith("[") and s.endswith("]"):
+        s = s[1:-1]
+    # host:port（排除 IPv6）
+    if ":" in s and s.count(":") == 1:
+        host_part, port_part = s.split(":", 1)
+        if port_part.isdigit():
+            s = host_part
+    return s
+
+
 def _bootstrap_source_scan(root_path: str, *, limit: int = 50) -> None:
+    """新增来源后，立即首批导入最多 limit 条，随后后台继续全量扫描。"""
     try:
         create_database_and_tables(echo=False)
         with SessionLocal() as session:
@@ -118,90 +153,116 @@ def validate_source(req: SourceValidateRequest):
             note="只读验证通过，不会写入或删除此目录下文件",
         )
     elif req.type == SourceType.SMB:
-        # 基础参数校验
+        # 使用 smbprotocol 直连验证，避免 SMB1 方言问题
         if not req.host or not req.share:
             raise HTTPException(status_code=422, detail="host/share required")
-
-        # 优先在 macOS 使用 mount_smbfs 验证（本地开发更稳定），失败再回退到 fs.open_fs
+        host = _normalize_host_input(req.host)
+        username = (req.username or "") if not req.anonymous else ""
+        password = (req.password or "") if not req.anonymous else ""
         try:
-            import platform, shutil, subprocess, tempfile
-            from pathlib import Path as _P
-            if platform.system().lower() == 'darwin' and shutil.which('mount_smbfs') and shutil.which('umount'):
-                mount_point = tempfile.mkdtemp(prefix='nas_validate_')
-                try:
-                    auth = '' if req.anonymous else f"{req.username}:{req.password}@"
-                    url = f"//{auth}{req.host}/{req.share}"
-                    subprocess.check_call(['mount_smbfs', url, mount_point], timeout=8)
-                    target = _P(mount_point) / (req.subPath.lstrip('/') if req.subPath else '')
-                    if not target.exists() or not target.is_dir():
-                        raise HTTPException(status_code=404, detail="子路径不存在或不是目录")
-                    total = 0
-                    samples: list[str] = []
-                    for root, _dirs, files in os.walk(target):
-                        for f in files:
-                            if _P(f).suffix.lower() in exts:
-                                total += 1
-                                if len(samples) < 10:
-                                    rel_root = _P(root).relative_to(target)
-                                    rel = '' if str(rel_root) == '.' else str(rel_root) + '/'
-                                    prefix = (req.subPath.strip('/') + '/') if req.subPath else ''
-                                    samples.append(f"smb://{req.host}/{req.share}/" + prefix + rel + f)
-                    return SourceValidateResponse(
-                        ok=True,
-                        readable=True,
-                        absPath=f"smb://{req.host}/{req.share}/" + ((req.subPath or '').strip('/')),
-                        estimatedCount=total,
-                        samples=samples,
-                        note="只读验证通过，不会写入或删除此目录下文件",
-                    )
-                finally:
-                    try:
-                        subprocess.run(['umount', mount_point], timeout=5)
-                    except Exception:
-                        pass
-                    try:
-                        os.rmdir(mount_point)
-                    except Exception:
-                        pass
-        except HTTPException:
-            raise
-        except Exception:
-            pass
+            from app.services.fs_providers import parse_smb_url
+            from smbprotocol.connection import Connection
+            from smbprotocol.session import Session
+            from smbprotocol.tree import TreeConnect
+            from smbprotocol.open import Open, CreateDisposition, CreateOptions, ShareAccess, FilePipePrinterAccessMask, ImpersonationLevel
+            from smbprotocol.file_info import FileInformationClass
+            import uuid
 
-        # 回退方案：fs.open_fs（在部分平台可能不支持 SMB2）
-        try:
-            import fs
-            from urllib.parse import quote
-            if req.anonymous:
-                base = f"smb://{req.host}"
-            elif req.username and req.password:
-                base = f"smb://{quote(req.username)}:{quote(req.password)}@{req.host}"
-            else:
-                raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
-            vfs = fs.open_fs(base)
-            root_fs = vfs.opendir(req.share)
-            sub = (req.subPath or "").lstrip("/")
-            if sub:
-                if not root_fs.isdir(sub):
-                    raise HTTPException(status_code=404, detail="子路径不存在或不是目录")
-                root_fs = root_fs.opendir(sub)
+            # 建链
+            conn = Connection(uuid.uuid4(), host, 445)
+            conn.connect()
+            sess = Session(conn, username=username, password=password)
+            sess.connect()
+            tree = TreeConnect(sess, f"\\\\{host}\\{req.share}")
+            tree.connect()
+
+            # 打开验证目录
+            sub = (req.subPath or "").strip("/\\")
+            dir_path = sub.replace('/', '\\') if sub else ""
+            h = Open(tree, dir_path)
+            h.create(
+                ImpersonationLevel.Impersonation,
+                FilePipePrinterAccessMask.GENERIC_READ,
+                0,
+                ShareAccess.FILE_SHARE_READ,
+                CreateDisposition.FILE_OPEN,
+                CreateOptions.FILE_DIRECTORY_FILE,
+            )
+
+            # BFS 遍历少量样本，限制深度与数量
+            from collections import deque
+            q = deque([""])
             total = 0
             samples: list[str] = []
-            for path in root_fs.walk.files():
-                if Path(path).suffix.lower() in exts:
-                    total += 1
-                    if len(samples) < 10:
-                        samples.append(f"smb://{req.host}/{req.share}/" + (sub + "/" if sub else "") + path)
+            max_dirs = 50
+            max_files = 2000
+            visited = 0
+            while q and visited < max_dirs and total < max_files and len(samples) < 10:
+                rel = q.popleft()
+                visited += 1
+                cur = Open(tree, (dir_path + ('\\' if dir_path and rel else '') + rel) if rel else dir_path)
+                cur.create(
+                    ImpersonationLevel.Impersonation,
+                    FilePipePrinterAccessMask.GENERIC_READ,
+                    0,
+                    ShareAccess.FILE_SHARE_READ,
+                    CreateDisposition.FILE_OPEN,
+                    CreateOptions.FILE_DIRECTORY_FILE,
+                )
+                try:
+                    entries = cur.query_directory('*', FileInformationClass.FILE_DIRECTORY_INFORMATION)
+                    for e in entries:
+                        raw = e['file_name']
+                        # BytesField pretty string like '30 00 31 00 ...'; use .get_value() to get bytes
+                        if hasattr(raw, 'get_value'):
+                            b = raw.get_value()
+                            try:
+                                name = b.decode('utf-16-le').rstrip('\x00')
+                            except Exception:
+                                name = ''.join(chr(x) for x in b if x > 0)
+                        else:
+                            name = str(raw)
+                        if name in ('.', '..'):
+                            continue
+                        attrs_field = e['file_attributes']
+                        attrs_val = int(getattr(attrs_field, 'value', attrs_field))
+                        is_dir = bool(attrs_val & 0x10)
+                        child_rel = name if not rel else rel + '/' + name
+                        if is_dir:
+                            if len(q) < max_dirs:
+                                q.append(child_rel)
+                        else:
+                            if Path(name).suffix.lower() in exts:
+                                total += 1
+                                if len(samples) < 10:
+                                    samples.append(f"smb://{host}/{req.share}/" + (sub + '/' if sub else '') + child_rel)
+                            else:
+                                total += 1  # 统计到非媒体文件也计数，用于规模估计
+                            if total >= max_files:
+                                break
+                finally:
+                    cur.close()
+
+            # 关闭连接
+            h.close(); tree.disconnect(); sess.disconnect(); conn.disconnect(True)
+
             return SourceValidateResponse(
                 ok=True,
                 readable=True,
-                absPath=f"smb://{req.host}/{req.share}/" + sub,
+                absPath=f"smb://{host}/{req.share}/" + sub,
                 estimatedCount=total,
                 samples=samples,
                 note="只读验证通过，不会写入或删除此目录下文件",
             )
+        except HTTPException:
+            raise
         except Exception as exc:
-            raise HTTPException(status_code=403, detail=f"连接失败：{exc}")
+            msg = str(exc)
+            if 'STATUS_LOGON_FAILURE' in msg or 'Authentication' in msg or 'access' in msg.lower():
+                raise HTTPException(status_code=403, detail="认证失败，请检查用户名和密码")
+            if 'timed out' in msg or 'No route to host' in msg or 'not known' in msg or 'unreachable' in msg:
+                raise HTTPException(status_code=404, detail="无法连接到设备，请检查地址")
+            raise HTTPException(status_code=500, detail=f"连接失败：{msg}")
     else:
         raise HTTPException(status_code=422, detail="未知来源类型")
 
@@ -211,6 +272,7 @@ def create_media_source(
     payload: SourceCreateRequest,
     request: Request,
     response: Response,
+    background: BackgroundTasks = None,
     db: Session = Depends(get_db),
 ):
     # 控制是否立即扫描（默认 True 以兼容旧调用）
@@ -266,6 +328,11 @@ def create_media_source(
         if scan_now:
             _bootstrap_source_scan(src.root_path)
             _ensure_background_scan(request, src.root_path)
+            try:
+                if background is not None:
+                    start_scan_job(src.id, src.root_path, background)
+            except Exception:
+                pass
         return _to_media_source_model(src)
     elif payload.type == SourceType.SMB:
         if not payload.host or not payload.share:
@@ -348,6 +415,11 @@ def create_media_source(
         if scan_now:
             _bootstrap_source_scan(src.root_path)
             _ensure_background_scan(request, src.root_path)
+            try:
+                if background is not None:
+                    start_scan_job(src.id, src.root_path, background)
+            except Exception:
+                pass
         return _to_media_source_model(src)
     else:
         raise HTTPException(status_code=422, detail="未知来源类型")
@@ -402,6 +474,26 @@ def start_scan(source_id: int = Query(..., description="来源ID"), background: 
         raise HTTPException(status_code=404, detail="source not found")
     if src.status and src.status != "active":
         raise HTTPException(status_code=409, detail="source inactive")
+    # 若为 SMB，将 host 规范化写回一次（兼容历史脏数据）
+    if src.type == 'smb' and isinstance(src.root_path, str) and src.root_path.startswith('smb://'):
+        try:
+            from app.services.fs_providers import parse_smb_url
+            p = parse_smb_url(src.root_path)
+            clean_host = _normalize_host_input(p.host)
+            if clean_host != p.host:
+                # 重建 root_path
+                base = f"smb://{clean_host}/{p.share}"
+                sub = (p.path or '').strip('/')
+                new_url = base + (f"/{sub}" if sub else '')
+                from app.db.models_extra import MediaSource as _MediaSource
+                row = db.query(_MediaSource).filter(_MediaSource.id == src.id).first()
+                if row and row.root_path != new_url:
+                    row.root_path = new_url
+                    db.commit()
+                    db.refresh(row)
+                    src = row
+        except Exception:
+            pass
     job_id = start_scan_job(src.id, src.root_path, background)
     return ScanStartResponse(jobId=job_id)
 
@@ -413,7 +505,7 @@ def discover_network_shares(request: dict):
     输入: {host, username?, password?, anonymous: bool}
     输出: {success: bool, shares: [{name, path, accessible}], error?: string}
     """
-    host = request.get("host")
+    host = _normalize_host_input(request.get("host"))
     if not host:
         raise HTTPException(status_code=422, detail="host required")
 
@@ -426,66 +518,66 @@ def discover_network_shares(request: dict):
         raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
 
     try:
-        # 优先使用 macOS 自带 smbutil（在本地开发更稳定，避免 pysmb 方言协商问题）
-        import platform, shutil, subprocess, re
-        shares: list[dict] = []
-        if platform.system().lower() == 'darwin' and shutil.which('smbutil'):
-            if anonymous:
-                cmd = ['smbutil', 'view', '-g', '-N', f'//{host}']
-            else:
-                cmd = ['smbutil', 'view', f'//{username}:{password}@{host}']
-            try:
-                out = subprocess.check_output(cmd, text=True, timeout=8)
-            except subprocess.CalledProcessError as exc:
-                raise HTTPException(status_code=500, detail=f"smbutil 失败: {exc}")
-            except subprocess.TimeoutExpired:
-                raise HTTPException(status_code=504, detail="smbutil 超时")
+        from smbprotocol.connection import Connection
+        from smbprotocol.session import Session
+        from smbprotocol.tree import TreeConnect
+        import uuid
 
-            for line in out.splitlines():
-                # 形如：PublicShare                                     Disk
-                m = re.match(r"^([A-Za-z0-9_.$-]+)\s+Disk", line.strip())
-                if not m:
-                    continue
-                name = m.group(1)
-                if name.lower() in {'ipc$', 'admin$', 'print$'}:
-                    continue
+        # 建立连接
+        conn = Connection(uuid.uuid4(), host, 445)
+        conn.connect()
+        sess = Session(conn, username=username or "", password=password or "")
+        sess.connect()
+
+        # 常见共享名称列表
+        common_shares = [
+            'PublicShare', 'Public', 'Users', 'Share', 'Shared', 'Files',
+            'Data', 'Media', 'Documents', 'Downloads', 'home', 'shared',
+            'scans', 'backup', 'temp', 'www', 'ftp', 'smb', 'smbshare',
+            'guest', 'anonymous', 'upload', 'incoming', 'outgoing'
+        ]
+        shares = []
+
+        # 尝试连接共享名称来测试可访问性
+        for share_name in common_shares:
+            try:
+                test_tree = TreeConnect(sess, f"\\\\{host}\\{share_name}")
+                test_tree.connect()
+                test_tree.disconnect()
                 shares.append({
-                    'name': name,
-                    'path': f"smb://{host}/{name}",
-                    'accessible': True,
+                    'name': share_name,
+                    'path': f"smb://{host}/{share_name}",
+                    'accessible': True
                 })
-            return { 'success': True, 'shares': shares }
-
-        # 回退到 fs.open_fs（Linux/Windows 或无 smbutil 时）
-        import fs
-        from urllib.parse import quote
-        fs_url = f"smb://{quote(username)}:{quote(password)}@{host}" if not anonymous else f"smb://{host}"
-        try:
-            smb_fs = fs.open_fs(fs_url)
-        except Exception as e2:
-            raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
-        try:
-            shares = []
-            for share_name in smb_fs.listdir('/'):
-                try:
-                    if share_name.startswith('.') or share_name.lower() in ['ipc$', 'admin$', 'print$']:
-                        continue
-                    if smb_fs.isdir(share_name):
-                        shares.append({'name': share_name, 'path': f"smb://{host}/{share_name}", 'accessible': True})
-                except Exception:
-                    continue
-            return { 'success': True, 'shares': shares }
-        finally:
-            try:
-                smb_fs.close()
             except Exception:
-                pass
+                continue
+
+        # 尝试数字编号的共享
+        for i in range(1, 11):
+            share_name = f"share{i}"
+            try:
+                test_tree = TreeConnect(sess, f"\\\\{host}\\{share_name}")
+                test_tree.connect()
+                test_tree.disconnect()
+                shares.append({
+                    'name': share_name,
+                    'path': f"smb://{host}/{share_name}",
+                    'accessible': True
+                })
+            except Exception:
+                continue
+
+        # 关闭连接
+        sess.disconnect()
+        conn.disconnect(True)
+
+        return { 'success': True, 'shares': shares }
 
     except Exception as e:
         error_msg = str(e)
         if "Connection refused" in error_msg or "No route to host" in error_msg:
             raise HTTPException(status_code=404, detail="无法连接到设备，请检查IP地址")
-        elif "Authentication failed" in error_msg or "Access denied" in error_msg:
+        elif "STATUS_LOGON_FAILURE" in error_msg or "Authentication" in error_msg or "access" in error_msg.lower():
             raise HTTPException(status_code=403, detail="认证失败，请检查用户名和密码")
         else:
             raise HTTPException(status_code=500, detail=f"连接失败: {error_msg}")
@@ -494,106 +586,68 @@ def discover_network_shares(request: dict):
 @router.post("/network/browse")
 def browse_network_folder(request: dict):
     """
-    浏览网络文件夹内容
+    浏览 SMB 共享目录内容（不挂载）
     输入: {host, share, path, username?, password?, anonymous: bool}
     输出: {success: bool, folders: [{name, path}], files: [{name, path, size}], error?: string}
     """
-    host = request.get("host")
+    host = _normalize_host_input(request.get("host"))
     share = request.get("share")
-    path = request.get("path", "")
-
+    path = (request.get("path") or "").strip("/\\")
     if not host or not share:
         raise HTTPException(status_code=422, detail="host and share required")
 
-    username = request.get("username")
-    password = request.get("password")
-    anonymous = request.get("anonymous", False)
+    username = (request.get("username") or "") if not request.get("anonymous", False) else ""
+    password = (request.get("password") or "") if not request.get("anonymous", False) else ""
 
     try:
-        import platform, shutil, subprocess, os, tempfile, json
-        from pathlib import Path
-        # macOS 优先用 mount_smbfs 挂载后遍历
-        if platform.system().lower() == 'darwin' and shutil.which('mount_smbfs') and shutil.which('umount'):
-            mount_point = tempfile.mkdtemp(prefix='nas_mount_')
-            try:
-                # 构建凭证 URL：//user:pass@host/share
-                auth = '' if anonymous else f"{username}:{password}@"
-                url = f"//{auth}{host}/{share}"
-                subprocess.check_call(['mount_smbfs', url, mount_point], timeout=8)
-                base = Path(mount_point)
-                target = base / (path or '')
-                if not target.exists() or not target.is_dir():
-                    raise HTTPException(status_code=404, detail="路径不存在或不是目录")
-                folders = []
-                files = []
-                for entry in sorted(target.iterdir()):
-                    name = entry.name
-                    if name.startswith('.'):
-                        continue
-                    rel = str(Path(path)/name) if path else name
-                    if entry.is_dir():
-                        folders.append({ 'name': name, 'path': rel })
-                    else:
-                        ext = name.rsplit('.',1)[-1].lower() if '.' in name else ''
-                        if ext in ['jpg','jpeg','png','gif','bmp','webp','mp4','mov','avi','mkv','wmv','flv']:
-                            try:
-                                size = entry.stat().st_size
-                            except Exception:
-                                size = 0
-                            files.append({ 'name': name, 'path': rel, 'size': size })
-                return { 'success': True, 'folders': folders, 'files': files }
-            except subprocess.TimeoutExpired:
-                raise HTTPException(status_code=504, detail="挂载超时")
-            except subprocess.CalledProcessError as exc:
-                raise HTTPException(status_code=500, detail=f"挂载失败: {exc}")
-            finally:
-                try:
-                    subprocess.run(['umount', mount_point], timeout=5)
-                except Exception:
-                    pass
-                try:
-                    os.rmdir(mount_point)
-                except Exception:
-                    pass
+        # smbprotocol 直连，避免 mount_smbfs
+        from smbprotocol.connection import Connection
+        from smbprotocol.session import Session
+        from smbprotocol.tree import TreeConnect
+        from smbprotocol.open import Open, CreateDisposition, CreateOptions, ShareAccess, FilePipePrinterAccessMask, ImpersonationLevel
+        from smbprotocol.file_info import FileInformationClass
+        import uuid
 
-        # 其他平台回退到 fs.open_fs（可能不支持 SMB2，尽力而为）
-        import fs
-        from urllib.parse import quote
-        fs_url = f"smb://{quote(username)}:{quote(password)}@{host}" if not anonymous else f"smb://{host}"
-        try:
-            smb_fs = fs.open_fs(fs_url)
-        except Exception as e2:
-            raise HTTPException(status_code=404, detail=f"无法连接到SMB服务: {str(e2)}")
-        try:
-            share_fs = smb_fs.opendir(share)
-            if path:
-                share_fs = share_fs.opendir(path)
-            folders = []
-            files = []
-            for entry in share_fs.scandir('.'):
-                name = entry.name
-                if name.startswith('.'): continue
-                rel = f"{path}/{name}" if path else name
-                if entry.is_dir:
-                    folders.append({'name': name, 'path': rel})
-                else:
-                    ext = name.rsplit('.',1)[-1].lower() if '.' in name else ''
-                    if ext in ['jpg','jpeg','png','gif','bmp','webp','mp4','mov','avi','mkv','wmv','flv']:
-                        try:
-                            size = entry.size
-                        except Exception:
-                            size = 0
-                        files.append({'name': name, 'path': rel, 'size': size})
-            return { 'success': True, 'folders': sorted(folders, key=lambda x: x['name'].lower()), 'files': sorted(files, key=lambda x: x['name'].lower()) }
-        finally:
-            try:
-                share_fs.close()
-            except Exception:
-                pass
-            try:
-                smb_fs.close()
-            except Exception:
-                pass
+        conn = Connection(uuid.uuid4(), host, 445)
+        conn.connect()
+        sess = Session(conn, username=username, password=password)
+        sess.connect()
+        tree = TreeConnect(sess, f"\\\\{host}\\{share}")
+        tree.connect()
+
+        # 打开目标目录
+        dir_path = path.replace('/', '\\') if path else ""
+        h = Open(tree, dir_path)
+        h.create(ImpersonationLevel.Impersonation, FilePipePrinterAccessMask.GENERIC_READ, 0, ShareAccess.FILE_SHARE_READ, CreateDisposition.FILE_OPEN, CreateOptions.FILE_DIRECTORY_FILE)
+
+        entries = h.query_directory('*', FileInformationClass.FILE_DIRECTORY_INFORMATION)
+        image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+        video_exts = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
+        folders, files = [], []
+        for e in entries:
+            raw = e['file_name']
+            b = raw.get_value() if hasattr(raw, 'get_value') else (raw if isinstance(raw, (bytes, bytearray)) else None)
+            name = (b.decode('utf-16-le').rstrip('\x00') if isinstance(b, (bytes, bytearray)) else str(raw))
+            if name in ('.', '..') or name.startswith('.'):
+                continue
+            attrs_field = e['file_attributes']
+            attrs_val = int(getattr(attrs_field, 'value', attrs_field))
+            is_dir = bool(attrs_val & 0x10)
+            rel = f"{path}/{name}" if path else name
+            if is_dir:
+                folders.append({ 'name': name, 'path': rel })
+            else:
+                ext = ('.' + name.rsplit('.',1)[-1].lower()) if '.' in name else ''
+                if ext in image_exts | video_exts:
+                    size = int(getattr(e, 'end_of_file', 0) or 0)
+                    files.append({ 'name': name, 'path': rel, 'size': size })
+
+        # 关闭连接
+        h.close(); tree.disconnect(); sess.disconnect(); conn.disconnect(True)
+
+        folders.sort(key=lambda x: x['name'].lower())
+        files.sort(key=lambda x: x['name'].lower())
+        return { 'success': True, 'folders': folders, 'files': files }
 
     except Exception as e:
         error_msg = str(e)

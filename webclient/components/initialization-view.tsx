@@ -70,49 +70,34 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
       // 在最后一步，调用后端API启动初始化
       setIsStartingInitialization(true)
       try {
-        // 获取媒体源清单
-        const sourcesResponse = await apiFetch("/media-sources")
-        if (!sourcesResponse.ok) {
-          throw new Error("获取媒体源清单失败")
-        }
-
-        const mediaSources = await sourcesResponse.json()
-
-        if (mediaSources.length === 0) {
-          toast({
-            title: "没有媒体源",
-            description: "请先添加至少一个媒体源路径",
-          })
-          setIsStartingInitialization(false)
-          return
-        }
-
-        // 使用第一个媒体源作为主路径（或者可以选择最后一个添加的）
-        const primarySource = mediaSources[0]
-        const mediaPath = primarySource.rootPath
-
+        // 简化调用：不传 path，由后端自动选择已存在的第一个媒体来源；若无来源，将返回 404+提示
         const response = await apiFetch("/media-root", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            path: mediaPath
-          })
+          body: JSON.stringify({})
         })
-
-        if (response.ok) {
-          // API调用成功，直接进入应用
-          onInitialized()
-        } else {
-          const errorData = await response.json().catch(() => ({}))
-          console.error("启动媒体初始化失败:", errorData)
-          // 显示错误通知，但不跳转页面
+        const data = await response.json().catch(() => (null as any))
+        if (data && data.success === false && data.code === 'no_media_source') {
           toast({
-            title: "启动媒体库失败",
-            description: errorData.detail || `服务器错误 ${response.status}`,
+            title: data.message || "没有媒体路径",
+            description: "",
           })
+          setIsStartingInitialization(false)
+          return
         }
+        // 200 且 body 为空也视为成功，避免空响应导致前端报错
+        if (response.ok && (!data || data.success === true || data.success === undefined)) {
+          onInitialized()
+          return
+        }
+        // 其他情况作为错误提示
+        console.error("启动媒体初始化失败:", data || {})
+        toast({
+          title: (data && (data.detail?.message || data.message)) || "启动媒体库失败",
+          description: (data && (data.detail || data.error)) || `服务器错误 ${response.status}`,
+        })
       } catch (error) {
         console.error("调用媒体初始化API失败:", error)
         // 显示错误通知，但不跳转页面

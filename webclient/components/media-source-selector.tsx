@@ -414,7 +414,10 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
   // 加载NAS文件夹内容
   const loadNasFolderContents = async (subPath: string, shareOverride?: string) => {
-    const normalizedSubPath = subPath.replace(/^\/+/, '')
+    // 统一路径分隔符，去掉开头的斜杠，避免后端收到 "/photos" 导致二级目录报错
+    const normalizedSubPath = (subPath || '')
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
     const targetShare = shareOverride || selectedNasShare
     if (!nasHost.trim() || !targetShare) return
 
@@ -447,7 +450,8 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
   // NAS文件夹导航
   const handleNasFolderNavigate = async (folder: NasFolderItem) => {
-    await loadNasFolderContents(folder.path)
+    const next = (folder.path || '').replace(/\\/g, '/').replace(/^\/+/, '')
+    await loadNasFolderContents(next)
   }
 
   // NAS返回上级
@@ -458,12 +462,12 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
       setNasFileContents([])
       return
     }
-    const parentParts = currentNasSubPath.split('/').filter(Boolean)
+    const parentParts = (currentNasSubPath || '').split('/').filter(Boolean)
     parentParts.pop()
     await loadNasFolderContents(parentParts.join('/'))
   }
 
-  // 直接在 NAS 面板完成“添加至媒体路径清单”
+  // 直接在 NAS 面板完成"添加至媒体路径清单"
   const handleAddCurrentNasFolder = async () => {
     if (!nasHost.trim() || !selectedNasShare) {
       toast({ title: "请选择共享", description: "请先连接 NAS 并选择可用共享" })

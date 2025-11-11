@@ -27,7 +27,8 @@ class InitializationStateModel(str, Enum):
 
 
 class MediaRootRequest(BaseModel):
-    path: str
+    # 允许省略 path 以简化调用：服务端将自动选择已存在的第一个媒体来源
+    path: Optional[str] = None
 
 
 class InitializationStatusResponse(BaseModel):

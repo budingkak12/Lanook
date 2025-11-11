@@ -296,79 +296,27 @@ def scan_and_populate_media(
     limit: Optional[int] = None,
     source_id: Optional[int] = None,
 ) -> int:
-    """扫描指定目录并将媒体信息存入数据库。
+    """扫描指定目录并将媒体信息存入数据库（统一走 indexer）。
 
     :param limit: 当设置时，最多入库指定数量的新媒体后立即返回，
                   以便调用方可以先行提交供前端使用，再继续后续扫描。
     """
     print(f"\n正在扫描目录: {media_path}")
 
-    # 检查目录是否存在
-    if not os.path.isdir(media_path):
-        raise FileNotFoundError(f"目录 '{media_path}' 不存在。")
+    from app.services.indexer import scan_into_db
 
-    source = _resolve_media_source(
-        db_session,
-        media_path,
-        source_id=source_id,
-        type_="local",
-    )
-    resolved_source_id = source.id if source else source_id
+    # 无论 local/SMB，统一通过 FS 层遍历并入库
+    added = scan_into_db(db_session, str(Path(media_path).expanduser()), source_id=source_id, limit=limit)
 
-    # 获取数据库中已存在的所有路径，用于去重
-    existing_paths = {path for (path,) in db_session.query(Media.absolute_path)}
-    print(f"数据库中已存在 {len(existing_paths)} 个媒体记录。")
-
-    new_files_count = 0
-    limit_reached = False
-    for root, _, files in os.walk(media_path):
-        for filename in files:
-            file_ext = os.path.splitext(filename)[1].lower()
-            media_type = None
-
-            if file_ext in SUPPORTED_IMAGE_EXTS:
-                media_type = "image"
-            elif file_ext in SUPPORTED_VIDEO_EXTS:
-                media_type = "video"
-
-            if media_type:
-                # 使用 pathlib 获取规范化的绝对路径
-                absolute_path = str(Path(root) / filename)
-
-                # 如果路径未在数据库中，则添加
-                if absolute_path not in existing_paths:
-                    new_media = Media(
-                        filename=filename,
-                        absolute_path=absolute_path,
-                        media_type=media_type,
-                        source_id=resolved_source_id,
-                    )
-                    db_session.add(new_media)
-                    new_files_count += 1
-                    print(f"  - [发现新文件] 类型: {media_type}, 路径: {filename}")
-                    existing_paths.add(absolute_path)
-                    if limit is not None and new_files_count >= limit:
-                        limit_reached = True
-                        break
-        if limit_reached:
-            break
-
-    if new_files_count > 0:
-        print(f"正在将 {new_files_count} 个新媒体文件信息提交到数据库...")
+    if added > 0:
+        print(f"正在将 {added} 个新媒体文件信息提交到数据库...")
         print("✅ 新媒体文件入库成功。")
-        if limit_reached:
+        if limit is not None:
             print("⚡️ 首批媒体已准备，后台将继续扫描剩余文件。")
     else:
         print("✅ 没有发现新的媒体文件。")
 
-    if source is not None:
-        source.last_scan_at = datetime.utcnow()
-        if source.status != "active":
-            source.status = "active"
-            source.deleted_at = None
-
-    db_session.commit()
-    return new_files_count
+    return added
 
 
 def clear_media_library(db_session) -> None:

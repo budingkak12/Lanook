@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response, BackgroundTasks
 
 from app.schemas.setup import (
     DirectoryEntryModel,
@@ -26,6 +26,7 @@ from app.services.media_initializer import (
     has_indexed_media,
     validate_media_root,
 )
+from app.services.sources_service import list_sources
 from app.services.auto_scan_service import ensure_auto_scan_service
 from app.services.scan_service import scan_source_once
 
@@ -100,12 +101,33 @@ def get_common_folders():
 def set_media_root(
     request: Request,
     payload: MediaRootRequest,
+    background: BackgroundTasks = None,
 ):
-    try:
-        # 允许本地目录或 SMB URL
-        validated_path = validate_media_root(payload.path)
-    except MediaInitializationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
+    # 若未提供 path，则从 DB 中自动选择一个来源
+    if not payload.path:
+        try:
+            from 初始化数据库 import SessionLocal as _SL
+            db = _SL()
+            try:
+                sources = list_sources(db, include_inactive=False)
+            finally:
+                db.close()
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"读取媒体来源失败：{exc}")
+        if not sources:
+            # 不再返回 404，统一 200 并给出指示
+            return {"success": False, "code": "no_media_source", "message": "没有媒体路径，请先添加"}
+        # 使用第一个活跃来源
+        candidate = sources[0].root_path
+        try:
+            validated_path = validate_media_root(candidate)
+        except MediaInitializationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+    else:
+        try:
+            validated_path = validate_media_root(payload.path)
+        except MediaInitializationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
 
     # 设置媒体根路径
     from 初始化数据库 import SessionLocal, set_setting, MEDIA_ROOT_KEY
@@ -141,6 +163,23 @@ def set_media_root(
     service = ensure_auto_scan_service(request.app)
     service.register_path(str(validated_path))
     service.trigger_path(str(validated_path))
+
+    # 立即启动后台全量扫描任务
+    try:
+        if background is not None:
+            # 查找/创建该 root 的来源ID
+            from 初始化数据库 import SessionLocal as _SL
+            from app.db.models_extra import MediaSource as _MediaSource
+            _db = _SL()
+            try:
+                src = _db.query(_MediaSource).filter(_MediaSource.root_path == str(validated_path)).first()
+                if src:
+                    from app.services.scan_service import start_scan_job
+                    start_scan_job(src.id, src.root_path, background)
+            finally:
+                _db.close()
+    except Exception:
+        pass
 
     # 更新初始化协调器状态为已完成
     coordinator = _ensure_coordinator(request)

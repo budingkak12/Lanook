@@ -121,63 +121,31 @@ def has_indexed_media() -> bool:
 
 
 def validate_media_root(path: Union[Path, str]) -> Union[Path, str]:
-    """校验媒体根路径：
+    """校验媒体根路径（不挂载）：
     - 本地目录：返回规范化后的 Path；
-    - SMB URL（smb://...）：尝试列目录验证可达，返回原始 URL 字符串。
+    - SMB URL：使用 smbprotocol 直连，打开目录并列举少量项后返回原始 URL。
     """
     # SMB URL 字符串
     if isinstance(path, str) and is_smb_url(path):
-        # 优先在 macOS 使用 mount_smbfs 验证，失败再回退到 fs.open_fs
         try:
-            import platform, shutil, subprocess, tempfile, os as _os
-            if platform.system().lower() == 'darwin' and shutil.which('mount_smbfs') and shutil.which('umount'):
-                parts = parse_smb_url(path)
-                # 取出凭据（若没有则尝试匿名）
-                password = get_smb_password(parts.host, parts.share, parts.username)
-                if parts.username and password:
-                    auth = f"{parts.username}:{password}@{parts.host}"
-                elif parts.username:
-                    # 没有存储密码则回退匿名
-                    auth = parts.host
-                else:
-                    auth = parts.host
-                share = parts.share
-                mount_point = tempfile.mkdtemp(prefix='mediaroot_smb_')
-                try:
-                    url = f"//{auth}/{share}"
-                    # 尝试挂载
-                    subprocess.check_call(['mount_smbfs', url, mount_point], timeout=8)
-                    # 验证目录可读
-                    entries = list(_os.scandir(mount_point))
-                    # 通过即返回；无需继续用 FS 层
-                    return path
-                except subprocess.TimeoutExpired:
-                    raise MediaInitializationError("SMB 挂载超时")
-                except subprocess.CalledProcessError as exc:
-                    raise MediaInitializationError(f"SMB 挂载失败: {exc}")
-                finally:
-                    try:
-                        subprocess.run(['umount', mount_point], timeout=5)
-                    except Exception:
-                        pass
-                    try:
-                        _os.rmdir(mount_point)
-                    except Exception:
-                        pass
-        except MediaInitializationError:
-            raise
-        except Exception as exc:
-            # 兜底日志：进入回退
-            pass
-
-        # 回退到 FS 层验证
-        try:
-            with ro_fs_for_url(path) as (fs, inner):
-                target = inner or "."
-                info = fs.getinfo(target)
-                if not info.is_dir:
-                    raise MediaInitializationError(f"路径不是文件夹：" + path)
-                _ = list(fs.scandir(target))
+            from smbprotocol.connection import Connection
+            from smbprotocol.session import Session
+            from smbprotocol.tree import TreeConnect
+            from smbprotocol.open import Open, CreateDisposition, CreateOptions, ShareAccess, FilePipePrinterAccessMask, ImpersonationLevel
+            parts = parse_smb_url(path)
+            password = get_smb_password(parts.host, parts.share, parts.username) or ""
+            conn = Connection(os.urandom(16), parts.host, parts.port or 445)
+            conn.connect()
+            sess = Session(conn, username=parts.username or "", password=password)
+            sess.connect()
+            tree = TreeConnect(sess, f"\\\\{parts.host}\\{parts.share}")
+            tree.connect()
+            dir_rel = parts.path.replace('/', '\\') if parts.path else ""
+            h = Open(tree, dir_rel)
+            h.create(ImpersonationLevel.Impersonation, FilePipePrinterAccessMask.GENERIC_READ, 0, ShareAccess.FILE_SHARE_READ, CreateDisposition.FILE_OPEN, CreateOptions.FILE_DIRECTORY_FILE)
+            # 列举确认可读
+            _ = h.query_directory('*', 1)  # FILE_DIRECTORY_INFORMATION
+            h.close(); tree.disconnect(); sess.disconnect(); conn.disconnect(True)
             return path
         except Exception as exc:
             raise MediaInitializationError(f"无法访问 SMB 目录：{path}，原因：{exc}")

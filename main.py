@@ -33,6 +33,11 @@ from 初始化数据库 import (
 )
 from app.db.models_extra import MediaSource
 from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
+from app.services.thumbnails_service import (
+    get_or_generate_thumbnail as svc_get_or_generate_thumbnail,
+    thumb_path_for as svc_thumb_path_for,
+    THUMBNAILS_DIR as _THUMBNAILS_DIR_CONSTANT,
+)
 
 # 业务拆分：批量删除服务
 from app.services.deletion_service import batch_delete as svc_batch_delete
@@ -102,11 +107,14 @@ app.state.frontend_dist: Path | None = None
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # 直连开发/内网环境：放宽到任意来源；如需更严可改为白名单
+    allow_origin_regex=r".*",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["X-Resource-Existed", "X-Message"],
+    # 预检结果缓存，减少重复 OPTIONS
+    max_age=86400,
 )
 
 app.include_router(setup_router)
@@ -303,150 +311,9 @@ def _display_connection_advert():
 # 工具函数
 # =============================
 
-# 缩略图目录（项目根目录下）
-THUMBNAILS_DIR = Path(__file__).parent / "thumbnails"
-THUMBNAILS_DIR.mkdir(exist_ok=True)
-MAX_THUMB_SIZE = (480, 480)
-
-if hasattr(Image, "Resampling"):
-    _LANCZOS = Image.Resampling.LANCZOS  # Pillow >= 9.1
-else:  # pragma: no cover - 兼容旧版本 Pillow
-    _LANCZOS = Image.LANCZOS
-
-def _thumb_path_for(media: Media) -> Path:
-    # 统一生成 jpg 缩略图，文件名为 <id>.jpg
-    return THUMBNAILS_DIR / f"{media.id}.jpg"
-
-def _should_regenerate(src_path: str, thumb_path: Path) -> bool:
-    try:
-        src_stat = os.stat(src_path)
-        if not thumb_path.exists():
-            return True
-        th_stat = os.stat(thumb_path)
-        # 当源文件更新或缩略图为空/过小则重新生成
-        if src_stat.st_mtime > th_stat.st_mtime:
-            return True
-        if th_stat.st_size < 2000:  # 小于 2KB 视为异常缩略图
-            return True
-        return False
-    except Exception:
-        return True
-
-
-def _save_image_thumbnail(img: Image.Image, dest: Path) -> None:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    # Pillow 会就地缩放，因此复制一份避免影响原图对象
-    thumb_img = img.copy()
-    thumb_img.thumbnail(MAX_THUMB_SIZE, _LANCZOS)
-    # 视频帧往往是 YUV，需要转为 RGB
-    if thumb_img.mode not in {"RGB", "L"}:
-        thumb_img = thumb_img.convert("RGB")
-    thumb_img.save(dest, format="JPEG", quality=85)
-
-
-def _generate_image_thumbnail(src: str, dest: Path) -> bool:
-    try:
-        if is_smb_url(src):
-            from io import BytesIO
-            data = read_bytes(src)
-            with Image.open(BytesIO(data)) as img:
-                _save_image_thumbnail(img, dest)
-        else:
-            with Image.open(src) as img:
-                _save_image_thumbnail(img, dest)
-        return True
-    except Exception:
-        return False
-
-
-def _generate_video_thumbnail(src: str, dest: Path, target_seconds: float = 1.0) -> bool:
-    try:
-        if is_smb_url(src):
-            import tempfile
-            # 将远程视频临时拉取到本地以便 python-av 抽帧
-            with tempfile.NamedTemporaryFile(suffix=".video", delete=True) as tf:
-                for chunk in iter_bytes(src, 0, None, 1024 * 1024):
-                    tf.write(chunk)
-                tf.flush()
-                container = av.open(tf.name)
-                return _extract_frame_to_thumb(container, dest, target_seconds)
-        else:
-            with av.open(src) as container:
-                return _extract_frame_to_thumb(container, dest, target_seconds)
-    except Exception:
-        return False
-
-
-def _extract_frame_to_thumb(container, dest: Path, target_seconds: float) -> bool:
-    try:
-        video_stream = next((stream for stream in container.streams if stream.type == "video"), None)
-        if video_stream is None:
-            return False
-        video_stream.thread_type = "AUTO"
-
-        seek_pts = None
-        if video_stream.time_base:
-            # time_base 是每个 pts 单位的秒数
-            seek_pts = int(max(target_seconds / float(video_stream.time_base), 0))
-        if seek_pts is not None and seek_pts > 0:
-            try:
-                container.seek(seek_pts, stream=video_stream, any_frame=False, backward=True)
-            except av.AVError:
-                container.seek(0)
-
-        frame = None
-        for decoded in container.decode(video_stream):
-            frame = decoded
-            break
-        if frame is None:
-            return False
-        pil_image = frame.to_image()  # PIL.Image
-        _save_image_thumbnail(pil_image, dest)
-        return True
-    except Exception:
-        return False
-
-
-def get_or_generate_thumbnail(media: Media) -> Path | None:
-    """生成并返回缩略图路径；失败时返回 None（由调用方回退到原文件）。
-
-    - 图片：等比缩放到不超过 480x480
-    - 视频：使用 python-av 抽帧（默认 1s 处），缩放不超过 480x480
-    """
-    if not media.absolute_path or not isinstance(media.absolute_path, str):
-        return None
-    src = media.absolute_path
-    thumb = _thumb_path_for(media)
-    # 对于远程 SMB：比较远端 mtime 决定是否重建
-    if is_smb_url(src):
-        try:
-            mtime, size = stat_url(src)
-            if thumb.exists():
-                th_stat = os.stat(thumb)
-                if th_stat.st_mtime >= mtime and th_stat.st_size >= 2000:
-                    return thumb
-        except Exception:
-            pass
-    else:
-        if not _should_regenerate(src, thumb):
-            return thumb
-
-    try:
-        if media.media_type == "image":
-            success = _generate_image_thumbnail(src, thumb)
-        else:
-            success = _generate_video_thumbnail(src, thumb)
-        if success and thumb.exists() and thumb.stat().st_size > 0:
-            return thumb
-        return None
-    except Exception:
-        # 生成失败时清理坏文件
-        try:
-            if thumb.exists():
-                thumb.unlink()
-        except Exception:
-            pass
-        return None
+"""
+将缩略图逻辑委托到 app.services.thumbnails_service，减少 main.py 的业务负担。
+"""
 
 def to_media_item(m: Media, db, include_thumb: bool = False, include_tag_state: bool = True) -> MediaItem:
     liked_val: Optional[bool] = None
@@ -488,7 +355,7 @@ def delete_media_item(
     if not media:
         raise HTTPException(status_code=404, detail="media not found")
 
-    thumb_path = _thumb_path_for(media)
+    thumb_path = svc_thumb_path_for(media)
     # 从数据库删除记录（包含标签）
     db.delete(media)
     try:
@@ -671,22 +538,15 @@ def get_media_thumbnail(media_id: int, db=Depends(get_db)):
     if (not is_smb_url(media.absolute_path)) and (not os.path.exists(media.absolute_path)):
         raise HTTPException(status_code=404, detail="file not found")
     # 仅提供真实缩略图；不再回退原文件（项目现已具备稳定的视频缩略图能力）
-    thumb_path = get_or_generate_thumbnail(media)
+    thumb_path = svc_get_or_generate_thumbnail(media)
     if thumb_path is None or not thumb_path.exists():
         raise HTTPException(status_code=404, detail="thumbnail not available")
     serve_path = str(thumb_path)
 
-    guessed, _ = mimetypes.guess_type(serve_path)
-    mime = guessed or "image/jpeg"
-    stat = os.stat(serve_path)
-    headers = {
-        "Cache-Control": "public, max-age=86400, immutable",
-        "ETag": f"{int(stat.st_mtime)}-{stat.st_size}",
-        "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stat.st_mtime)),
-        "Accept-Ranges": "bytes",
-    }
     # 注意：移除自定义 Content-Disposition 以避免非 ASCII 文件名触发 latin-1 编码错误
-    return FileResponse(path=serve_path, media_type=mime, headers=headers)
+    from app.services.thumbnails_service import build_thumb_headers
+    headers = build_thumb_headers(serve_path)
+    return FileResponse(path=serve_path, media_type=headers.get("Content-Type", "image/jpeg"), headers=headers)
 
 
 @app.get("/media-resource/{media_id}")
