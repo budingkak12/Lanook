@@ -1,11 +1,9 @@
-yarn run v1.22.22
-$ pkill -f "next dev" || true && sleep 2 && next dev
    ▲ Next.js 16.0.0 (Turbopack)
    - Local:        http://localhost:3000
    - Network:      http://10.175.87.74:3000
 
  ✓ Starting...
- ✓ Ready in 695ms
+ ✓ Ready in 531ms
 i18next: languageChanged zh-CN
 i18next: initialized {
   debug: true,
@@ -71,7 +69,15 @@ i18next: initialized {
   },
   ignoreJSONStructure: true
 }
- GET / 200 in 2.7s (compile: 2.5s, render: 220ms)
-error Command failed with signal "SIGTERM".
-info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
-[?25h
+ GET / 200 in 2.4s (compile: 2.2s, render: 162ms)
+ GET / 200 in 2.1s (compile: 1955ms, render: 194ms)
+ GET / 200 in 102ms (compile: 10ms, render: 92ms)
+ GET / 200 in 80ms (compile: 44ms, render: 36ms)
+ GET / 200 in 136ms (compile: 24ms, render: 112ms)
+ ✓ Compiled in 118ms
+ ✓ Compiled in 120ms
+ ✓ Compiled in 138ms
+ GET / 200 in 174ms (compile: 112ms, render: 62ms)
+ GET / 200 in 57ms (compile: 24ms, render: 34ms)
+ GET / 200 in 48ms (compile: 19ms, render: 29ms)
+ GET / 200 in 63ms (compile: 21ms, render: 42ms)

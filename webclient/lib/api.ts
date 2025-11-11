@@ -297,12 +297,46 @@ export async function createMediaSource(request: CreateSourceRequest): Promise<M
 // 带额外元信息的创建：识别“已存在”并透出消息
 export async function createMediaSourceWithMeta(request: CreateSourceRequest): Promise<{ source: MediaSource; existed: boolean; message: string | null }>{
   const resp = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
+  if (resp.status === 409) {
+    // 冲突：父子路径重叠
+    const detail = await resp.json().catch(() => null)
+    throw Object.assign(new Error('overlap'), { name: 'OverlapError', detail })
+  }
   const ensured = await ensureOk(resp)
   const data = (await ensured.json()) as MediaSource
   const existedHeader = resp.headers.get('X-Resource-Existed') === 'true'
   const existed = (resp.status === 200) || existedHeader
   const message = resp.headers.get('X-Message') || null
   return { source: data, existed, message }
+}
+
+// 处理重叠：返回联合结果，前端可据此决定合并
+export async function createMediaSourceOrMerge(request: CreateSourceRequest): Promise<
+  | { ok: true; source: MediaSource; existed: boolean; message: string | null }
+  | { ok: false; conflict: 'overlap_parent'; parent: string }
+  | { ok: false; conflict: 'overlap_children'; children: string[] }
+> {
+  const resp = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
+  if (resp.status === 409) {
+    const j = await resp.json().catch(() => null)
+    const code = j?.detail?.code || j?.code || j?.detail
+    if (code === 'overlap_parent') {
+      const parent = j?.detail?.parent || j?.parent || ''
+      return { ok: false as const, conflict: 'overlap_parent', parent }
+    }
+    if (code === 'overlap_children') {
+      const children = j?.detail?.children || j?.children || []
+      return { ok: false as const, conflict: 'overlap_children', children }
+    }
+    // 其他409，按父冲突处理
+    return { ok: false as const, conflict: 'overlap_parent', parent: '' }
+  }
+  const ensured = await ensureOk(resp)
+  const data = (await ensured.json()) as MediaSource
+  const existedHeader = resp.headers.get('X-Resource-Existed') === 'true'
+  const existed = (resp.status === 200) || existedHeader
+  const message = resp.headers.get('X-Message') || null
+  return { ok: true as const, source: data, existed, message }
 }
 
 

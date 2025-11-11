@@ -7,6 +7,7 @@ from typing import List
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from 初始化数据库 import SessionLocal
 from app.schemas.sources import (
@@ -220,8 +221,29 @@ def create_media_source(
         p = Path(payload.rootPath).expanduser().resolve()
         if not p.exists() or not p.is_dir() or not os.access(p, os.R_OK):
             raise HTTPException(status_code=422, detail="无效目录或无读取权限")
-        # 幂等：相同 rootPath 已存在时返回 200，并跳过扫描
+        # --- 路径重叠检测：若已存在父路径或子路径，阻止重复配置 ---
         from app.db.models_extra import MediaSource as _MediaSource
+        new_path = str(p)
+        rows = (
+            db.query(_MediaSource)
+            .filter(or_(_MediaSource.status.is_(None), _MediaSource.status == "active"))
+            .filter(_MediaSource.type == "local")
+            .all()
+        )
+        def _is_parent(parent: str, child: str) -> bool:
+            if parent == child:
+                return False
+            parent = parent.rstrip("/\\") + os.sep
+            return child.startswith(parent)
+        # 已有父路径 → 拒绝添加子路径
+        for r in rows:
+            if _is_parent(r.root_path, new_path):
+                raise HTTPException(status_code=409, detail={"code": "overlap_parent", "parent": r.root_path})
+        # 新路径是父路径 → 告知已有子路径
+        children = [r.root_path for r in rows if _is_parent(new_path, r.root_path)]
+        if children:
+            raise HTTPException(status_code=409, detail={"code": "overlap_children", "children": children})
+        # 幂等：相同 rootPath 已存在时返回 200，并跳过扫描
         existing = db.query(_MediaSource).filter(_MediaSource.root_path == str(p)).first()
         if existing is not None:
             changed = False
@@ -266,6 +288,42 @@ def create_media_source(
         root_url = f"smb://{user_part}{payload.host}/{payload.share}"
         if sub:
             root_url += f"/{sub}"
+        # --- 路径重叠检测（SMB）：同 host/share 下的父子路径不允许重复配置 ---
+        from app.db.models_extra import MediaSource as _MediaSource
+        from app.services.fs_providers import parse_smb_url
+        def _split(url: str):
+            try:
+                p = parse_smb_url(url)
+                return (p.host.lower(), p.share.lower(), (p.path or '').strip('/'))
+            except Exception:
+                return ("", "", "")
+        new_host, new_share, new_sub = _split(root_url)
+        rows = (
+            db.query(_MediaSource)
+            .filter(or_(_MediaSource.status.is_(None), _MediaSource.status == "active"))
+            .filter(_MediaSource.type == "smb")
+            .all()
+        )
+        def _is_parent_sub(parent_sub: str, child_sub: str) -> bool:
+            if parent_sub == child_sub:
+                return False
+            if parent_sub == "":
+                return True  # 共享根 是 任意子路径 的父
+            parent = parent_sub.rstrip('/') + '/'
+            return child_sub.startswith(parent)
+        # 已有父路径
+        for r in rows:
+            h, s, subp = _split(r.root_path)
+            if h == new_host and s == new_share and _is_parent_sub(subp, new_sub):
+                raise HTTPException(status_code=409, detail={"code": "overlap_parent", "parent": r.root_path})
+        # 新路径为父
+        children = []
+        for r in rows:
+            h, s, subp = _split(r.root_path)
+            if h == new_host and s == new_share and _is_parent_sub(new_sub, subp):
+                children.append(r.root_path)
+        if children:
+            raise HTTPException(status_code=409, detail={"code": "overlap_children", "children": children})
         # 幂等：相同 root_url 已存在时返回 200，并跳过扫描
         from app.db.models_extra import MediaSource as _MediaSource
         existing = db.query(_MediaSource).filter(_MediaSource.root_path == root_url.rstrip("/")).first()
@@ -307,20 +365,33 @@ def list_media_sources(
 @router.delete("/media-sources/{source_id}", status_code=204)
 def remove_media_source(
     source_id: int,
+    request: Request,
     hard: bool = Query(False, description="是否立即彻底删除"),
     db: Session = Depends(get_db),
 ):
     ok = delete_source(db, source_id, hard=hard)
     if not ok:
         raise HTTPException(status_code=404, detail="not found")
+    # 删除后刷新自动扫描服务，立刻停掉对应 worker
+    try:
+        service = ensure_auto_scan_service(request.app)
+        service.refresh()
+    except Exception:
+        # 刷新失败不影响删除的返回
+        pass
     return None
 
 
 @router.post("/media-sources/{source_id}/restore", response_model=MediaSourceModel)
-def restore_media_source(source_id: int, db: Session = Depends(get_db)):
+def restore_media_source(source_id: int, request: Request, db: Session = Depends(get_db)):
     src = restore_source(db, source_id)
     if not src:
         raise HTTPException(status_code=404, detail="not found")
+    try:
+        service = ensure_auto_scan_service(request.app)
+        service.refresh()
+    except Exception:
+        pass
     return _to_media_source_model(src)
 
 

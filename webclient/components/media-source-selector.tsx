@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { validateMediaSource, createMediaSourceWithMeta, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem } from '@/lib/api'
+import { validateMediaSource, createMediaSourceOrMerge, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, getMediaSources, deleteMediaSource, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem, type CreateSourceRequest } from '@/lib/api'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 
 interface ParsedSmbPath {
   host: string
@@ -81,6 +82,13 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
   const [nasFolderContents, setNasFolderContents] = useState<NasFolderItem[]>([])
   const [nasFileContents, setNasFileContents] = useState<NasFileItem[]>([])
 
+  // 合并对话框（替代 window.confirm）
+  const [mergePrompt, setMergePrompt] = useState<{
+    parentPath: string
+    children: string[]
+    retryPayload: CreateSourceRequest
+  } | null>(null)
+
   const isNasAnonymous = nasUsername.trim() === '' && nasPassword.trim() === ''
   const currentNasPath = connectedNasPath ? (currentNasSubPath ? `${connectedNasPath}/${currentNasSubPath}` : connectedNasPath) : ''
 
@@ -146,7 +154,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         })
 
         if (validation.ok && validation.readable) {
-          const { source, existed, message } = await createMediaSourceWithMeta({
+          const result = await createMediaSourceOrMerge({
             type: 'smb',
             rootPath: validation.absPath,
             displayName: buildNasDisplayName(parsed.share, parsed.subPath),
@@ -159,17 +167,32 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             // 统一策略：初始化仅加入清单；设置页创建即扫描
             scan: mode !== 'init'
           })
-
-          onSuccess?.(source)
-
-          if (mode !== 'settings') {
-            toast({
-              title: existed ? '路径已存在' : '添加成功',
-              description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加NAS媒体来源: ${source.displayName} (扫描到 ${validation.estimatedCount} 个文件)`
-            })
+          if (!result.ok) {
+            if (result.conflict === 'overlap_parent') {
+              toast({ title: '路径冲突', description: `已存在父路径：${result.parent}，无需重复添加子目录。` })
+              return
+            }
+            if (result.conflict === 'overlap_children') {
+              setMergePrompt({
+                parentPath: validation.absPath,
+                children: result.children,
+                retryPayload: {
+                  type: 'smb', rootPath: validation.absPath, displayName: buildNasDisplayName(parsed.share, parsed.subPath),
+                  host: parsed.host, share: parsed.share, subPath: parsed.subPath || undefined,
+                  anonymous: isNasAnonymous, username: isNasAnonymous ? undefined : nasUsername.trim(), password: isNasAnonymous ? undefined : nasPassword,
+                  scan: mode !== 'init'
+                }
+              })
+              return
+            }
+          } else {
+            const { source, existed, message } = result
+            onSuccess?.(source)
+            if (mode !== 'settings') {
+              toast({ title: existed ? '路径已存在' : '添加成功', description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加NAS媒体来源: ${source.displayName} (扫描到 ${validation.estimatedCount} 个文件)` })
+            }
+            setLocalInputPath('')
           }
-          console.log('成功创建NAS媒体来源:', source)
-          setLocalInputPath('')
         } else {
           toast({
             title: "添加失败",
@@ -183,24 +206,34 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         })
 
         if (validation.ok && validation.readable) {
-          const { source, existed, message } = await createMediaSourceWithMeta({
+          const result = await createMediaSourceOrMerge({
             type: 'local',
             rootPath: validation.absPath,
             displayName: trimmedPath.split('/').pop() || trimmedPath,
             // 统一策略：初始化仅加入清单；设置页创建即扫描
             scan: mode !== 'init'
           })
-
-          onSuccess?.(source)
-
-          if (mode !== 'settings') {
-            toast({
-              title: existed ? '路径已存在' : '添加成功',
-              description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)`
-            })
+          if (!result.ok) {
+            if (result.conflict === 'overlap_parent') {
+              toast({ title: '路径冲突', description: `已存在父路径：${result.parent}，无需重复添加子目录。` })
+              return
+            }
+            if (result.conflict === 'overlap_children') {
+              setMergePrompt({
+                parentPath: validation.absPath,
+                children: result.children,
+                retryPayload: { type: 'local', rootPath: validation.absPath, displayName: trimmedPath.split('/').pop() || trimmedPath, scan: mode !== 'init' }
+              })
+              return
+            }
+          } else {
+            const { source, existed, message } = result
+            onSuccess?.(source)
+            if (mode !== 'settings') {
+              toast({ title: existed ? '路径已存在' : '添加成功', description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加媒体来源: ${source.displayName} (发现 ${validation.estimatedCount} 个文件)` })
+            }
+            setLocalInputPath('')
           }
-          console.log('成功创建媒体来源:', source)
-          setLocalInputPath('')
         } else {
           toast({
             title: "添加失败",
@@ -449,7 +482,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
       })
 
       if (validation.ok && validation.readable) {
-        const { source, existed, message } = await createMediaSourceWithMeta({
+        const result = await createMediaSourceOrMerge({
           type: 'smb',
           rootPath: validation.absPath,
           displayName: buildNasDisplayName(selectedNasShare, currentNasSubPath),
@@ -462,13 +495,30 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
           // 统一策略：初始化仅加入清单；设置页创建即扫描
           scan: mode !== 'init'
         })
-
-        onSuccess?.(source)
-        if (mode !== 'settings') {
-          toast({
-            title: existed ? '路径已存在' : '添加成功',
-            description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加NAS媒体来源: ${source.displayName}`
-          })
+        if (!result.ok) {
+          if (result.conflict === 'overlap_parent') {
+            toast({ title: '路径冲突', description: `已存在父路径：${result.parent}，无需重复添加子目录。` })
+            return
+          }
+          if (result.conflict === 'overlap_children') {
+            setMergePrompt({
+              parentPath: validation.absPath,
+              children: result.children,
+              retryPayload: {
+                type: 'smb', rootPath: validation.absPath, displayName: buildNasDisplayName(selectedNasShare, currentNasSubPath),
+                host: nasHost.trim(), share: selectedNasShare, subPath: currentNasSubPath || undefined,
+                anonymous: isNasAnonymous, username: isNasAnonymous ? undefined : nasUsername.trim(), password: isNasAnonymous ? undefined : nasPassword,
+                scan: mode !== 'init'
+              }
+            })
+            return
+          }
+        } else {
+          const { source, existed, message } = result
+          onSuccess?.(source)
+          if (mode !== 'settings') {
+            toast({ title: existed ? '路径已存在' : '添加成功', description: existed ? (message || `${source.displayName || source.rootPath}`) : `成功添加NAS媒体来源: ${source.displayName}` })
+          }
         }
       } else {
         toast({ title: "添加失败", description: validation.note || 'NAS 路径验证失败' })
@@ -873,6 +923,50 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         </div>
       </motion.div>
 
-      </div>
+      {/* 合并对话框（使用项目内置 AlertDialog 组件） */}
+      <AlertDialog open={!!mergePrompt} onOpenChange={(open) => { if (!open) setMergePrompt(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>发现已存在子路径</AlertDialogTitle>
+            <AlertDialogDescription>
+              将仅保留父路径，并移除以下子路径后再添加：
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-40 overflow-auto text-sm bg-muted/30 p-2 rounded">
+            {mergePrompt?.children.map((c) => (
+              <div key={c} className="truncate" title={c}>{c}</div>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMergePrompt(null)}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!mergePrompt) return
+                try {
+                  const sources = await getMediaSources(true)
+                  const toDelete = sources.filter(s => mergePrompt.children.includes(s.rootPath))
+                  for (const s of toDelete) {
+                    await deleteMediaSource(s.id, true)
+                  }
+                  const retry = await createMediaSourceOrMerge(mergePrompt.retryPayload)
+                  if (!retry.ok) {
+                    toast({ title: '添加失败', description: '合并后创建失败' }); setMergePrompt(null); return
+                  }
+                  toast({ title: retry.existed ? '路径已存在' : '添加成功', description: `${retry.source.displayName || retry.source.rootPath}` })
+                  onSuccess?.(retry.source)
+                } catch (e) {
+                  toast({ title: '操作失败', description: e instanceof Error ? e.message : '未知错误' })
+                } finally {
+                  setMergePrompt(null)
+                }
+              }}
+            >
+              确认合并
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+    </div>
   )
 }
