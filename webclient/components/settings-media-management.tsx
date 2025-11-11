@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { MediaSourceSelector } from '@/components/media-source-selector'
 import { MediaPathList } from '@/components/media-path-list'
-import { startScan, type MediaSource } from '@/lib/api'
+import { type MediaSource } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { HardDrive, Plus } from 'lucide-react'
 
@@ -25,25 +25,14 @@ export function SettingsMediaManagement({ className }: SettingsMediaManagementPr
   const [refreshKey, setRefreshKey] = useState(0)
   const { toast } = useToast()
 
-  // 添加源成功后立即开始扫描
+  // 添加源成功后，创建时已传 scan=true，这里不再二次触发扫描
   const handleSourceAdded = async (source: MediaSource) => {
     setShowAddSource(false)
     setRefreshKey(prev => prev + 1)
-
-    try {
-      // 立即开始扫描
-      const jobId = await startScan(source.id)
-      toast({
-        title: "添加成功并开始扫描",
-        description: `"${source.displayName || source.rootPath}" 已添加并开始后台扫描`
-      })
-    } catch (error) {
-      console.error('启动扫描失败:', error)
-      toast({
-        title: "添加成功",
-        description: `"${source.displayName || source.rootPath}" 已添加，但扫描启动失败`
-      })
-    }
+    toast({
+      title: "添加成功并开始扫描",
+      description: `"${source.displayName || source.rootPath}" 已添加并开始后台扫描`
+    })
   }
 
   return (

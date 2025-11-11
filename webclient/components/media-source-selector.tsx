@@ -155,7 +155,9 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             subPath: parsed.subPath || undefined,
             anonymous: isNasAnonymous,
             username: isNasAnonymous ? undefined : nasUsername.trim(),
-            password: isNasAnonymous ? undefined : nasPassword
+            password: isNasAnonymous ? undefined : nasPassword,
+            // 统一策略：初始化仅加入清单；设置页创建即扫描
+            scan: mode !== 'init'
           })
 
           onSuccess?.(source)
@@ -184,7 +186,9 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
           const { source, existed, message } = await createMediaSourceWithMeta({
             type: 'local',
             rootPath: validation.absPath,
-            displayName: trimmedPath.split('/').pop() || trimmedPath
+            displayName: trimmedPath.split('/').pop() || trimmedPath,
+            // 统一策略：初始化仅加入清单；设置页创建即扫描
+            scan: mode !== 'init'
           })
 
           onSuccess?.(source)
@@ -455,7 +459,8 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
           anonymous: isNasAnonymous,
           username: isNasAnonymous ? undefined : nasUsername.trim(),
           password: isNasAnonymous ? undefined : nasPassword,
-          scan: mode === 'init' ? false : undefined
+          // 统一策略：初始化仅加入清单；设置页创建即扫描
+          scan: mode !== 'init'
         })
 
         onSuccess?.(source)
