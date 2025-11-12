@@ -19,6 +19,7 @@ import time
 from typing import Optional
 
 from PIL import Image
+from PIL import ImageDraw, ImageFont
 import av  # type: ignore
 
 from 初始化数据库 import Media
@@ -155,14 +156,44 @@ def get_or_generate_thumbnail(media: Media) -> Optional[Path]:
         ok = _generate_image_thumbnail(src, dest) if media.media_type == "image" else _generate_video_thumbnail(src, dest)
         if ok and dest.exists() and dest.stat().st_size > 0:
             return dest
-        return None
+        # 若生成失败，回退到占位缩略图，保证前端总能拿到缩略图
+        _generate_placeholder_thumbnail(dest, label=("VIDEO" if media.media_type == "video" else "IMAGE"))
+        return dest if dest.exists() else None
     except Exception:
         try:
             if dest.exists():
                 dest.unlink()
         except Exception:
             pass
-        return None
+        # 异常时也给出占位缩略图
+        try:
+            _generate_placeholder_thumbnail(dest, label=("VIDEO" if media.media_type == "video" else "IMAGE"))
+            return dest if dest.exists() else None
+        except Exception:
+            return None
+
+
+def _generate_placeholder_thumbnail(dest: Path, label: str = "MEDIA") -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    W, H = MAX_THUMB_SIZE
+    img = Image.new("RGB", (W, H), color=(38, 38, 38))
+    draw = ImageDraw.Draw(img)
+    # 画一个简单的播放三角形或相片轮廓
+    if label == "VIDEO":
+        tri = [(W//3, H//4), (W//3, H*3//4), (W*2//3, H//2)]
+        draw.polygon(tri, fill=(220, 220, 220))
+    else:
+        draw.rectangle([W//4, H//4, W*3//4, H*3//4], outline=(220, 220, 220), width=4)
+        draw.line([W//4, H*3//4, W*3//4, H//4], fill=(220, 220, 220), width=3)
+    # 文本（不依赖系统字体）
+    txt = f"{label}"
+    try:
+        font = ImageFont.load_default()
+    except Exception:
+        font = None
+    tw, th = draw.textlength(txt, font=font), 12
+    draw.text(((W - tw)//2, H - th - 10), txt, fill=(200, 200, 200), font=font)
+    img.save(dest, format="JPEG", quality=85)
 
 
 def build_thumb_headers(serve_path: str) -> dict[str, str]:
@@ -176,4 +207,3 @@ def build_thumb_headers(serve_path: str) -> dict[str, str]:
         "Last-Modified": time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(st.st_mtime)),
         "Accept-Ranges": "bytes",
     }
-

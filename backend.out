@@ -44,13 +44,12 @@
   @app.on_event("startup")
 /Users/wang/Documents/mytikt/main.py:413: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead
   order: str = Query("seeded", regex="^(seeded|recent)$"),
-INFO:     Started server process [77929]
+INFO:     Started server process [80566]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 [startup] 正在清理端口 8000...
-[startup] 发现占用端口 8000 的进程: python3.12 (PID: 77890)
-[startup] 已终止进程 77890
+[startup] 端口 8000 没有被占用
 [startup] 端口清理完成
 [boot] Media App API 即将启动: http://10.175.87.74:8000  (本机: http://localhost:8000)
 [startup] 前端静态资源已托管: /Users/wang/Documents/mytikt/webclient/out
@@ -61,51 +60,341 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 [boot] Media App API 即将启动: http://10.175.87.74:8000  (本机: http://localhost:8000)
 [startup] 前端自动打开: 已禁用 (修改 main.py 中的 AUTO_OPEN_BROWSER 变量)
 [startup] 提示: 将 AUTO_OPEN_BROWSER 改为 True 可启用自动打开前端
-INFO:     10.175.87.74:52944 - "GET /media/34/thumbnail HTTP/1.1" 404 Not Found
-INFO:     10.175.87.74:54832 - "GET /media/32/thumbnail HTTP/1.1" 404 Not Found
-INFO:     10.175.87.74:55196 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:55218 - "GET /media/34/thumbnail HTTP/1.1" 404 Not Found
-INFO:     10.175.87.74:57066 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57066 - "GET /media-list?seed=5158799579248&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57066 - "GET /media-list?seed=5158799579248&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57071 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57075 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57072 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57073 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57076 - "GET /media/33/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57074 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57075 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57073 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57074 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57071 - "GET /media/30/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57076 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57072 - "GET /media/34/thumbnail HTTP/1.1" 404 Not Found
-INFO:     10.175.87.74:57075 - "GET /media/31/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57073 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57074 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57076 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57071 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57095 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57074 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57073 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57075 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57076 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57071 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57095 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57073 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57075 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57074 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57095 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57076 - "GET /media/36/thumbnail HTTP/1.1" 404 Not Found
-INFO:     10.175.87.74:57074 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57075 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57073 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57071 - "GET /media/37/thumbnail HTTP/1.1" 404 Not Found
-INFO:     10.175.87.74:57115 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57074 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57095 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
-INFO:     10.175.87.74:57075 - "GET /media/35/thumbnail HTTP/1.1" 404 Not Found
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [77929]
+INFO:     10.175.87.74:63306 - "GET /media-resource/29 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:63691 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64485 - "GET /init-status HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64485 - "GET /media-list?seed=7752944159278&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64485 - "GET /media-list?seed=7752944159278&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media-resource/27 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media-resource/22 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media-resource/29 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media-resource/19 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media-resource/17 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media-resource/20 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media-resource/8 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media-resource/12 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media-resource/26 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media-resource/11 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media-resource/4 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media-resource/1 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media-resource/10 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media-resource/28 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media-resource/13 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media-resource/23 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media-resource/9 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media-resource/14 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media-resource/7 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media-resource/3 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media-resource/5 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media-resource/2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media-resource/6 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64492 - "GET /media-resource/16 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64494 - "GET /media-resource/24 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64493 - "GET /media-resource/15 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64496 - "GET /media-resource/25 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64495 - "GET /media-resource/18 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64497 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64604 - "GET /media-resource/8 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64603 - "GET /media-resource/17 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64605 - "GET /media-resource/11 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64601 - "GET /media-resource/27 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64602 - "GET /media-resource/19 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64600 - "GET /media-resource/22 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64604 - "GET /media-resource/20 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64603 - "GET /media-resource/26 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64601 - "GET /media-resource/12 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64605 - "GET /media-resource/4 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64600 - "GET /media-resource/1 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64602 - "GET /media-resource/10 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64604 - "GET /media-resource/13 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64603 - "GET /media-resource/23 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64601 - "GET /media-resource/9 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64605 - "GET /media-resource/7 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64602 - "GET /media-resource/3 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64600 - "GET /media-resource/14 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64603 - "GET /media-resource/5 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64604 - "GET /media-resource/2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64601 - "GET /media-resource/6 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64602 - "GET /media-resource/24 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64605 - "GET /media-resource/16 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64600 - "GET /media-resource/15 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64603 - "GET /media-resource/25 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64604 - "GET /media-resource/18 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64600 - "GET /media-resource/29 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64601 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64602 - "GET /media-resource/28 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64600 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64601 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64602 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64699 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64698 - "GET /settings/auto-scan HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64700 - "GET /settings/auto-scan HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64744 - "OPTIONS /settings/reset-initialization HTTP/1.1" 200 OK
+完全清除数据库完成：
+  - 媒体文件: 29 条
+  - 媒体标签: 0 条
+  - 媒体来源: 1 条
+  - 扫描任务: 1 条
+  - 媒体根目录设置: 1 条
+  - 自动扫描设置: 1 条
+总计删除 33 条记录
+INFO:     10.175.87.74:64744 - "POST /settings/reset-initialization HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64769 - "GET /init-status HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64769 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "OPTIONS /network/discover HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "POST /network/discover HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "POST /setup/source/validate HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "OPTIONS /network/browse HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "POST /network/browse HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "POST /setup/source/validate HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "OPTIONS /setup/source HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64793 - "POST /setup/source HTTP/1.1" 201 Created
+INFO:     10.175.87.74:64815 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64815 - "OPTIONS /media-root HTTP/1.1" 200 OK
+正在填充初始数据...
+  - 添加默认设置: 'auto_scan_enabled' = '1'
+✅ 初始数据填充完毕。
+[media-root] 首批导入 29 个媒体文件。
+[auto-scan] 手动触发SMB路径扫描: smb://testuser@10.175.87.74/PublicShare
+[auto-scan] 手动触发SMB路径扫描: smb://testuser@10.175.87.74/PublicShare
+INFO:     10.175.87.74:64815 - "POST /media-root HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64815 - "GET /media-list?seed=1511092722495&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64815 - "GET /media-list?seed=1511092722495&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64815 - "GET /init-status HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media-resource/19 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media-resource/27 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media-resource/2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media-resource/16 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media-resource/8 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media-resource/11 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media-resource/26 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media-resource/12 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media-resource/14 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media-resource/5 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media-resource/23 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media-resource/15 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media-resource/10 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media-resource/22 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media-resource/9 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media-resource/28 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media-resource/6 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media-resource/17 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media-resource/25 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media-resource/20 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media-resource/24 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media-resource/1 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /media-resource/18 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64833 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64829 - "GET /media-resource/7 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64834 - "GET /media-resource/13 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64830 - "GET /media-resource/3 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64831 - "GET /media-resource/4 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /media-resource/29 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:64832 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET / HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /_next/static/chunks/8cc8100707a7d6f8.css HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /_next/static/chunks/a8559513cedcb3d9.css HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /_next/static/chunks/60004eaceb7eb497.css HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /_next/static/media/797e433ab948586e-s.p.dbea232f.woff2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /_next/static/chunks/d45d58068e9d3329.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /_next/static/chunks/9749aaa8418f14db.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /_next/static/chunks/turbopack-935940787ebbaa2e.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /_next/static/chunks/112f346e31f991df.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65208 - "GET /_next/static/chunks/7a4a1d89b022c184.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /_next/static/chunks/5c75fa7e5c01f227.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /_next/static/chunks/cbf1483cf4dc9914.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /_next/static/chunks/856baa820d82760f.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /_next/static/chunks/3fbf5107bc1d90ed.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /_next/static/chunks/42879de7b8087bc9.js HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /init-status HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /_vercel/insights/script.js HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:65199 - "GET /media-list?seed=1436230788503&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65208 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /media-list?seed=1436230788503&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65208 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /favicon.ico?favicon.0b3bf435.ico HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65208 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65208 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65206 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65205 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65207 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65208 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65204 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65199 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65297 - "GET /media-resource/4 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65294 - "GET /media-resource/29 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65299 - "GET /media-resource/24 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65298 - "GET /media-resource/9 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65296 - "GET /media-resource/6 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65295 - "GET /media-resource/20 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65294 - "GET /media-resource/22 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65298 - "GET /media-resource/5 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65297 - "GET /media-resource/14 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65295 - "GET /media-resource/26 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65296 - "GET /media-resource/8 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65299 - "GET /media-resource/3 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65299 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65298 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65294 - "GET /media-resource/16 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65295 - "GET /media-resource/17 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65296 - "GET /media-resource/11 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65297 - "GET /media-resource/10 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65299 - "GET /media-resource/12 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65297 - "GET /media-resource/27 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65298 - "GET /media-resource/28 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65294 - "GET /media-resource/23 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65296 - "GET /media-resource/19 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65295 - "GET /media-resource/7 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65299 - "GET /media-resource/18 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65298 - "GET /media-resource/13 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65297 - "GET /media-resource/1 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65294 - "GET /media-resource/2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65295 - "GET /media-resource/15 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:65296 - "GET /media-resource/25 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49315 - "GET /init-status HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49315 - "GET /media-list?seed=1392409914003&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49315 - "GET /media-list?seed=1392409914003&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49316 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49317 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49318 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49320 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49319 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49321 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49318 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49317 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49320 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49319 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49316 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49318 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49317 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49320 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49319 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49316 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49321 - "GET /media/29/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:49317 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49319 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49318 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49316 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49320 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49361 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49318 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49319 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49317 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49320 - "GET /media/28/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:49316 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49361 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49403 - "GET /media-resource/25 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49404 - "GET /media-resource/22 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49407 - "GET /media-resource/10 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49405 - "GET /media-resource/3 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49406 - "GET /media-resource/21 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49408 - "GET /media-resource/4 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49404 - "GET /media-resource/27 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49407 - "GET /media-resource/14 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49405 - "GET /media-resource/1 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49406 - "GET /media-resource/8 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49403 - "GET /media-resource/16 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49408 - "GET /media-resource/29 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49407 - "GET /media-resource/20 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49405 - "GET /media-resource/15 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49404 - "GET /media-resource/11 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49406 - "GET /media-resource/23 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49408 - "GET /media-resource/2 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49403 - "GET /media-resource/19 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49405 - "GET /media-resource/18 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49407 - "GET /media-resource/5 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49404 - "GET /media-resource/26 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49408 - "GET /media-resource/13 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49403 - "GET /media-resource/17 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49406 - "GET /media-resource/7 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49408 - "GET /media-resource/6 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49407 - "GET /media-resource/12 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49404 - "GET /media-resource/28 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49405 - "GET /media-resource/9 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49406 - "GET /media-resource/24 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49403 - "GET /media-resource/22 HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49408 - "GET /file.svg HTTP/1.1" 200 OK
+INFO:     10.175.87.74:49407 - "GET /media-resource/3 HTTP/1.1" 200 OK

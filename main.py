@@ -555,7 +555,7 @@ def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
     if not media:
         raise HTTPException(status_code=404, detail="media not found")
     # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
-    if not media.absolute_path or not isinstance(media.absolute_path, str) or not os.path.exists(media.absolute_path):
+    if not media.absolute_path or not isinstance(media.absolute_path, str):
         raise HTTPException(status_code=404, detail="file not found")
     # 内容类型自动判定，回退到基于 media_type 的默认值
     guessed, _ = mimetypes.guess_type(media.absolute_path if not is_smb_url(media.absolute_path) else os.path.basename(media.absolute_path))
@@ -569,6 +569,9 @@ def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
         etag = f"{mtime}-{size}"
     else:
         file_path = media.absolute_path
+        # 本地文件必须存在
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="file not found")
         stat = os.stat(file_path)
         file_size = stat.st_size
         etag = f"{int(stat.st_mtime)}-{stat.st_size}"
