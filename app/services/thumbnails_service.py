@@ -88,37 +88,128 @@ def _extract_frame_to_thumb(container, dest: Path, target_seconds: float) -> boo
         if video_stream is None:
             return False
         video_stream.thread_type = "AUTO"
-        seek_pts = None
-        if video_stream.time_base:
-            seek_pts = int(max(target_seconds / float(video_stream.time_base), 0))
-        if seek_pts and seek_pts > 0:
+
+        # 多时间点尝试，兼容关键帧太靠前/靠后或 moov 位置差异
+        candidates = [target_seconds, 0.5, 2.5, 5.0, 10.0, 20.0, 30.0, 60.0]
+        for ts in candidates:
             try:
-                container.seek(seek_pts, stream=video_stream, any_frame=False, backward=True)
+                if video_stream.time_base:
+                    seek_pts = int(max(ts / float(video_stream.time_base), 0))
+                else:
+                    seek_pts = None
+                if seek_pts is not None and seek_pts > 0:
+                    try:
+                        container.seek(seek_pts, stream=video_stream, any_frame=False, backward=True)
+                    except av.AVError:
+                        container.seek(0)
+                else:
+                    container.seek(0)
+
+                frame = None
+                for decoded in container.decode(video_stream):
+                    frame = decoded
+                    break
+                if frame is None:
+                    continue
+                pil = frame.to_image()
+                _save_image_thumbnail(pil, dest)
+                return True
             except av.AVError:
-                container.seek(0)
-        frame = None
-        for decoded in container.decode(video_stream):
-            frame = decoded
-            break
-        if frame is None:
-            return False
-        pil = frame.to_image()
-        _save_image_thumbnail(pil, dest)
-        return True
+                continue
+        return False
     except Exception:
         return False
 
 
 def _generate_video_thumbnail(src: str, dest: Path, target_seconds: float = 1.0) -> bool:
+    """为视频生成缩略图。
+
+    关键修复：对 SMB 源不再整文件下载。改为“渐进式”读取：
+    - 先读前若干 MB 到临时文件尝试解码首帧；
+    - 若失败再追加更多数据，直到达到字节/时间上限；
+    - 仍失败时返回 False（上层会生成占位缩略图）。
+    这样可避免首页等待整段大视频导致缩略图长时间缺失。
+    """
     try:
         if is_smb_url(src):
-            import tempfile
+            import tempfile, time as _time
+
+            # 策略：构造稀疏临时文件，只拉取“文件头+文件尾”，优先拿到 moov（尾部）和首批帧（头部），大幅减少下载量。
+            HEAD_INIT = int(os.environ.get("MEDIAAPP_SMB_THUMB_HEAD_INIT", str(4 * 1024 * 1024)))   # 4MB
+            TAIL_INIT = int(os.environ.get("MEDIAAPP_SMB_THUMB_TAIL_INIT", str(4 * 1024 * 1024)))   # 4MB
+            INCREMENT = int(os.environ.get("MEDIAAPP_SMB_THUMB_INCREMENT", str(4 * 1024 * 1024)))   # 4MB
+            MAX_BYTES = int(os.environ.get("MEDIAAPP_SMB_THUMB_MAX_BYTES", str(256 * 1024 * 1024))) # 256MB
+            TIMEOUT = float(os.environ.get("MEDIAAPP_SMB_THUMB_TIMEOUT_SEC", "45.0"))               # 45s
+
+            start_ts = _time.time()
+            mtime, size = stat_url(src)
+            if size <= 0:
+                return False
+
+            head = min(HEAD_INIT, size)
+            tail = min(TAIL_INIT, size - head) if size > head else 0
+
+            def try_decode(temp_path: str) -> bool:
+                try:
+                    container = av.open(temp_path)
+                except av.AVError:
+                    return False
+                try:
+                    return _extract_frame_to_thumb(container, dest, target_seconds)
+                finally:
+                    try:
+                        container.close()
+                    except Exception:
+                        pass
+
             with tempfile.NamedTemporaryFile(suffix=".video", delete=True) as tf:
-                for chunk in iter_bytes(src, 0, None, 1024 * 1024):
-                    tf.write(chunk)
-                tf.flush()
-                container = av.open(tf.name)
-                return _extract_frame_to_thumb(container, dest, target_seconds)
+                # 预分配稀疏文件大小
+                try:
+                    tf.truncate(size)
+                except Exception:
+                    pass
+
+                def write_range(offset: int, data_iter):
+                    tf.seek(offset)
+                    total = 0
+                    for chunk in data_iter:
+                        tf.write(chunk)
+                        total += len(chunk)
+                    tf.flush()
+                    return total
+
+                downloaded = 0
+
+                # 先拉尾部（moov 常在尾部）
+                if tail > 0:
+                    tail_start = max(size - tail, 0)
+                    downloaded += write_range(tail_start, iter_bytes(src, tail_start, tail, max(1024 * 1024, INCREMENT)))
+
+                # 再拉头部
+                if head > 0:
+                    downloaded += write_range(0, iter_bytes(src, 0, head, max(1024 * 1024, INCREMENT)))
+
+                if try_decode(tf.name):
+                    return True
+
+                # 逐步扩大 head/tail，直到成功或达到上限/超时
+                while downloaded < MAX_BYTES and (_time.time() - start_ts) < TIMEOUT and (head + tail) < size:
+                    expand_head = min(INCREMENT, size - (head + tail))
+                    expand_tail = min(INCREMENT, size - (head + tail) - expand_head)
+
+                    if expand_tail > 0:
+                        new_tail_start = max(size - (tail + expand_tail), 0)
+                        downloaded += write_range(new_tail_start, iter_bytes(src, new_tail_start, expand_tail, max(1024 * 1024, INCREMENT)))
+                        tail += expand_tail
+
+                    if expand_head > 0:
+                        downloaded += write_range(head, iter_bytes(src, head, expand_head, max(1024 * 1024, INCREMENT)))
+                        head += expand_head
+
+                    if try_decode(tf.name):
+                        return True
+
+                return False
         else:
             with av.open(src) as container:
                 return _extract_frame_to_thumb(container, dest, target_seconds)
@@ -127,7 +218,7 @@ def _generate_video_thumbnail(src: str, dest: Path, target_seconds: float = 1.0)
 
 
 def get_or_generate_thumbnail(media: Media) -> Optional[Path]:
-    """生成并返回缩略图路径；失败返回 None。
+    """生成并返回缩略图路径；失败返回 None（不再生成占位图）。
 
     - 图片：等比缩放到不超过 480x480
     - 视频：抽帧（默认 1s 处）
@@ -156,21 +247,21 @@ def get_or_generate_thumbnail(media: Media) -> Optional[Path]:
         ok = _generate_image_thumbnail(src, dest) if media.media_type == "image" else _generate_video_thumbnail(src, dest)
         if ok and dest.exists() and dest.stat().st_size > 0:
             return dest
-        # 若生成失败，回退到占位缩略图，保证前端总能拿到缩略图
-        _generate_placeholder_thumbnail(dest, label=("VIDEO" if media.media_type == "video" else "IMAGE"))
-        return dest if dest.exists() else None
-    except Exception:
-        try:
-            if dest.exists():
+        # 不再生成占位图：失败直接返回 None
+        if dest.exists():
+            try:
                 dest.unlink()
-        except Exception:
-            pass
-        # 异常时也给出占位缩略图
-        try:
-            _generate_placeholder_thumbnail(dest, label=("VIDEO" if media.media_type == "video" else "IMAGE"))
-            return dest if dest.exists() else None
-        except Exception:
-            return None
+            except Exception:
+                pass
+        return None
+    except Exception:
+        # 出错也不生成占位图，直接返回 None
+        if dest.exists():
+            try:
+                dest.unlink()
+            except Exception:
+                pass
+        return None
 
 
 def _generate_placeholder_thumbnail(dest: Path, label: str = "MEDIA") -> None:
