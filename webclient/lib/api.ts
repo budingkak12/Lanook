@@ -307,7 +307,9 @@ export async function validateMediaSource(request: SourceValidationRequest): Pro
 export async function createMediaSource(request: CreateSourceRequest): Promise<MediaSource> {
   const response = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
   const ensured = await ensureOk(response)
-  return (await ensured.json()) as MediaSource
+  const data = (await ensured.json()) as MediaSource
+  invalidateMediaSourcesCache()
+  return data
 }
 
 // 带额外元信息的创建：识别"已存在"并透出消息
@@ -323,6 +325,7 @@ export async function createMediaSourceWithMeta(request: CreateSourceRequest): P
   const existedHeader = resp.headers.get('X-Resource-Existed') === 'true'
   const existed = (resp.status === 200) || existedHeader
   const message = resp.headers.get('X-Message') || null
+  invalidateMediaSourcesCache()
   return { source: data, existed, message }
 }
 
@@ -352,6 +355,7 @@ export async function createMediaSourceOrMerge(request: CreateSourceRequest): Pr
   const existedHeader = resp.headers.get('X-Resource-Existed') === 'true'
   const existed = (resp.status === 200) || existedHeader
   const message = resp.headers.get('X-Message') || null
+  invalidateMediaSourcesCache()
   return { ok: true as const, source: data, existed, message }
 }
 
@@ -360,21 +364,50 @@ export async function createMediaSourceOrMerge(request: CreateSourceRequest): Pr
 export async function deleteMediaSource(id: number, hard = false): Promise<void> {
   const response = await apiFetch(`/media-sources/${id}?hard=${hard}`, { method: "DELETE" })
   await ensureOk(response)
+  invalidateMediaSourcesCache()
 }
 
 // 恢复媒体来源
 export async function restoreMediaSource(id: number): Promise<MediaSource> {
   const response = await apiFetch(`/media-sources/${id}/restore`, { method: "POST" })
   const ensured = await ensureOk(response)
-  return (await ensured.json()) as MediaSource
+  const data = (await ensured.json()) as MediaSource
+  invalidateMediaSourcesCache()
+  return data
 }
 
 // 获取媒体来源列表（支持包含已停用的来源）
 // 针对不同 includeInactive 维度做独立缓存
 const cachedMediaSources: Record<string, MediaSource[] | null> = {}
 const fetchingMediaSources: Record<string, Promise<MediaSource[]> | null> = {}
-export async function getMediaSources(includeInactive = false): Promise<MediaSource[]> {
+
+export function invalidateMediaSourcesCache(includeInactive?: boolean) {
+  const invalidateKey = (key: string) => {
+    cachedMediaSources[key] = null
+    fetchingMediaSources[key] = null
+  }
+
+  if (typeof includeInactive === 'boolean') {
+    invalidateKey(includeInactive ? '1' : '0')
+    return
+  }
+
+  invalidateKey('0')
+  invalidateKey('1')
+}
+interface GetMediaSourceOptions {
+  force?: boolean
+}
+
+export async function getMediaSources(includeInactive = false, options?: GetMediaSourceOptions): Promise<MediaSource[]> {
   const key = includeInactive ? "1" : "0"
+  const force = options?.force === true
+
+  if (force) {
+    cachedMediaSources[key] = null
+    fetchingMediaSources[key] = null
+  }
+
   if (cachedMediaSources[key]) return cachedMediaSources[key] as MediaSource[]
   if (fetchingMediaSources[key]) return fetchingMediaSources[key] as Promise<MediaSource[]>
   fetchingMediaSources[key] = (async () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { getMediaSources, deleteMediaSource, type MediaSource } from '@/lib/api'
@@ -18,14 +18,21 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
   const [selectedSource, setSelectedSource] = useState<MediaSource | null>(null)
   const { toast } = useToast()
 
+  const hasLoadedRef = useRef(false)
+
   // 加载媒体路径清单
   useEffect(() => {
+    if (hasLoadedRef.current) {
+      return
+    }
+    hasLoadedRef.current = true
+
     const loadMediaSources = async () => {
       try {
         setIsLoading(true)
         console.log('正在加载媒体路径清单...')
         // 只加载活跃的媒体源，已停用的不会显示
-        const sources = await getMediaSources(false)
+        const sources = await getMediaSources(false, { force: true })
         console.log('成功加载媒体路径清单:', sources)
         setMediaSources(sources)
       } catch (error) {
