@@ -598,3 +598,143 @@ i18next: initialized {
   ignoreJSONStructure: true
 }
  GET / 200 in 328ms (compile: 99ms, render: 229ms)
+ ✓ Compiled in 49ms
+ GET / 200 in 45ms (compile: 11ms, render: 34ms)
+ GET /?forceInit=true 200 in 42ms (compile: 11ms, render: 31ms)
+ GET /?forceInit=true 200 in 341ms (compile: 18ms, render: 324ms)
+ GET /?forceInit=true 200 in 65ms (compile: 33ms, render: 32ms)
+ ✓ Compiled in 73ms
+i18next: languageChanged zh-CN
+i18next: initialized {
+  debug: true,
+  initAsync: true,
+  ns: [ 'translation' ],
+  defaultNS: [ 'translation' ],
+  fallbackLng: [ 'zh-CN' ],
+  fallbackNS: false,
+  supportedLngs: false,
+  nonExplicitSupportedLngs: false,
+  load: 'all',
+  preload: false,
+  simplifyPluralSuffix: true,
+  keySeparator: '.',
+  nsSeparator: ':',
+  pluralSeparator: '_',
+  contextSeparator: '_',
+  partialBundledLanguages: false,
+  saveMissing: false,
+  updateMissing: false,
+  saveMissingTo: 'fallback',
+  saveMissingPlurals: true,
+  missingKeyHandler: false,
+  missingInterpolationHandler: false,
+  postProcess: false,
+  postProcessPassResolved: false,
+  returnNull: false,
+  returnEmptyString: true,
+  returnObjects: false,
+  joinArrays: false,
+  returnedObjectHandler: false,
+  parseMissingKeyHandler: false,
+  appendNamespaceToMissingKey: false,
+  appendNamespaceToCIMode: false,
+  overloadTranslationOptionHandler: [Function: overloadTranslationOptionHandler],
+  interpolation: {
+    escapeValue: false,
+    format: [Function: bound format],
+    prefix: '{{',
+    suffix: '}}',
+    formatSeparator: ',',
+    unescapePrefix: '-',
+    nestingPrefix: '$t(',
+    nestingSuffix: ')',
+    nestingOptionsSeparator: ',',
+    maxReplaces: 1000,
+    skipOnVariables: true
+  },
+  cacheInBuiltFormats: true,
+  resources: {
+    'zh-CN': { translation: [Object] },
+    'en-US': { translation: [Object] }
+  },
+  detection: {
+    order: [ 'localStorage', 'navigator', 'htmlTag' ],
+    caches: [ 'localStorage' ],
+    lookupQuerystring: 'lng',
+    lookupCookie: 'i18next',
+    lookupLocalStorage: 'i18nextLng',
+    lookupSessionStorage: 'i18nextLng',
+    excludeCacheFor: [ 'cimode' ],
+    convertDetectedLanguage: [Function: convertDetectedLanguage]
+  },
+  ignoreJSONStructure: true
+}
+ GET /?forceInit=true 200 in 242ms (compile: 81ms, render: 161ms)
+ ✓ Compiled in 49ms
+ ✓ Compiled in 43ms
+i18next: languageChanged zh-CN
+i18next: initialized {
+  debug: true,
+  initAsync: true,
+  ns: [ 'translation' ],
+  defaultNS: [ 'translation' ],
+  fallbackLng: [ 'zh-CN' ],
+  fallbackNS: false,
+  supportedLngs: false,
+  nonExplicitSupportedLngs: false,
+  load: 'all',
+  preload: false,
+  simplifyPluralSuffix: true,
+  keySeparator: '.',
+  nsSeparator: ':',
+  pluralSeparator: '_',
+  contextSeparator: '_',
+  partialBundledLanguages: false,
+  saveMissing: false,
+  updateMissing: false,
+  saveMissingTo: 'fallback',
+  saveMissingPlurals: true,
+  missingKeyHandler: false,
+  missingInterpolationHandler: false,
+  postProcess: false,
+  postProcessPassResolved: false,
+  returnNull: false,
+  returnEmptyString: true,
+  returnObjects: false,
+  joinArrays: false,
+  returnedObjectHandler: false,
+  parseMissingKeyHandler: false,
+  appendNamespaceToMissingKey: false,
+  appendNamespaceToCIMode: false,
+  overloadTranslationOptionHandler: [Function: overloadTranslationOptionHandler],
+  interpolation: {
+    escapeValue: false,
+    format: [Function: bound format],
+    prefix: '{{',
+    suffix: '}}',
+    formatSeparator: ',',
+    unescapePrefix: '-',
+    nestingPrefix: '$t(',
+    nestingSuffix: ')',
+    nestingOptionsSeparator: ',',
+    maxReplaces: 1000,
+    skipOnVariables: true
+  },
+  cacheInBuiltFormats: true,
+  resources: {
+    'zh-CN': { translation: [Object] },
+    'en-US': { translation: [Object] }
+  },
+  detection: {
+    order: [ 'localStorage', 'navigator', 'htmlTag' ],
+    caches: [ 'localStorage' ],
+    lookupQuerystring: 'lng',
+    lookupCookie: 'i18next',
+    lookupLocalStorage: 'i18nextLng',
+    lookupSessionStorage: 'i18nextLng',
+    excludeCacheFor: [ 'cimode' ],
+    convertDetectedLanguage: [Function: convertDetectedLanguage]
+  },
+  ignoreJSONStructure: true
+}
+ GET /?forceInit=true 200 in 237ms (compile: 80ms, render: 157ms)

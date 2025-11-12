@@ -18,7 +18,8 @@ function getApiBase(): string {
     const port = window.location.port
 
     if (DEV_HOSTS.has(host)) {
-      cachedApiBase = "http://localhost:8000"
+      // 开发环境直接指向后端服务器
+      cachedApiBase = "http://10.175.87.74:8000"
       return cachedApiBase
     }
 
@@ -41,6 +42,7 @@ export function resolveApiUrl(path: string): string {
 
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = resolveApiUrl(path)
+  console.log(`API请求: ${url}`)
   return fetch(url, init)
 }
 
@@ -377,11 +379,16 @@ export async function getMediaSources(includeInactive = false): Promise<MediaSou
   if (fetchingMediaSources[key]) return fetchingMediaSources[key] as Promise<MediaSource[]>
   fetchingMediaSources[key] = (async () => {
     try {
+      console.log(`正在请求媒体来源列表: /media-sources?include_inactive=${includeInactive}`)
       const response = await apiFetch(`/media-sources?include_inactive=${includeInactive}`)
       const ensured = await ensureOk(response)
       const data = (await ensured.json()) as MediaSource[]
+      console.log('成功获取媒体来源列表:', data)
       cachedMediaSources[key] = data
       return data
+    } catch (error) {
+      console.error('获取媒体来源列表失败:', error)
+      throw error
     } finally {
       fetchingMediaSources[key] = null
     }

@@ -23,11 +23,17 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
     const loadMediaSources = async () => {
       try {
         setIsLoading(true)
+        console.log('正在加载媒体路径清单...')
         // 只加载活跃的媒体源，已停用的不会显示
         const sources = await getMediaSources(false)
+        console.log('成功加载媒体路径清单:', sources)
         setMediaSources(sources)
       } catch (error) {
         console.error('加载媒体路径清单失败:', error)
+        toast({
+          title: "加载失败",
+          description: error instanceof Error ? error.message : "无法连接到服务器",
+        })
       } finally {
         setIsLoading(false)
       }

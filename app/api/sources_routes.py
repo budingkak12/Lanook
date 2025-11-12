@@ -321,7 +321,8 @@ def create_media_source(
                 db.refresh(existing)
             response.status_code = 200
             response.headers["X-Resource-Existed"] = "true"
-            response.headers["X-Message"] = "路径已存在"
+            # HTTP 头需为 latin-1，可使用 ASCII 提示，中文放到返回体里会更安全
+            response.headers["X-Message"] = "exists"
             return _to_media_source_model(existing)
         # 新建来源
         src = create_source(db, type_=payload.type.value, root_path=str(p), display_name=payload.displayName)
@@ -408,7 +409,7 @@ def create_media_source(
                 db.refresh(existing)
             response.status_code = 200
             response.headers["X-Resource-Existed"] = "true"
-            response.headers["X-Message"] = "路径已存在"
+            response.headers["X-Message"] = "exists"
             return _to_media_source_model(existing)
         # 新建来源
         src = create_source(db, type_=payload.type.value, root_path=root_url, display_name=payload.displayName)
