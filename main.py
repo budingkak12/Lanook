@@ -20,6 +20,7 @@ from app.api.task_routes import router as task_router
 from app.api.media_routes import router as media_router
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
+from app.services.asset_pipeline import ensure_pipeline_started, shutdown_pipeline
 from app.services.auto_scan_service import ensure_auto_scan_service, get_auto_scan_enabled
 
 
@@ -146,6 +147,15 @@ def _init_auto_scan_service():
         print("[startup] 自动扫描初始化失败:", exc)
 
 
+@app.on_event("startup")
+def _init_asset_pipeline():
+    try:
+        ensure_pipeline_started()
+        print("[startup] 资产处理流水线已启动。")
+    except Exception as exc:
+        print("[startup] 资产流水线启动失败:", exc)
+
+
 @app.on_event("shutdown")
 def _shutdown_auto_scan():
     try:
@@ -153,6 +163,14 @@ def _shutdown_auto_scan():
         service.stop()
     except Exception as exc:
         print("[shutdown] 自动扫描停止失败:", exc)
+
+
+@app.on_event("shutdown")
+def _shutdown_asset_pipeline():
+    try:
+        shutdown_pipeline()
+    except Exception as exc:
+        print("[shutdown] 资产流水线停止失败:", exc)
 
 
 @app.on_event("startup")

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 
 # 复用现有 Base/engine
 from 初始化数据库 import Base
@@ -30,3 +30,24 @@ class ScanJob(Base):
     message = Column(String, nullable=True)
     started_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
+
+
+class AssetArtifact(Base):
+    __tablename__ = "asset_artifacts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    media_id = Column(Integer, ForeignKey("media.id"), nullable=False, index=True)
+    artifact_type = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="queued")  # queued/processing/ready/failed
+    priority = Column(Integer, nullable=False, default=100)
+    file_path = Column(String, nullable=True)
+    checksum = Column(String, nullable=True)
+    extra_json = Column(Text, nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    queued_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
+
+    __table_args__ = (UniqueConstraint("media_id", "artifact_type", name="uq_media_artifact"),)

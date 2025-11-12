@@ -14,6 +14,7 @@ from sqlalchemy.orm import Query, Session
 from 初始化数据库 import Media, MediaTag, TagDefinition
 from app.db.models_extra import MediaSource
 from app.schemas.media import DeleteBatchResp, FailedItemModel, MediaItem, PageResponse
+from app.services.asset_pipeline import AssetArtifactStatus, request_thumbnail_artifact
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from app.services.deletion_service import delete_media_record_and_files
 from app.services.exceptions import (
@@ -30,7 +31,7 @@ from app.services.exceptions import (
     ThumbnailUnavailableError,
 )
 from app.services.fs_providers import is_smb_url, iter_bytes, stat_url
-from app.services.thumbnails_service import build_thumb_headers, get_or_generate_thumbnail
+from app.services.thumbnails_service import build_thumb_headers
 
 
 @dataclass
@@ -302,9 +303,10 @@ def get_thumbnail_payload(db: Session, *, media_id: int) -> ThumbnailPayload:
     media = _require_media(db, media_id)
     if (not is_smb_url(media.absolute_path)) and (not os.path.exists(media.absolute_path)):
         raise FileNotFoundOnDiskError("file not found")
-    thumb_path = get_or_generate_thumbnail(media)
-    if thumb_path is None or not thumb_path.exists():
-        raise ThumbnailUnavailableError("thumbnail not available")
+    result = request_thumbnail_artifact(media, db)
+    if result.status != AssetArtifactStatus.READY or not result.path:
+        raise ThumbnailUnavailableError(result.detail or "thumbnail not available")
+    thumb_path = result.path
     headers = build_thumb_headers(str(thumb_path))
     media_type = headers.get("Content-Type", "image/jpeg")
     return ThumbnailPayload(path=str(thumb_path), media_type=media_type, headers=headers)

@@ -43,6 +43,30 @@ def thumb_path_for(media: Media) -> Path:
     return THUMBNAILS_DIR / f"{media.id}.jpg"
 
 
+def resolve_cached_thumbnail(media: Media) -> Optional[Path]:
+    """在不触发生成的情况下返回可用的缩略图路径。"""
+    if not media.absolute_path or not isinstance(media.absolute_path, str):
+        return None
+
+    dest = thumb_path_for(media)
+    if not dest.exists():
+        return None
+
+    if is_smb_url(media.absolute_path):
+        try:
+            mtime, _ = stat_url(media.absolute_path)
+            th_stat = os.stat(dest)
+        except Exception:
+            return None
+        if th_stat.st_mtime >= mtime and th_stat.st_size >= 2000:
+            return dest
+        return None
+
+    if _should_regenerate_local(media.absolute_path, dest):
+        return None
+    return dest
+
+
 def _should_regenerate_local(src_path: str, thumb_path: Path) -> bool:
     try:
         src_stat = os.stat(src_path)
