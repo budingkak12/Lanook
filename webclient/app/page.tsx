@@ -191,7 +191,8 @@ export default function Home() {
           id="main-content"
         >
           <div className="w-full h-full flex flex-col overflow-hidden">
-            {activeView === "feed" && (
+            {/* 保持四个工作台常驻，通过隐藏显示切换，避免卸载导致重新请求 */}
+            <div className={activeView === "feed" ? "h-full" : "hidden h-full"}>
               <MediaCollectionView
                 collectionRef={feedCollectionRef}
                 className="h-full"
@@ -204,24 +205,16 @@ export default function Home() {
                   />
                 )}
               />
-            )}
-            {activeView === "albums" && (
-              <div className="h-full">
-                <AlbumsView />
-              </div>
-            )}
-            {activeView === "search" && (
-              <div className="h-full">
-                <SearchView
-                  onMediaClick={handleSearchMediaClick}
-                />
-              </div>
-            )}
-            {activeView === "settings" && (
-              <div className="h-full">
-                <SettingsView />
-              </div>
-            )}
+            </div>
+            <div className={activeView === "albums" ? "h-full" : "hidden h-full"}>
+              <AlbumsView />
+            </div>
+            <div className={activeView === "search" ? "h-full" : "hidden h-full"}>
+              <SearchView onMediaClick={handleSearchMediaClick} />
+            </div>
+            <div className={activeView === "settings" ? "h-full" : "hidden h-full"}>
+              <SettingsView />
+            </div>
           </div>
         </main>
       </div>
