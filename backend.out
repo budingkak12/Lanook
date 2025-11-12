@@ -1,56 +1,58 @@
 /Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fs/__init__.py:4: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   __import__("pkg_resources").declare_namespace(__name__)  # type: ignore
-/Users/wang/Documents/mytikt/main.py:136: DeprecationWarning: 
+/Users/wang/Documents/mytikt/main.py:139: DeprecationWarning: 
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:183: DeprecationWarning: 
+/Users/wang/Documents/mytikt/main.py:186: DeprecationWarning: 
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:203: DeprecationWarning: 
+/Users/wang/Documents/mytikt/main.py:206: DeprecationWarning: 
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:230: DeprecationWarning: 
+/Users/wang/Documents/mytikt/main.py:233: DeprecationWarning: 
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:242: DeprecationWarning: 
+/Users/wang/Documents/mytikt/main.py:245: DeprecationWarning: 
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("shutdown")
-/Users/wang/Documents/mytikt/main.py:251: DeprecationWarning: 
+/Users/wang/Documents/mytikt/main.py:254: DeprecationWarning: 
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:410: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+/Users/wang/Documents/mytikt/main.py:413: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead
   order: str = Query("seeded", regex="^(seeded|recent)$"),
+INFO:     Started server process [77929]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 [startup] 正在清理端口 8000...
-[startup] 发现占用端口 8000 的进程: python3.12 (PID: 63577)
-[startup] 已终止进程 63577
+[startup] 发现占用端口 8000 的进程: python3.12 (PID: 77890)
+[startup] 已终止进程 77890
 [startup] 端口清理完成
 [boot] Media App API 即将启动: http://10.175.87.74:8000  (本机: http://localhost:8000)
-INFO:     Started server process [64690]
-INFO:     Waiting for application startup.
 [startup] 前端静态资源已托管: /Users/wang/Documents/mytikt/webclient/out
 [startup] Skip DB init (set MEDIA_APP_INIT_ON_STARTUP=1 to enable).
 [auto-scan] SMB路径使用定期扫描: smb://testuser@10.175.87.74/PublicShare
@@ -59,48 +61,51 @@ INFO:     Waiting for application startup.
 [boot] Media App API 即将启动: http://10.175.87.74:8000  (本机: http://localhost:8000)
 [startup] 前端自动打开: 已禁用 (修改 main.py 中的 AUTO_OPEN_BROWSER 变量)
 [startup] 提示: 将 AUTO_OPEN_BROWSER 改为 True 可启用自动打开前端
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-正在填充初始数据...
-✅ 初始数据填充完毕。
-[auto-scan] 手动触发SMB路径扫描: smb://testuser@10.175.87.74/PublicShare
-[auto-scan] 手动触发SMB路径扫描: smb://testuser@10.175.87.74/PublicShare
-INFO:     127.0.0.1:60354 - "POST /media-root HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60366 - "GET /media-sources HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60833 - "OPTIONS /settings/reset-initialization HTTP/1.1" 200 OK
-完全清除数据库完成：
-  - 媒体文件: 37 条
-  - 媒体标签: 0 条
-  - 媒体来源: 1 条
-  - 扫描任务: 2 条
-  - 媒体根目录设置: 1 条
-  - 自动扫描设置: 1 条
-总计删除 42 条记录
-INFO:     127.0.0.1:60833 - "POST /settings/reset-initialization HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60833 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60833 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60862 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60833 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60862 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60868 - "OPTIONS /media-root HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60868 - "POST /media-root HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61071 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61116 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61115 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61116 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61115 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61115 - "OPTIONS /media-root HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61115 - "POST /media-root HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:61164 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61175 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61177 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61177 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61175 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61175 - "OPTIONS /media-root HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61175 - "POST /media-root HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:52944 - "GET /media/34/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:54832 - "GET /media/32/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:55196 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:55218 - "GET /media/34/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:57066 - "GET /init-status HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57066 - "GET /media-list?seed=5158799579248&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57066 - "GET /media-list?seed=5158799579248&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57071 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57075 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57072 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57073 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57076 - "GET /media/33/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57074 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57075 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57073 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57074 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57071 - "GET /media/30/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57076 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57072 - "GET /media/34/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:57075 - "GET /media/31/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57073 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57074 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57076 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57071 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57095 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57074 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57073 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57075 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57076 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57071 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57095 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57073 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57075 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57074 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57095 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57076 - "GET /media/36/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:57074 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57075 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57073 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57071 - "GET /media/37/thumbnail HTTP/1.1" 404 Not Found
+INFO:     10.175.87.74:57115 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57074 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57095 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
+INFO:     10.175.87.74:57075 - "GET /media/35/thumbnail HTTP/1.1" 404 Not Found
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
-[auto-scan] 停止监控目录: smb://testuser@10.175.87.74/PublicShare
-[auto-scan] 实时监控任务已停止。
 INFO:     Application shutdown complete.
-INFO:     Finished server process [64690]
+INFO:     Finished server process [77929]

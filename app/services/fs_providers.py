@@ -163,11 +163,21 @@ def read_bytes(url: str, max_bytes: Optional[int] = None) -> bytes:
         parts = parse_smb_url(url)
         conn, sess, tree, file = _smb_open_for_read(parts)
         try:
-            if max_bytes is None:
-                total = int(file.end_of_file or 0)
-                return file.read(0, total)
-            else:
-                return file.read(0, max_bytes)
+            # 获取总大小，避免读越界触发 STATUS_END_OF_FILE 异常
+            total = int(file.end_of_file or 0)
+            if max_bytes is not None:
+                total = min(total, max_bytes)
+            pos = 0
+            chunks: list[bytes] = []
+            chunk_size = 1024 * 1024
+            while pos < total:
+                n = min(chunk_size, total - pos)
+                data = file.read(pos, n)
+                if not data:
+                    break
+                chunks.append(data)
+                pos += len(data)
+            return b"".join(chunks)
         finally:
             _smb_close(conn, sess, tree, file)
     # fallback to local/other fs
@@ -181,21 +191,21 @@ def iter_bytes(url: str, start: int = 0, length: Optional[int] = None, chunk_siz
         parts = parse_smb_url(url)
         conn, sess, tree, file = _smb_open_for_read(parts)
         try:
-            std = file.query_info(FileInformationClass.FileStandardInformation, 0, 0, 48)
-            size = FileStandardInformation.unpack(std).end_of_file
+            # 使用 end_of_file 计算边界，避免 STATUS_END_OF_FILE
+            size = int(file.end_of_file or 0)
             if start < 0:
                 start = 0
+            if start >= size:
+                return
             end = size - 1 if length is None else min(start + length - 1, size - 1)
             pos = start
-            remaining = end - start + 1
-            while remaining > 0:
-                n = min(chunk_size, remaining)
+            while pos <= end:
+                n = min(chunk_size, end - pos + 1)
                 data = file.read(pos, n)
                 if not data:
                     break
                 yield data
                 pos += len(data)
-                remaining -= len(data)
         finally:
             _smb_close(conn, sess, tree, file)
         return
