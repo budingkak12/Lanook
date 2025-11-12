@@ -1,105 +1,27 @@
-from typing import List, Optional
-from datetime import datetime
-import hashlib
-import random
-
-from fastapi import FastAPI, Depends, HTTPException, Query, Request
-from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import os
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import mimetypes
-import time
 from pathlib import Path
 import socket
 import subprocess
 
-from PIL import Image
-import av  # type: ignore
-
 import uvicorn
-
-# 复用数据库与模型（无用户概念）
-from sqlalchemy import or_
 
 from 初始化数据库 import (
     SessionLocal,
-    Media,
-    TagDefinition,
-    MediaTag,
     create_database_and_tables,
     seed_initial_data,
 )
-from app.db.models_extra import MediaSource
-from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
-from app.services.thumbnails_service import (
-    get_or_generate_thumbnail as svc_get_or_generate_thumbnail,
-    thumb_path_for as svc_thumb_path_for,
-    THUMBNAILS_DIR as _THUMBNAILS_DIR_CONSTANT,
-)
-
-# 业务拆分：批量删除服务
-from app.services.deletion_service import batch_delete as svc_batch_delete
-from sqlalchemy.exc import OperationalError
 from app.api.setup_routes import router as setup_router
 from app.api.settings_routes import router as settings_router
 from app.api.sources_routes import router as sources_router
 from app.api.task_routes import router as task_router
+from app.api.media_routes import router as media_router
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
 from app.services.auto_scan_service import ensure_auto_scan_service, get_auto_scan_enabled
 
-
-# =============================
-# Pydantic 模型
-# =============================
-
-
-
-class MediaItem(BaseModel):
-    id: int
-    url: str
-    resourceUrl: str
-    type: str
-    filename: str
-    createdAt: str
-    thumbnailUrl: Optional[str] = None
-    # Optional tag state for UI correctness (global, no user)
-    liked: Optional[bool] = None
-    favorited: Optional[bool] = None
-
-
-class PageResponse(BaseModel):
-    items: List[MediaItem]
-    offset: int
-    hasMore: bool
-
-
-class TagRequest(BaseModel):
-    media_id: int
-    tag: str
-
-
-# 批量删除模型
-class DeleteBatchReq(BaseModel):
-    ids: List[int]
-    delete_file: bool = True
-
-
-class FailedItemModel(BaseModel):
-    id: int
-    reason: str
-
-
-class DeleteBatchResp(BaseModel):
-    deleted: List[int]
-    failed: List[FailedItemModel] = []
-
-
-# =============================
-# 应用与依赖
-# =============================
 
 app = FastAPI(title="Media App API", version="1.0.0")
 app.state.frontend_available = False
@@ -121,6 +43,7 @@ app.include_router(setup_router)
 app.include_router(settings_router)
 app.include_router(sources_router)
 app.include_router(task_router)
+app.include_router(media_router)
 
 # 轻量健康检查，供 Android 客户端自动探测可用服务地址
 @app.get("/health")
@@ -162,25 +85,6 @@ def _mount_static_frontend():
 
     app.state.frontend_available = True
     app.state.frontend_index = index_file
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def _filter_active_media(query):
-    return query.outerjoin(MediaSource, Media.source_id == MediaSource.id).filter(
-        or_(
-            Media.source_id.is_(None),
-            MediaSource.status == "active",
-            MediaSource.status.is_(None),
-        )
-    )
-
 
 # 应用启动时可选地初始化数据库（默认跳过；设置环境变量开启）
 @app.on_event("startup")
@@ -305,346 +209,6 @@ def _display_connection_advert():
                     print("[startup] 打开浏览器失败:", exc)
 
             threading.Thread(target=open_browser, daemon=True).start()
-
-
-# =============================
-# 工具函数
-# =============================
-
-"""
-将缩略图逻辑委托到 app.services.thumbnails_service，减少 main.py 的业务负担。
-"""
-
-def to_media_item(m: Media, db, include_thumb: bool = False, include_tag_state: bool = True) -> MediaItem:
-    liked_val: Optional[bool] = None
-    favorited_val: Optional[bool] = None
-    if include_tag_state:
-        liked_val = db.query(MediaTag).filter(MediaTag.media_id == m.id, MediaTag.tag_name == 'like').first() is not None
-        favorited_val = db.query(MediaTag).filter(MediaTag.media_id == m.id, MediaTag.tag_name == 'favorite').first() is not None
-
-    return MediaItem(
-        id=m.id,
-        url=f"/media-resource/{m.id}",  # 统一通过“原媒体资源”接口提供资源
-        resourceUrl=f"/media-resource/{m.id}",
-        type=m.media_type,
-        filename=m.filename,
-        createdAt=(m.created_at.isoformat() if isinstance(m.created_at, datetime) else str(m.created_at)),
-        thumbnailUrl=(f"/media/{m.id}/thumbnail" if include_thumb else None),
-        liked=liked_val,
-        favorited=favorited_val,
-    )
-
-
-def seeded_key(seed: str, media_id: int) -> str:
-    return hashlib.sha256(f"{seed}:{media_id}".encode()).hexdigest()
-
-
-# =============================
-# 路由
-# =============================
-
-
-
-@app.delete("/media/{media_id}", status_code=204)
-def delete_media_item(
-    media_id: int,
-    delete_file: bool = Query(True, description="是否同时删除原始文件"),
-    db=Depends(get_db),
-):
-    media = db.query(Media).filter(Media.id == media_id).first()
-    if not media:
-        raise HTTPException(status_code=404, detail="media not found")
-
-    thumb_path = svc_thumb_path_for(media)
-    # 从数据库删除记录（包含标签）
-    db.delete(media)
-    try:
-        db.commit()
-    except OperationalError as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=503,
-            detail="database is read-only; check file permissions or restart backend",
-        ) from exc
-
-    # 删除缩略图文件（若存在）
-    try:
-        if thumb_path.exists():
-            thumb_path.unlink()
-    except Exception:
-        pass
-
-    # 可选删除原媒体文件
-    if delete_file and media.absolute_path and isinstance(media.absolute_path, str):
-        try:
-            if os.path.exists(media.absolute_path):
-                os.remove(media.absolute_path)
-        except Exception:
-            # 失败不影响 API 主流程
-            pass
-
-
-@app.post("/media/batch-delete", response_model=DeleteBatchResp)
-def batch_delete_media(req: DeleteBatchReq, db=Depends(get_db)):
-    """批量删除媒体：
-    - 不存在的 id 视为已删除（幂等）。
-    - 返回已删除与失败清单；原文件/缩略图删除失败不作为失败判定（DB 已删）。
-    """
-    deleted, failed = svc_batch_delete(db, req.ids, delete_file=req.delete_file)
-    # 若疑似数据库处于只读/提交失败：将其提升为 503，便于客户端清晰提示
-    if not deleted and failed and len(failed) == len(req.ids):
-        reasons = " ".join([f.reason or "" for f in failed]).lower()
-        if ("commit_failed" in reasons) or ("readonly" in reasons) or ("read-only" in reasons):
-            raise HTTPException(status_code=503, detail="database is read-only; check file permissions or restart backend")
-    return DeleteBatchResp(
-        deleted=deleted,
-        failed=[FailedItemModel(id=f.id, reason=f.reason) for f in failed],
-    )
-
-
-
-
-@app.get("/media-list", response_model=PageResponse)
-def get_media_list(
-    seed: Optional[str] = Query(None, description="会话随机种子（当未指定 tag 时必填）"),
-    tag: Optional[str] = Query(None, description="标签名，指定时返回该标签的列表"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=200),
-    order: str = Query("seeded", regex="^(seeded|recent)$"),
-    db=Depends(get_db),
-):
-    # 统一的媒体列表：当指定 tag 时按标签过滤，否则按 seed/order 返回推荐流
-    if tag:
-        # 校验标签是否存在
-        if not db.query(TagDefinition).filter(TagDefinition.name == tag).first():
-            raise HTTPException(status_code=400, detail="invalid tag")
-        q = (
-            db.query(Media)
-            .join(MediaTag, MediaTag.media_id == Media.id)
-            .filter(MediaTag.tag_name == tag)
-            .order_by(MediaTag.created_at.desc())
-        )
-        q = _filter_active_media(q)
-        total_items = q.all()
-        sliced = total_items[offset : offset + limit]
-        items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
-        has_more = (offset + len(items)) < len(total_items)
-        return PageResponse(items=items, offset=offset, hasMore=has_more)
-
-    # 非标签模式需要 seed
-    if seed is None or str(seed).strip() == "":
-        raise HTTPException(status_code=400, detail="seed required when tag not provided")
-
-    if order == "recent":
-        q = _filter_active_media(
-            db.query(Media).order_by(Media.created_at.desc())
-        )
-        total_items = q.all()
-        sliced = total_items[offset : offset + limit]
-        items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
-        has_more = (offset + len(items)) < len(total_items)
-        return PageResponse(items=items, offset=offset, hasMore=has_more)
-    else:
-        all_items = _filter_active_media(db.query(Media)).all()
-        all_items.sort(key=lambda m: seeded_key(seed, m.id))
-        liked_ids = {
-            media_id
-            for (media_id,) in db.query(MediaTag.media_id).filter(MediaTag.tag_name == "like")
-        }
-        ordered_items = [m for m in all_items if m.id not in liked_ids] + [
-            m for m in all_items if m.id in liked_ids
-        ]
-        sliced = ordered_items[offset : offset + limit]
-        items = [to_media_item(m, db, include_thumb=True, include_tag_state=True) for m in sliced]
-        has_more = (offset + len(items)) < len(ordered_items)
-        return PageResponse(items=items, offset=offset, hasMore=has_more)
-
-
-
-
-
-
-@app.post("/tag")
-def add_tag(req: TagRequest, db=Depends(get_db)):
-    # 校验标签
-    tag_def = db.query(TagDefinition).filter(TagDefinition.name == req.tag).first()
-    if not tag_def:
-        raise HTTPException(status_code=400, detail="invalid tag")
-
-    # 校验媒体
-    media = db.query(Media).filter(Media.id == req.media_id).first()
-    if not media:
-        raise HTTPException(status_code=404, detail="media not found")
-
-    # 唯一约束：同一媒体同一标签仅一次
-    existing = (
-        db.query(MediaTag)
-        .filter(MediaTag.media_id == req.media_id, MediaTag.tag_name == req.tag)
-        .first()
-    )
-    if existing:
-        raise HTTPException(status_code=409, detail="tag already exists for media")
-
-    db.add(MediaTag(media_id=req.media_id, tag_name=req.tag))
-    try:
-        db.commit()
-    except OperationalError as e:
-        msg = str(e).lower()
-        if "readonly" in msg:
-            # 更友好的错误：数据库当前只读（可能因快照恢复/权限），提示用户检查
-            raise HTTPException(status_code=503, detail="database is read-only; check file permissions or restart backend")
-        raise
-    return {"success": True}
-
-
-@app.delete("/tag", status_code=204)
-def remove_tag(req: TagRequest, db=Depends(get_db)):
-    # 校验媒体与标签是否存在
-    mt = (
-        db.query(MediaTag)
-        .filter(MediaTag.media_id == req.media_id, MediaTag.tag_name == req.tag)
-        .first()
-    )
-    if not mt:
-        raise HTTPException(status_code=404, detail="tag not set for media")
-
-    try:
-        db.delete(mt)
-        db.commit()
-    except OperationalError as e:
-        msg = str(e).lower()
-        if "readonly" in msg:
-            raise HTTPException(status_code=503, detail="database is read-only; check file permissions or restart backend")
-        raise
-    return None
-
-
-@app.get("/tags")
-def list_tags(db=Depends(get_db)):
-    tags = [t.name for t in db.query(TagDefinition).all()]
-    return {"tags": tags}
-
-
-
-
-@app.get("/media/{media_id}/thumbnail")
-def get_media_thumbnail(media_id: int, db=Depends(get_db)):
-    media = db.query(Media).filter(Media.id == media_id).first()
-    if not media:
-        raise HTTPException(status_code=404, detail="media not found")
-    # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
-    if not media.absolute_path or not isinstance(media.absolute_path, str):
-        raise HTTPException(status_code=404, detail="file not found")
-    if (not is_smb_url(media.absolute_path)) and (not os.path.exists(media.absolute_path)):
-        raise HTTPException(status_code=404, detail="file not found")
-    # 仅提供真实缩略图；不再回退原文件（项目现已具备稳定的视频缩略图能力）
-    thumb_path = svc_get_or_generate_thumbnail(media)
-    if thumb_path is None or not thumb_path.exists():
-        raise HTTPException(status_code=404, detail="thumbnail not available")
-    serve_path = str(thumb_path)
-
-    # 注意：移除自定义 Content-Disposition 以避免非 ASCII 文件名触发 latin-1 编码错误
-    from app.services.thumbnails_service import build_thumb_headers
-    headers = build_thumb_headers(serve_path)
-    return FileResponse(path=serve_path, media_type=headers.get("Content-Type", "image/jpeg"), headers=headers)
-
-
-@app.get("/media-resource/{media_id}")
-def get_media_resource(media_id: int, request: Request, db=Depends(get_db)):
-    media = db.query(Media).filter(Media.id == media_id).first()
-    if not media:
-        raise HTTPException(status_code=404, detail="media not found")
-    # 兼容异常数据：absolute_path 为空或非字符串时返回 404，而不是抛出 500
-    if not media.absolute_path or not isinstance(media.absolute_path, str):
-        raise HTTPException(status_code=404, detail="file not found")
-    # 内容类型自动判定，回退到基于 media_type 的默认值
-    guessed, _ = mimetypes.guess_type(media.absolute_path if not is_smb_url(media.absolute_path) else os.path.basename(media.absolute_path))
-    mime = guessed or ("image/jpeg" if media.media_type == "image" else "video/mp4")
-    if is_smb_url(media.absolute_path):
-        try:
-            mtime, size = stat_url(media.absolute_path)
-        except Exception:
-            raise HTTPException(status_code=404, detail="file not found")
-        file_size = size
-        etag = f"{mtime}-{size}"
-    else:
-        file_path = media.absolute_path
-        # 本地文件必须存在
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="file not found")
-        stat = os.stat(file_path)
-        file_size = stat.st_size
-        etag = f"{int(stat.st_mtime)}-{stat.st_size}"
-    range_header = request.headers.get("range") or request.headers.get("Range")
-
-    # 通用响应头：支持缓存与范围请求
-    common_headers = {"ETag": etag, "Accept-Ranges": "bytes"}
-    if not is_smb_url(media.absolute_path):
-        common_headers["Last-Modified"] = time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stat.st_mtime))
-
-    # 无 Range：回退到完整文件响应（带缓存头）
-    if not range_header:
-        headers = {**common_headers, "Cache-Control": "public, max-age=3600"}
-        if is_smb_url(media.absolute_path):
-            return StreamingResponse(iter_bytes(media.absolute_path, 0, file_size), media_type=mime, headers=headers)
-        else:
-            return FileResponse(path=file_path, media_type=mime, headers=headers)
-
-    # 解析 Range: bytes=start-end 或 bytes=start- 或 bytes=-suffix
-    try:
-        units, ranges = range_header.split("=", 1)
-        if units.strip().lower() != "bytes":
-            raise ValueError("Only bytes unit is supported")
-        # 暂时仅支持单段范围；多段范围通常浏览器不会使用
-        first_range = ranges.split(",")[0].strip()
-        if "-" not in first_range:
-            raise ValueError("Invalid range format")
-        start_str, end_str = first_range.split("-", 1)
-        if start_str == "" and end_str != "":
-            # suffix bytes: 最后 N 字节
-            suffix_len = int(end_str)
-            if suffix_len <= 0:
-                raise ValueError("Invalid suffix length")
-            start = max(file_size - suffix_len, 0)
-            end = file_size - 1
-        else:
-            start = int(start_str)
-            end = int(end_str) if end_str != "" else file_size - 1
-        if start < 0 or end >= file_size or start > end:
-            # 范围无效，返回 416
-            headers = {**common_headers, "Content-Range": f"bytes */{file_size}"}
-            raise HTTPException(status_code=416, detail="Requested Range Not Satisfiable", headers=headers)
-    except HTTPException:
-        raise
-    except Exception:
-        headers = {**common_headers, "Content-Range": f"bytes */{file_size}"}
-        raise HTTPException(status_code=416, detail="Invalid Range", headers=headers)
-
-    chunk_size = 1024 * 1024  # 1MB per chunk
-    length = end - start + 1
-
-    def file_iter(path: str, start_pos: int, total_len: int):
-        with open(path, "rb") as f:
-            f.seek(start_pos)
-            remaining = total_len
-            while remaining > 0:
-                read_len = min(chunk_size, remaining)
-                data = f.read(read_len)
-                if not data:
-                    break
-                yield data
-                remaining -= len(data)
-
-    headers = {
-        **common_headers,
-        "Content-Range": f"bytes {start}-{end}/{file_size}",
-        "Content-Length": str(length),
-        "Cache-Control": "public, max-age=3600",
-    }
-    if is_smb_url(media.absolute_path):
-        return StreamingResponse(iter_bytes(media.absolute_path, start, length), status_code=206, media_type=mime, headers=headers)
-    else:
-        return StreamingResponse(file_iter(file_path, start, length), status_code=206, media_type=mime, headers=headers)
 
 
 # =============================
