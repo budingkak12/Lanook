@@ -11,13 +11,13 @@
 - 不要写回退兼容性代码
 - 避免 代码 “巨无霸”文件：新增或重构功能时需拆分模块
 ## 项目结构与模块组织
-- 后端（FastAPI）：`main.py`（路由/CORS/流式），数据与初始化在 `初始化数据库.py`。
+- 后端（FastAPI）：`main.py`（路由/CORS/流式），数据库/索引逻辑在 `app/db/` 模块，脚本入口在 `scripts/init_db.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。
 - 工具脚本：`api_flow_test.py`。
 
 ## 构建、测试与本地开发
 - 安装后端依赖：`uv pip install -r requirements.txt`。
-- 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python 初始化数据库.py`。
+- 初始化数据库（必要时先改 `MEDIA_DIRECTORY_TO_SCAN`）：`uv run python -m scripts.init_db --media-path <绝对路径>`。
 - 启动后端：`uv run main.py`。
 - 构建调试 APK：`cd androidclient && ./gradlew clean assembleDebug -x lint -x test`；随后 `adb install -r androidclient/app/build/outputs/apk/debug/app-debug.apk` 与 `adb shell am start -n com.example.androidclient/.MainActivity`。
 

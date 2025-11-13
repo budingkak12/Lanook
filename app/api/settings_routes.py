@@ -12,7 +12,7 @@ from app.services.auto_scan_service import (
 )
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
-from 初始化数据库 import SessionLocal, Media, MediaTag, SCAN_MODE_KEY, SCAN_INTERVAL_KEY
+from app.db import SessionLocal, Media, MediaTag, SCAN_MODE_KEY, SCAN_INTERVAL_KEY
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -118,7 +118,7 @@ def reset_initialization(request: Request):
     try:
         # 导入额外的模型
         from app.db.models_extra import MediaSource, ScanJob
-        from 初始化数据库 import AppSetting, TagDefinition, MEDIA_ROOT_KEY, AUTO_SCAN_ENABLED_KEY
+        from app.db import AppSetting, TagDefinition, MEDIA_ROOT_KEY, AUTO_SCAN_ENABLED_KEY
 
         # 统计删除数量
         deletion_stats = {}

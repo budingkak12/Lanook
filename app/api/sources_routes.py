@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from 初始化数据库 import SessionLocal
+from app.db import SessionLocal
 from app.schemas.sources import (
     MediaSourceModel,
     ScanStartResponse,
@@ -31,7 +31,7 @@ from app.services.sources_service import (
 )
 from app.services.credentials import store_smb_password
 from app.services.auto_scan_service import ensure_auto_scan_service
-from 初始化数据库 import create_database_and_tables
+from app.db import create_database_and_tables
 
 
 router = APIRouter(tags=["sources"])

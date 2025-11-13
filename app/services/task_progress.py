@@ -8,7 +8,7 @@ from typing import Optional
 
 from sqlalchemy import func
 
-from 初始化数据库 import Media, SessionLocal
+from app.db import Media, SessionLocal
 from app.services.media_initializer import (
     INITIAL_PREVIEW_BATCH_SIZE,
     MediaInitializationError,

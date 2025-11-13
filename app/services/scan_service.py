@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from fastapi import BackgroundTasks
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from 初始化数据库 import (
+from app.db import (
     SessionLocal,
     create_database_and_tables,
-    Media,
 )
 from app.db.models_extra import ScanJob
 from app.services import indexer

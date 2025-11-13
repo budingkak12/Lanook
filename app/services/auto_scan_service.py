@@ -11,15 +11,17 @@ from sqlalchemy import or_
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
-from 初始化数据库 import (
+from app.db import (
     AUTO_SCAN_ENABLED_KEY,
     SCAN_MODE_KEY,
     SCAN_INTERVAL_KEY,
     SessionLocal,
+    Media,
+    create_database_and_tables,
     get_setting,
     set_setting,
-    create_database_and_tables,
-    Media,
+    SUPPORTED_IMAGE_EXTS,
+    SUPPORTED_VIDEO_EXTS,
 )
 from app.db.models_extra import MediaSource
 from app.services.fs_providers import is_smb_url
@@ -135,9 +137,7 @@ def _normalize_path_key(raw: str | Path) -> str:
 def _is_media_file(file_path: str) -> bool:
     """检查文件是否为支持的媒体文件类型"""
     ext = os.path.splitext(file_path)[1].lower()
-    image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
-    video_exts = {".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
-    return ext in image_exts or ext in video_exts
+    return ext in SUPPORTED_IMAGE_EXTS or ext in SUPPORTED_VIDEO_EXTS
 
 
 def _is_file_complete(file_path: str, check_interval: float = 0.5, max_checks: int = 6) -> bool:

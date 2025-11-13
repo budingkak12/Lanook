@@ -22,7 +22,7 @@ from PIL import Image
 from PIL import ImageDraw, ImageFont
 import av  # type: ignore
 
-from 初始化数据库 import Media
+from app.db import Media
 from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
 
 

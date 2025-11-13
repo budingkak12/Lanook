@@ -13,7 +13,7 @@ from typing import Callable, Dict, Optional
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from 初始化数据库 import Media, SessionLocal, create_database_and_tables
+from app.db import Media, SessionLocal, create_database_and_tables
 from app.db.models_extra import AssetArtifact
 from app.services.thumbnails_service import get_or_generate_thumbnail, resolve_cached_thumbnail
 

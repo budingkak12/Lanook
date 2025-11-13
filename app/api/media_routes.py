@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
-from 初始化数据库 import SessionLocal
+from app.db import SessionLocal
 from app.schemas.media import (
     DeleteBatchReq,
     DeleteBatchResp,

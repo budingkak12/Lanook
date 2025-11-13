@@ -11,7 +11,7 @@ from typing import Iterable, List, Optional
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Query, Session
 
-from 初始化数据库 import Media, MediaTag, TagDefinition
+from app.db import Media, MediaTag, TagDefinition
 from app.db.models_extra import MediaSource
 from app.schemas.media import DeleteBatchResp, FailedItemModel, MediaItem, PageResponse
 from app.services.asset_pipeline import AssetArtifactStatus, request_thumbnail_artifact

@@ -5,7 +5,7 @@ from typing import Optional, Union
 
 from sqlalchemy.orm import Session
 
-from 初始化数据库 import (
+from app.db import (
     MEDIA_ROOT_KEY,
     SessionLocal,
     Media,

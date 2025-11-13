@@ -8,7 +8,7 @@ import subprocess
 
 import uvicorn
 
-from 初始化数据库 import (
+from app.db import (
     SessionLocal,
     create_database_and_tables,
     seed_initial_data,

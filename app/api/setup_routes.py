@@ -106,7 +106,7 @@ def set_media_root(
     # 若未提供 path，则从 DB 中自动选择一个来源
     if not payload.path:
         try:
-            from 初始化数据库 import SessionLocal as _SL
+            from app.db import SessionLocal as _SL
             db = _SL()
             try:
                 sources = list_sources(db, include_inactive=False)
@@ -130,7 +130,7 @@ def set_media_root(
             raise HTTPException(status_code=422, detail=str(exc))
 
     # 设置媒体根路径
-    from 初始化数据库 import SessionLocal, set_setting, MEDIA_ROOT_KEY
+    from app.db import SessionLocal, set_setting, MEDIA_ROOT_KEY
     db = SessionLocal()
     try:
         set_setting(db, MEDIA_ROOT_KEY, str(validated_path))
@@ -141,7 +141,7 @@ def set_media_root(
     # 先同步导入一小批媒体，确保前端立即可见
     initial_batch = 0
     try:
-        from 初始化数据库 import seed_initial_data, create_database_and_tables
+        from app.db import seed_initial_data, create_database_and_tables
 
         create_database_and_tables(echo=False)
         task_db = SessionLocal()
@@ -168,7 +168,7 @@ def set_media_root(
     try:
         if background is not None:
             # 查找/创建该 root 的来源ID
-            from 初始化数据库 import SessionLocal as _SL
+            from app.db import SessionLocal as _SL
             from app.db.models_extra import MediaSource as _MediaSource
             _db = _SL()
             try:

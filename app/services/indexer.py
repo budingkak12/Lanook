@@ -7,12 +7,12 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from 初始化数据库 import (
+from app.db import (
     Media,
     SUPPORTED_IMAGE_EXTS,
     SUPPORTED_VIDEO_EXTS,
+    resolve_media_source,
 )
-from 初始化数据库 import _resolve_media_source  # type: ignore
 from app.services.fs_providers import is_smb_url, parse_smb_url
 from app.services.credentials import get_smb_password
 
@@ -61,7 +61,7 @@ def scan_into_db(
 
     # 解析/创建来源记录
     source_type = "smb" if is_smb_url(root_url) else "local"
-    source = _resolve_media_source(
+    source = resolve_media_source(
         db,
         root_url,
         source_id=source_id,

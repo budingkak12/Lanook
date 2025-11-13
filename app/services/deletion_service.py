@@ -7,7 +7,7 @@ from typing import Iterable, List, Tuple
 from sqlalchemy.orm import Session
 
 # 直接复用初始化脚本中的 ORM 模型
-from 初始化数据库 import Media
+from app.db import Media
 
 
 # thumbnails 目录位于项目根目录，与 main.py 中保持一致的命名规则："thumbnails/<id>.jpg"
@@ -116,4 +116,3 @@ def batch_delete(
         deleted.clear()
 
     return deleted, failed
-

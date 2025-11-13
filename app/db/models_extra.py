@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 
 # 复用现有 Base/engine
-from 初始化数据库 import Base
+from app.db.base import Base
 
 
 class MediaSource(Base):

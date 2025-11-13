@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
 
-from 初始化数据库 import SUPPORTED_IMAGE_EXTS, SUPPORTED_VIDEO_EXTS
+from app.db import SUPPORTED_IMAGE_EXTS, SUPPORTED_VIDEO_EXTS
 from app.services.fs_providers import is_smb_url, ro_fs_for_url
 
 
