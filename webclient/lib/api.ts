@@ -248,15 +248,24 @@ export async function listFolderContents(path: string): Promise<FolderItem[]> {
 
 // ===== 媒体来源管理 API =====
 
-export type SourceType = 'local' | 'smb'
+export type SourceType = 'local' | 'smb' | 'webdav'
+export type ScanStrategy = 'realtime' | 'scheduled' | 'manual' | 'disabled'
 
 export interface MediaSource {
   id: number
   type: SourceType
+  sourceType?: SourceType
   displayName: string | null
   rootPath: string
   createdAt: string
+  status?: 'active' | 'inactive'
   lastScanAt: string | null
+  scanStrategy?: ScanStrategy
+  scanIntervalSeconds?: number | null
+  lastScanStartedAt?: string | null
+  lastScanFinishedAt?: string | null
+  lastError?: string | null
+  failureCount?: number
 }
 
 export interface SourceValidationRequest {
@@ -286,6 +295,8 @@ export interface CreateSourceRequest {
   displayName?: string
   // 是否在创建时立即扫描（初始化向导中应传 false）
   scan?: boolean
+  scanStrategy?: ScanStrategy
+  scanIntervalSeconds?: number
   // SMB fields
   host?: string
   share?: string

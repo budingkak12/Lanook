@@ -103,14 +103,23 @@
 支持的来源类型（SourceType）
 - `local`：本机或系统已挂载目录（示例：`/Users/you/Pictures`、`C:\\Users\\you\\Pictures`、`/mnt/photos`）。
 - `smb`：SMB 共享（示例：`smb://user@192.168.1.10/photo/family`）。
+- `webdav`：WebDAV 共享（预留，尚未实现 UI，但模型/接口已支持）。
 
 数据模型
 - MediaSource
   - `id: number` 主键
-  - `type: 'local' | 'smb'`
+  - `type / sourceType: 'local' | 'smb' | 'webdav'`（`type` 为兼容旧版本，`sourceType` 为新增字段，数值一致）
   - `displayName: string|null` 显示名称
   - `rootPath: string` 根路径；`local` 为绝对路径；`smb` 为 `smb://[domain;]user@host/share[/sub]` URL（不含密码）
   - `createdAt: string` ISO 时间
+  - `status: 'active' | 'inactive'`
+  - `scanStrategy: 'realtime' | 'scheduled' | 'manual' | 'disabled'`
+  - `scanIntervalSeconds?: number` 定时扫描间隔（秒）
+  - `lastScanAt?: string` 最后一次扫描完成时间（兼容字段，等于 `lastScanFinishedAt`）
+  - `lastScanStartedAt?: string`
+  - `lastScanFinishedAt?: string`
+  - `lastError?: string` 最近一次扫描错误信息
+  - `failureCount: number` 连续失败次数
 - ScanJob
   - `jobId: string`（UUID）
   - `sourceId: number`
@@ -150,20 +159,35 @@
 - `POST /setup/source`
 - Request（local）
 ```
-{ "type":"local", "rootPath":"/Users/you/Pictures", "displayName":"我的相册" }
+{ "type":"local", "rootPath":"/Users/you/Pictures", "displayName":"我的相册", "scanStrategy":"realtime" }
 ```
 - Request（smb）
 ```
 { "type":"smb", "host":"192.168.1.10", "share":"photo", "subPath":"family",
-  "username":"alice", "password":"***", "domain":"WORKGROUP", "displayName":"NAS 相册" }
+  "username":"alice", "password":"***", "domain":"WORKGROUP", "displayName":"NAS 相册",
+  "scanStrategy":"scheduled", "scanIntervalSeconds":3600 }
 // 或匿名：{ "type":"smb", "host":"192.168.1.10", "share":"photo", "anonymous": true }
 ```
 - Response 201
 ```
-{ "id":1, "type":"smb", "displayName":"NAS 相册", "rootPath":"smb://alice@192.168.1.10/photo/family", "createdAt":"2025-10-31T06:00:00Z" }
+{
+  "id":1,
+  "type":"smb",
+  "sourceType":"smb",
+  "displayName":"NAS 相册",
+  "rootPath":"smb://alice@192.168.1.10/photo/family",
+  "createdAt":"2025-10-31T06:00:00Z",
+  "status":"active",
+  "scanStrategy":"scheduled",
+  "scanIntervalSeconds":3600,
+  "lastScanStartedAt":null,
+  "lastScanFinishedAt":null,
+  "failureCount":0
+}
 ```
 说明：
 - 密码不会写入数据库，只保存到系统钥匙串（keyring）。删除来源不会自动删除钥匙串条目；如需彻底撤销请在系统钥匙串中删除或更改 NAS 口令。
+- 未显式指定 `scanStrategy` 时默认：`local` → `realtime`，其余来源 → `scheduled`（间隔 3600 秒，可在请求中覆盖）。
 
 3) 列出来源
 - `GET /media-sources` → `MediaSource[]`

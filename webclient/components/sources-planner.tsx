@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 
-type SourceType = "local" | "smb"
+type SourceType = "local" | "smb" | "webdav"
 
 type PlannedSource = {
   id: string
@@ -172,7 +172,9 @@ export function SourcesPlanner() {
             {sources.map((s) => (
               <div key={s.id} className="flex items-center justify-between gap-3 p-2 border rounded">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase text-muted-foreground">{s.type === 'local' ? 'LOCAL' : 'SMB'}</div>
+                  <div className="text-xs uppercase text-muted-foreground">
+                    {s.type === 'local' ? 'LOCAL' : s.type.toUpperCase()}
+                  </div>
                   <div className="truncate" title={s.label}>{s.label}</div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => remove(s.id)}>移除</Button>

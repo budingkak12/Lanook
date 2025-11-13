@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { getMediaSources, deleteMediaSource, type MediaSource } from '@/lib/api'
+import { getMediaSources, deleteMediaSource, type MediaSource, type SourceType } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 
 interface MediaPathListProps {
@@ -17,6 +17,48 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [selectedSource, setSelectedSource] = useState<MediaSource | null>(null)
   const { toast } = useToast()
+
+  const resolveSourceType = (source: MediaSource | null | undefined): SourceType | string => {
+    if (!source) return 'unknown'
+    return source.sourceType ?? source.type
+  }
+
+  const renderSourceTypeLabel = (source: MediaSource): string => {
+    const type = resolveSourceType(source)
+    if (type === 'local') return '本地'
+    if (type === 'smb') return 'SMB'
+    if (type === 'webdav') return 'WebDAV'
+    return typeof type === 'string' && type ? type : '未知'
+  }
+
+  const renderScanStrategyLabel = (source: MediaSource): string => {
+    const strategy = source.scanStrategy ?? (resolveSourceType(source) === 'local' ? 'realtime' : 'scheduled')
+    switch (strategy) {
+      case 'realtime':
+        return '实时监控'
+      case 'scheduled':
+        return '定时扫描'
+      case 'manual':
+        return '手动触发'
+      case 'disabled':
+        return '已禁用'
+      default:
+        return '未知'
+    }
+  }
+
+  const formatInterval = (seconds?: number | null): string => {
+    if (!seconds || seconds <= 0) return '系统默认'
+    if (seconds % 3600 === 0) {
+      const hours = seconds / 3600
+      return `${hours} 小时`
+    }
+    if (seconds % 60 === 0) {
+      const minutes = seconds / 60
+      return `${minutes} 分钟`
+    }
+    return `${seconds} 秒`
+  }
 
   const hasLoadedRef = useRef(false)
 
@@ -141,7 +183,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
                       <div className="text-xs px-2 py-1 bg-primary/20 text-primary rounded border border-primary/30">
-                        {source.type === 'local' ? '本地' : source.type}
+                        {renderSourceTypeLabel(source)}
                       </div>
                       <Button
                         variant="ghost"
@@ -245,7 +287,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                   <div className="text-sm text-muted-foreground">类型</div>
                   <div className="text-sm font-medium">
                     <span className="px-2 py-1 bg-primary/20 text-primary rounded border border-primary/30">
-                      {selectedSource.type === 'local' ? '本地' : selectedSource.type}
+                      {renderSourceTypeLabel(selectedSource)}
                     </span>
                   </div>
                 </div>
@@ -255,6 +297,20 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                     #{selectedSource.id}
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">扫描策略</div>
+                  <div className="text-sm font-medium text-muted-foreground">
+                    {renderScanStrategyLabel(selectedSource)}
+                  </div>
+                </div>
+                {selectedSource.scanStrategy === 'scheduled' && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">扫描间隔</div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {formatInterval(selectedSource.scanIntervalSeconds)}
+                    </div>
+                  </div>
+                )}
                 {/* 设置模式下显示最后扫描时间 */}
                 {mode === 'settings' && selectedSource.lastScanAt && (
                   <div className="space-y-2">
@@ -267,6 +323,50 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
+                    </div>
+                  </div>
+                )}
+                {selectedSource.lastScanStartedAt && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">最近扫描开始</div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {new Date(selectedSource.lastScanStartedAt).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                )}
+                {selectedSource.lastScanFinishedAt && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">最近扫描结束</div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {new Date(selectedSource.lastScanFinishedAt).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                )}
+                {(selectedSource.failureCount ?? 0) > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">连续失败次数</div>
+                    <div className="text-sm font-medium text-red-500">
+                      {selectedSource.failureCount}
+                    </div>
+                  </div>
+                )}
+                {selectedSource.lastError && (
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">最后一次错误</div>
+                    <div className="text-xs font-mono bg-destructive/5 text-destructive px-3 py-2 rounded border border-destructive/30 break-all">
+                      {selectedSource.lastError}
                     </div>
                   </div>
                 )}

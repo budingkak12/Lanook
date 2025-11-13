@@ -12,6 +12,7 @@ from sqlalchemy import or_
 from app.db import SessionLocal
 from app.schemas.sources import (
     MediaSourceModel,
+    ScanStrategy,
     ScanStartResponse,
     ScanStatusResponse,
     ScanState,
@@ -110,15 +111,33 @@ def _to_media_source_model(src) -> MediaSourceModel:
         status_enum = SourceStatus(status_value)
     except ValueError:
         status_enum = SourceStatus.ACTIVE
+    source_type_value = (getattr(src, "source_type", None) or getattr(src, "type", None) or "local").lower()
+    try:
+        source_type_enum = SourceType(source_type_value)
+    except ValueError:
+        source_type_enum = SourceType.LOCAL
+    raw_strategy = getattr(src, "scan_strategy", None)
+    fallback_strategy = "realtime" if source_type_enum == SourceType.LOCAL else "scheduled"
+    try:
+        strategy_enum = ScanStrategy(raw_strategy or fallback_strategy)
+    except ValueError:
+        strategy_enum = ScanStrategy.REALTIME if source_type_enum == SourceType.LOCAL else ScanStrategy.SCHEDULED
     return MediaSourceModel(
         id=src.id,
-        type=SourceType(src.type),
+        type=source_type_enum,
+        sourceType=source_type_enum,
         displayName=src.display_name,
         rootPath=src.root_path,
         createdAt=_iso(src.created_at),
         status=status_enum,
         deletedAt=_iso(src.deleted_at),
         lastScanAt=_iso(src.last_scan_at),
+        scanStrategy=strategy_enum,
+        scanIntervalSeconds=getattr(src, "scan_interval_seconds", None),
+        lastScanStartedAt=_iso(getattr(src, "last_scan_started_at", None)),
+        lastScanFinishedAt=_iso(getattr(src, "last_scan_finished_at", None)),
+        lastError=getattr(src, "last_error", None),
+        failureCount=int(getattr(src, "failure_count", 0) or 0),
     )
 
 
@@ -277,6 +296,8 @@ def create_media_source(
 ):
     # 控制是否立即扫描（默认 True 以兼容旧调用）
     scan_now = True if payload.scan is None else bool(payload.scan)
+    if payload.scanIntervalSeconds is not None and payload.scanIntervalSeconds <= 0:
+        raise HTTPException(status_code=422, detail="scanIntervalSeconds 必须为正整数")
     if payload.type == SourceType.LOCAL:
         if not payload.rootPath:
             raise HTTPException(status_code=422, detail="rootPath required")
@@ -289,7 +310,10 @@ def create_media_source(
         rows = (
             db.query(_MediaSource)
             .filter(or_(_MediaSource.status.is_(None), _MediaSource.status == "active"))
-            .filter(_MediaSource.type == "local")
+            .filter(
+                (_MediaSource.source_type == "local")
+                | (_MediaSource.source_type.is_(None) & (_MediaSource.type == "local"))
+            )
             .all()
         )
         def _is_parent(parent: str, child: str) -> bool:
@@ -325,7 +349,14 @@ def create_media_source(
             response.headers["X-Message"] = "exists"
             return _to_media_source_model(existing)
         # 新建来源
-        src = create_source(db, type_=payload.type.value, root_path=str(p), display_name=payload.displayName)
+        src = create_source(
+            db,
+            type_=payload.type.value,
+            root_path=str(p),
+            display_name=payload.displayName,
+            scan_strategy=payload.scanStrategy.value if payload.scanStrategy else None,
+            scan_interval_seconds=payload.scanIntervalSeconds,
+        )
         if scan_now:
             _bootstrap_source_scan(src.root_path)
             _ensure_background_scan(request, src.root_path)
@@ -369,7 +400,10 @@ def create_media_source(
         rows = (
             db.query(_MediaSource)
             .filter(or_(_MediaSource.status.is_(None), _MediaSource.status == "active"))
-            .filter(_MediaSource.type == "smb")
+            .filter(
+                (_MediaSource.source_type == "smb")
+                | (_MediaSource.source_type.is_(None) & (_MediaSource.type == "smb"))
+            )
             .all()
         )
         def _is_parent_sub(parent_sub: str, child_sub: str) -> bool:
@@ -412,7 +446,14 @@ def create_media_source(
             response.headers["X-Message"] = "exists"
             return _to_media_source_model(existing)
         # 新建来源
-        src = create_source(db, type_=payload.type.value, root_path=root_url, display_name=payload.displayName)
+        src = create_source(
+            db,
+            type_=payload.type.value,
+            root_path=root_url,
+            display_name=payload.displayName,
+            scan_strategy=payload.scanStrategy.value if payload.scanStrategy else None,
+            scan_interval_seconds=payload.scanIntervalSeconds,
+        )
         if scan_now:
             _bootstrap_source_scan(src.root_path)
             _ensure_background_scan(request, src.root_path)
@@ -476,7 +517,8 @@ def start_scan(source_id: int = Query(..., description="来源ID"), background: 
     if src.status and src.status != "active":
         raise HTTPException(status_code=409, detail="source inactive")
     # 若为 SMB，将 host 规范化写回一次（兼容历史脏数据）
-    if src.type == 'smb' and isinstance(src.root_path, str) and src.root_path.startswith('smb://'):
+    source_type_value = getattr(src, "source_type", None) or src.type
+    if source_type_value == 'smb' and isinstance(src.root_path, str) and src.root_path.startswith('smb://'):
         try:
             from app.services.fs_providers import parse_smb_url
             p = parse_smb_url(src.root_path)

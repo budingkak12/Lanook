@@ -12,12 +12,19 @@ class MediaSource(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     type = Column(String, nullable=False, default="local")
+    source_type = Column(String, nullable=False, default="local", server_default="local")
     display_name = Column(String, nullable=True)
     root_path = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String, nullable=False, default="active", server_default="active")
     deleted_at = Column(DateTime, nullable=True)
     last_scan_at = Column(DateTime, nullable=True)
+    scan_strategy = Column(String, nullable=False, default="realtime", server_default="realtime")
+    scan_interval_seconds = Column(Integer, nullable=True)
+    last_scan_started_at = Column(DateTime, nullable=True)
+    last_scan_finished_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+    failure_count = Column(Integer, nullable=False, default=0, server_default="0")
 
 
 class ScanJob(Base):

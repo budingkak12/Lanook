@@ -9,11 +9,19 @@ from pydantic import BaseModel, Field
 class SourceType(str, Enum):
     LOCAL = "local"
     SMB = "smb"
+    WEBDAV = "webdav"
 
 
 class SourceStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
+
+
+class ScanStrategy(str, Enum):
+    REALTIME = "realtime"
+    SCHEDULED = "scheduled"
+    MANUAL = "manual"
+    DISABLED = "disabled"
 
 
 class SourceValidateRequest(BaseModel):
@@ -57,17 +65,32 @@ class SourceCreateRequest(BaseModel):
     displayName: Optional[str] = None
     # control
     scan: Optional[bool] = Field(default=True, description="是否立即触发扫描与后台监控")
+    scanStrategy: Optional[ScanStrategy] = Field(
+        default=None,
+        description="来源级扫描策略，默认 local=Realtime, 其余=Scheduled",
+    )
+    scanIntervalSeconds: Optional[int] = Field(
+        default=None,
+        description="定时扫描间隔（秒），仅在 scheduled 策略下生效",
+    )
 
 
 class MediaSourceModel(BaseModel):
     id: int
     type: SourceType
+    sourceType: SourceType
     displayName: Optional[str] = None
     rootPath: str
     createdAt: str
     status: SourceStatus
     deletedAt: Optional[str] = None
     lastScanAt: Optional[str] = None
+    scanStrategy: ScanStrategy
+    scanIntervalSeconds: Optional[int] = None
+    lastScanStartedAt: Optional[str] = None
+    lastScanFinishedAt: Optional[str] = None
+    lastError: Optional[str] = None
+    failureCount: int = 0
 
 
 class ScanStartResponse(BaseModel):

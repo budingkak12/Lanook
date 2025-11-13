@@ -17,6 +17,8 @@ from .constants import (
 )
 from .models import AppSetting, Media, MediaTag, TagDefinition
 
+_DEFAULT_SCHEDULED_INTERVAL_SECONDS = 3600
+
 # 确保终端输出在中文环境下也不会乱码
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -138,6 +140,41 @@ def _ensure_schema_upgrades() -> None:
                 _alter("ALTER TABLE media_sources ADD COLUMN last_scan_at DATETIME")
             except Exception:
                 pass
+        if "source_type" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN source_type TEXT DEFAULT 'local'")
+            except Exception:
+                pass
+        if "scan_strategy" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN scan_strategy TEXT DEFAULT 'realtime'")
+            except Exception:
+                pass
+        if "scan_interval_seconds" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN scan_interval_seconds INTEGER")
+            except Exception:
+                pass
+        if "last_scan_started_at" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN last_scan_started_at DATETIME")
+            except Exception:
+                pass
+        if "last_scan_finished_at" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN last_scan_finished_at DATETIME")
+            except Exception:
+                pass
+        if "last_error" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN last_error TEXT")
+            except Exception:
+                pass
+        if "failure_count" not in columns:
+            try:
+                _alter("ALTER TABLE media_sources ADD COLUMN failure_count INTEGER DEFAULT 0")
+            except Exception:
+                pass
 
     if "media" in table_names:
         columns = {col["name"] for col in inspector.get_columns("media")}
@@ -148,6 +185,7 @@ def _ensure_schema_upgrades() -> None:
                 pass
 
     _backfill_media_sources()
+    repair_media_sources_metadata()
 
 
 def _normalize_root_path(raw_path: str, *, type_: str) -> str:
@@ -174,10 +212,15 @@ def resolve_media_source(db_session, raw_path: str, *, source_id: Optional[int],
     )
     if source is None:
         display_name = Path(normalized).name if type_ == "local" else normalized
+        scan_strategy = "realtime" if type_ == "local" else "scheduled"
+        interval_seconds = _DEFAULT_SCHEDULED_INTERVAL_SECONDS if scan_strategy == "scheduled" else None
         source = MediaSource(
             type=type_,
+            source_type=type_,
             display_name=display_name,
             root_path=normalized,
+            scan_strategy=scan_strategy,
+            scan_interval_seconds=interval_seconds,
         )
         db_session.add(source)
         db_session.flush()
@@ -185,6 +228,12 @@ def resolve_media_source(db_session, raw_path: str, *, source_id: Optional[int],
         if source.status != "active":
             source.status = "active"
             source.deleted_at = None
+        if not source.source_type:
+            source.source_type = source.type or type_
+        if source.scan_strategy is None:
+            source.scan_strategy = "realtime" if source.source_type == "local" else "scheduled"
+        if source.scan_strategy == "scheduled" and source.scan_interval_seconds is None:
+            source.scan_interval_seconds = _DEFAULT_SCHEDULED_INTERVAL_SECONDS
     return source
 
 
@@ -233,6 +282,59 @@ def _backfill_media_sources() -> None:
         session.close()
 
 
+def repair_media_sources_metadata() -> None:
+    """为 media_sources 表补齐新增字段的默认值。"""
+    from app.db.models_extra import MediaSource
+
+    session = SessionLocal()
+    try:
+        rows = session.query(MediaSource).all()
+        if not rows:
+            return
+        modified = False
+        for row in rows:
+            legacy_type = (row.type or "local").lower()
+            inferred_type = (row.source_type or legacy_type).lower()
+            if inferred_type not in {"local", "smb", "webdav"}:
+                inferred_type = "local"
+
+            if row.source_type != inferred_type:
+                row.source_type = inferred_type
+                modified = True
+            if row.type != inferred_type:
+                row.type = inferred_type
+                modified = True
+
+            valid_strategies = {"realtime", "scheduled", "manual", "disabled"}
+            current_strategy = row.scan_strategy if row.scan_strategy in valid_strategies else "realtime"
+            desired_strategy = current_strategy
+            if inferred_type != "local" and current_strategy == "realtime":
+                desired_strategy = "scheduled"
+            if row.scan_strategy != desired_strategy:
+                row.scan_strategy = desired_strategy
+                modified = True
+
+            if row.scan_interval_seconds is None and row.scan_strategy == "scheduled":
+                row.scan_interval_seconds = _DEFAULT_SCHEDULED_INTERVAL_SECONDS
+                modified = True
+
+            if row.last_scan_at and row.last_scan_started_at is None:
+                row.last_scan_started_at = row.last_scan_at
+                modified = True
+            if row.last_scan_at and row.last_scan_finished_at is None:
+                row.last_scan_finished_at = row.last_scan_at
+                modified = True
+
+            if row.failure_count is None:
+                row.failure_count = 0
+                modified = True
+
+        if modified:
+            session.commit()
+    finally:
+        session.close()
+
+
 __all__ = [
     "SessionLocal",
     "Base",
@@ -243,4 +345,5 @@ __all__ = [
     "get_setting",
     "set_setting",
     "resolve_media_source",
+    "repair_media_sources_metadata",
 ]
