@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.db.models_extra import MediaSource
+from app.services.sources.registry import clear_provider_credentials, save_provider_credentials
 
 DEFAULT_SCHEDULED_INTERVAL_SECONDS = 3600
 
@@ -119,13 +120,19 @@ def delete_source(db: Session, source_id: int, *, hard: bool = False) -> bool:
     ms = db.query(MediaSource).filter(MediaSource.id == source_id).first()
     if not ms:
         return False
+    provider_name = (ms.source_type or ms.type or "").lower()
+    identifier = ms.root_path
     if hard:
         db.delete(ms)
+        db.commit()
+        if provider_name and identifier:
+            clear_provider_credentials(provider_name, identifier)
+        return True
     else:
         ms.status = "inactive"
         ms.deleted_at = datetime.utcnow()
-    db.commit()
-    return True
+        db.commit()
+        return True
 
 
 def restore_source(db: Session, source_id: int) -> Optional[MediaSource]:
@@ -139,3 +146,39 @@ def restore_source(db: Session, source_id: int) -> Optional[MediaSource]:
     db.commit()
     db.refresh(ms)
     return ms
+
+
+def pause_source(db: Session, source_id: int) -> Optional[MediaSource]:
+    ms = db.query(MediaSource).filter(MediaSource.id == source_id).first()
+    if not ms:
+        return None
+    if ms.status != "inactive" or ms.deleted_at is not None:
+        ms.status = "inactive"
+        ms.deleted_at = None
+        db.commit()
+        db.refresh(ms)
+    return ms
+
+
+def activate_source(db: Session, source_id: int) -> Optional[MediaSource]:
+    ms = db.query(MediaSource).filter(MediaSource.id == source_id).first()
+    if not ms:
+        return None
+    updated = False
+    if ms.status != "active":
+        ms.status = "active"
+        updated = True
+    if ms.deleted_at is not None:
+        ms.deleted_at = None
+        updated = True
+    if updated:
+        db.commit()
+        db.refresh(ms)
+    return ms
+
+
+def store_source_credentials(source_type: str, payload: dict[str, Any]) -> None:
+    type_name = (source_type or "").lower()
+    if not type_name:
+        return
+    save_provider_credentials(type_name, payload)

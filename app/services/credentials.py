@@ -4,6 +4,7 @@ from typing import Optional
 import os
 
 import keyring
+from keyring.errors import KeyringError, PasswordDeleteError
 
 
 SERVICE_NAME = "mediaapp"
@@ -42,3 +43,13 @@ def get_smb_password(host: str, share: str, username: str | None) -> Optional[st
         if val:
             return val
     return None
+
+
+def clear_smb_password(host: str, share: str, username: str | None) -> None:
+    if not username:
+        return
+    key = _smb_secret_key(host, share, username)
+    try:
+        keyring.delete_password(SERVICE_NAME, key)
+    except (PasswordDeleteError, KeyringError):
+        pass

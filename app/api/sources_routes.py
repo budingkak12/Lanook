@@ -11,7 +11,9 @@ from sqlalchemy import or_
 
 from app.db import SessionLocal
 from app.schemas.sources import (
+    SourceCredentialFieldModel,
     MediaSourceModel,
+    SourceProviderCapabilityModel,
     ScanStrategy,
     ScanStartResponse,
     ScanStatusResponse,
@@ -24,13 +26,16 @@ from app.schemas.sources import (
 )
 from app.services.scan_service import get_scan_status, start_scan_job, scan_source_once
 from app.services.sources_service import (
+    activate_source,
     create_source,
     delete_source,
     get_source,
     list_sources,
+    pause_source,
     restore_source,
+    store_source_credentials,
 )
-from app.services.credentials import store_smb_password
+from app.services.fs_providers import get_provider_by_name, list_provider_capabilities
 from app.services.auto_scan_service import ensure_auto_scan_service
 from app.db import create_database_and_tables
 
@@ -141,149 +146,69 @@ def _to_media_source_model(src) -> MediaSourceModel:
     )
 
 
+def _get_provider_for_type(source_type: SourceType):
+    try:
+        return get_provider_by_name(source_type.value)
+    except LookupError:
+        raise HTTPException(status_code=422, detail="未知来源类型")
+
+
+def _validate_with_provider(req: SourceValidateRequest) -> SourceValidateResponse:
+    provider = _get_provider_for_type(req.type)
+    validate_fn = getattr(provider, "validate", None)
+    if not callable(validate_fn):
+        raise HTTPException(status_code=422, detail="该来源类型暂不支持验证")
+    return validate_fn(req)
+
+
+def _capability_to_model(data: dict) -> SourceProviderCapabilityModel:
+    fields = []
+    for field in data.get("credential_fields", []):
+        if not field:
+            continue
+        fields.append(
+            SourceCredentialFieldModel(
+                key=field.get("key"),
+                label=field.get("label") or field.get("key"),
+                required=bool(field.get("required", False)),
+                secret=bool(field.get("secret", False)),
+                description=field.get("description"),
+            )
+        )
+    return SourceProviderCapabilityModel(
+        name=data.get("name"),
+        displayName=data.get("display_name") or data.get("name"),
+        protocols=[str(p) for p in data.get("protocols", [])],
+        requiresCredentials=bool(data.get("requires_credentials", False)),
+        supportsAnonymous=bool(data.get("supports_anonymous", False)),
+        canValidate=bool(data.get("can_validate", False)),
+        credentialFields=fields,
+        metadata=data.get("metadata", {}),
+    )
+
+
+def _store_credentials_from_request(payload: SourceCreateRequest, overrides: dict | None = None) -> None:
+    data = payload.dict(exclude_unset=True)
+    data["type"] = payload.type.value
+    if overrides:
+        data.update(overrides)
+    store_source_credentials(payload.type.value, data)
+
+
 @router.post("/setup/source/validate", response_model=SourceValidateResponse)
 def validate_source(req: SourceValidateRequest):
-    exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv"}
-    if req.type == SourceType.LOCAL:
-        if not req.path:
-            raise HTTPException(status_code=422, detail="path required")
-        p = Path(req.path).expanduser().resolve()
-        if not p.exists():
-            raise HTTPException(status_code=404, detail="路径不存在")
-        if not p.is_dir():
-            raise HTTPException(status_code=422, detail="路径不是文件夹")
-        if not os.access(p, os.R_OK):
-            raise HTTPException(status_code=403, detail="无读取权限")
+    return _validate_with_provider(req)
 
-        total = 0
-        samples: list[str] = []
-        for root, _dirs, files in os.walk(p):
-            for f in files:
-                if Path(f).suffix.lower() in exts:
-                    total += 1
-                    if len(samples) < 10:
-                        samples.append(str(Path(root) / f))
-        return SourceValidateResponse(
-            ok=True,
-            readable=True,
-            absPath=str(p),
-            estimatedCount=total,
-            samples=samples,
-            note="只读验证通过，不会写入或删除此目录下文件",
-        )
-    elif req.type == SourceType.SMB:
-        # 使用 smbprotocol 直连验证，避免 SMB1 方言问题
-        if not req.host or not req.share:
-            raise HTTPException(status_code=422, detail="host/share required")
-        host = _normalize_host_input(req.host)
-        username = (req.username or "") if not req.anonymous else ""
-        password = (req.password or "") if not req.anonymous else ""
-        try:
-            from app.services.fs_providers import parse_smb_url
-            from smbprotocol.connection import Connection
-            from smbprotocol.session import Session
-            from smbprotocol.tree import TreeConnect
-            from smbprotocol.open import Open, CreateDisposition, CreateOptions, ShareAccess, FilePipePrinterAccessMask, ImpersonationLevel
-            from smbprotocol.file_info import FileInformationClass
-            import uuid
 
-            # 建链
-            conn = Connection(uuid.uuid4(), host, 445)
-            conn.connect()
-            sess = Session(conn, username=username, password=password)
-            sess.connect()
-            tree = TreeConnect(sess, f"\\\\{host}\\{req.share}")
-            tree.connect()
+@router.get("/sources/providers", response_model=List[SourceProviderCapabilityModel])
+def list_source_providers():
+    infos = list_provider_capabilities()
+    return [_capability_to_model(info) for info in infos]
 
-            # 打开验证目录
-            sub = (req.subPath or "").strip("/\\")
-            dir_path = sub.replace('/', '\\') if sub else ""
-            h = Open(tree, dir_path)
-            h.create(
-                ImpersonationLevel.Impersonation,
-                FilePipePrinterAccessMask.GENERIC_READ,
-                0,
-                ShareAccess.FILE_SHARE_READ,
-                CreateDisposition.FILE_OPEN,
-                CreateOptions.FILE_DIRECTORY_FILE,
-            )
 
-            # BFS 遍历少量样本，限制深度与数量
-            from collections import deque
-            q = deque([""])
-            total = 0
-            samples: list[str] = []
-            max_dirs = 50
-            max_files = 2000
-            visited = 0
-            while q and visited < max_dirs and total < max_files and len(samples) < 10:
-                rel = q.popleft()
-                visited += 1
-                cur = Open(tree, (dir_path + ('\\' if dir_path and rel else '') + rel) if rel else dir_path)
-                cur.create(
-                    ImpersonationLevel.Impersonation,
-                    FilePipePrinterAccessMask.GENERIC_READ,
-                    0,
-                    ShareAccess.FILE_SHARE_READ,
-                    CreateDisposition.FILE_OPEN,
-                    CreateOptions.FILE_DIRECTORY_FILE,
-                )
-                try:
-                    entries = cur.query_directory('*', FileInformationClass.FILE_DIRECTORY_INFORMATION)
-                    for e in entries:
-                        raw = e['file_name']
-                        # BytesField pretty string like '30 00 31 00 ...'; use .get_value() to get bytes
-                        if hasattr(raw, 'get_value'):
-                            b = raw.get_value()
-                            try:
-                                name = b.decode('utf-16-le').rstrip('\x00')
-                            except Exception:
-                                name = ''.join(chr(x) for x in b if x > 0)
-                        else:
-                            name = str(raw)
-                        if name in ('.', '..'):
-                            continue
-                        attrs_field = e['file_attributes']
-                        attrs_val = int(getattr(attrs_field, 'value', attrs_field))
-                        is_dir = bool(attrs_val & 0x10)
-                        child_rel = name if not rel else rel + '/' + name
-                        if is_dir:
-                            if len(q) < max_dirs:
-                                q.append(child_rel)
-                        else:
-                            if Path(name).suffix.lower() in exts:
-                                total += 1
-                                if len(samples) < 10:
-                                    samples.append(f"smb://{host}/{req.share}/" + (sub + '/' if sub else '') + child_rel)
-                            else:
-                                total += 1  # 统计到非媒体文件也计数，用于规模估计
-                            if total >= max_files:
-                                break
-                finally:
-                    cur.close()
-
-            # 关闭连接
-            h.close(); tree.disconnect(); sess.disconnect(); conn.disconnect(True)
-
-            return SourceValidateResponse(
-                ok=True,
-                readable=True,
-                absPath=f"smb://{host}/{req.share}/" + sub,
-                estimatedCount=total,
-                samples=samples,
-                note="只读验证通过，不会写入或删除此目录下文件",
-            )
-        except HTTPException:
-            raise
-        except Exception as exc:
-            msg = str(exc)
-            if 'STATUS_LOGON_FAILURE' in msg or 'Authentication' in msg or 'access' in msg.lower():
-                raise HTTPException(status_code=403, detail="认证失败，请检查用户名和密码")
-            if 'timed out' in msg or 'No route to host' in msg or 'not known' in msg or 'unreachable' in msg:
-                raise HTTPException(status_code=404, detail="无法连接到设备，请检查地址")
-            raise HTTPException(status_code=500, detail=f"连接失败：{msg}")
-    else:
-        raise HTTPException(status_code=422, detail="未知来源类型")
+@router.post("/sources/providers/probe", response_model=SourceValidateResponse)
+def probe_source_provider(req: SourceValidateRequest):
+    return _validate_with_provider(req)
 
 
 @router.post("/setup/source", response_model=MediaSourceModel, status_code=201)
@@ -373,9 +298,7 @@ def create_media_source(
         anonymous = bool(payload.anonymous)
         if not anonymous and not (payload.username and payload.password):
             raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
-        # 存储密码到系统钥匙串（不入库）
-        if payload.username and payload.password:
-            store_smb_password(payload.host, payload.share, payload.username, payload.password)
+        clean_host = _normalize_host_input(payload.host)
         # 组装根 URL：smb://[domain;]user@host/share/sub
         user_part = ""
         if payload.username:
@@ -384,7 +307,7 @@ def create_media_source(
             else:
                 user_part = f"{payload.username}@"
         sub = (payload.subPath or "").strip("/")
-        root_url = f"smb://{user_part}{payload.host}/{payload.share}"
+        root_url = f"smb://{user_part}{clean_host}/{payload.share}"
         if sub:
             root_url += f"/{sub}"
         # --- 路径重叠检测（SMB）：同 host/share 下的父子路径不允许重复配置 ---
@@ -430,6 +353,7 @@ def create_media_source(
         from app.db.models_extra import MediaSource as _MediaSource
         existing = db.query(_MediaSource).filter(_MediaSource.root_path == root_url.rstrip("/")).first()
         if existing is not None:
+            _store_credentials_from_request(payload, {"host": clean_host})
             changed = False
             if existing.status != "active":
                 existing.status = "active"
@@ -446,6 +370,7 @@ def create_media_source(
             response.headers["X-Message"] = "exists"
             return _to_media_source_model(existing)
         # 新建来源
+        _store_credentials_from_request(payload, {"host": clean_host})
         src = create_source(
             db,
             type_=payload.type.value,
@@ -499,6 +424,32 @@ def remove_media_source(
 @router.post("/media-sources/{source_id}/restore", response_model=MediaSourceModel)
 def restore_media_source(source_id: int, request: Request, db: Session = Depends(get_db)):
     src = restore_source(db, source_id)
+    if not src:
+        raise HTTPException(status_code=404, detail="not found")
+    try:
+        service = ensure_auto_scan_service(request.app)
+        service.refresh()
+    except Exception:
+        pass
+    return _to_media_source_model(src)
+
+
+@router.post("/media-sources/{source_id}/activate", response_model=MediaSourceModel)
+def activate_media_source(source_id: int, request: Request, db: Session = Depends(get_db)):
+    src = activate_source(db, source_id)
+    if not src:
+        raise HTTPException(status_code=404, detail="not found")
+    try:
+        service = ensure_auto_scan_service(request.app)
+        service.refresh()
+    except Exception:
+        pass
+    return _to_media_source_model(src)
+
+
+@router.post("/media-sources/{source_id}/pause", response_model=MediaSourceModel)
+def pause_media_source(source_id: int, request: Request, db: Session = Depends(get_db)):
+    src = pause_source(db, source_id)
     if not src:
         raise HTTPException(status_code=404, detail="not found")
     try:

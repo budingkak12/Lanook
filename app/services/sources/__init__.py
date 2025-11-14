@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-"""兼容旧引用的代理模块，所有逻辑迁移至 app.services.sources.* 下。"""
-
-from app.services.sources import (  # noqa: F401 - re-export for backward compatibility
+from .registry import (
     FSProvider,
     ProviderCapability,
     available_providers,
@@ -17,16 +15,14 @@ from app.services.sources import (  # noqa: F401 - re-export for backward compat
     save_provider_credentials,
     stat_url,
 )
-from app.services.sources.local_provider import LOCAL_PROVIDER, LocalFSProvider  # noqa: F401
-from app.services.sources.smb_provider import (  # noqa: F401
-    SMBParts,
-    SMB_PROVIDER,
-    SMBFSProvider,
-    is_smb_url,
-    parse_smb_url,
-)
+
+# 导入具体 provider 以触发注册
+from . import local_provider as _local_provider  # noqa: F401
+from . import smb_provider as _smb_provider  # noqa: F401
 
 __all__ = [
+    "FSProvider",
+    "ProviderCapability",
     "available_providers",
     "clear_provider_credentials",
     "get_provider",
@@ -38,8 +34,5 @@ __all__ = [
     "ro_fs_for_url",
     "save_provider_credentials",
     "stat_url",
-    "is_smb_url",
-    "parse_smb_url",
-    "SMBParts",
 ]
 

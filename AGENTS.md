@@ -29,7 +29,6 @@ smb 源连接信息
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据库/索引逻辑在 `app/db/` 模块，脚本入口在 `scripts/init_db.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。
-- python 测试 流程：总共三部，1执行prepare_test_media.py，2 启动后端。3 执行`api_flow_test.py`。
 
 ## 构建、测试与本地开发
 - 安装后端依赖：`uv pip install -r requirements.txt`。
@@ -48,7 +47,7 @@ smb 源连接信息
 - 评审与 CI 应检查拆分规则（建议在 lint 配置中启用模块行数限制）。
 
 ## 测试指南
-- 后端流程测试：先杀掉 8000 端口，然后启动 main.py，然后执行`uv run python api_flow_test.py`
+- 后端流程测试：总共三步，1执行prepare_test_media.py，2 启动后端。3 执行`api_flow_test.py`。
 - 提交前确保后端可启动且关键接口可用。
 
 ## 提交与 Pull Request
@@ -58,4 +57,4 @@ smb 源连接信息
 
 ## 其他建议（安全与代理说明）
 - 不要提交 `thumbnails/`、私密密钥或本地路径；如需配置，使用环境变量或 `.env`（私下分发）。
-- 自动化代理/机器人请优先使用 `uv run` 与 `uv pip`，勿擅自更改数据库结构或路由名称；多文件修改前后请运行 `api_flow_test.py` 验证。
+- 自动化代理/机器人请优先使用 `uv run` 与 `uv pip`，勿擅自更改数据库结构或路由名称

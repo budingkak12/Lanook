@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,25 @@ class ScanStrategy(str, Enum):
     SCHEDULED = "scheduled"
     MANUAL = "manual"
     DISABLED = "disabled"
+
+
+class SourceCredentialFieldModel(BaseModel):
+    key: str
+    label: str
+    required: bool = False
+    secret: bool = False
+    description: Optional[str] = None
+
+
+class SourceProviderCapabilityModel(BaseModel):
+    name: str
+    displayName: str
+    protocols: List[str] = Field(default_factory=list)
+    requiresCredentials: bool = False
+    supportsAnonymous: bool = False
+    canValidate: bool = False
+    credentialFields: List[SourceCredentialFieldModel] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class SourceValidateRequest(BaseModel):
