@@ -20,17 +20,19 @@ from app.db import (
     create_database_and_tables,
     get_setting,
     set_setting,
-    SUPPORTED_IMAGE_EXTS,
-    SUPPORTED_VIDEO_EXTS,
 )
 from app.db.models_extra import MediaSource
-from app.services.fs_providers import is_smb_url
+from app.services.access_layer import SourceAccessLayer, classify_media_type, detect_source_type
 from app.services.media_initializer import get_configured_media_root
 from app.services.scan_service import scan_source_once
 
 
 _STATE_ATTR = "auto_scan_service"
 _DEFAULT_ENABLED = True
+
+
+def _is_remote_path(path: str) -> bool:
+    return detect_source_type(path) != "local"
 
 
 def _normalize_bool(value: Optional[str], *, default: bool) -> bool:
@@ -129,15 +131,14 @@ DEFAULT_IDLE_SECONDS = 60.0
 
 def _normalize_path_key(raw: str | Path) -> str:
     raw_str = str(raw)
-    if is_smb_url(raw_str):
+    if _is_remote_path(raw_str):
         return raw_str.rstrip("/")
     return str(Path(raw_str).expanduser().resolve())
 
 
 def _is_media_file(file_path: str) -> bool:
     """检查文件是否为支持的媒体文件类型"""
-    ext = os.path.splitext(file_path)[1].lower()
-    return ext in SUPPORTED_IMAGE_EXTS or ext in SUPPORTED_VIDEO_EXTS
+    return classify_media_type(file_path) is not None
 
 
 def _is_file_complete(file_path: str, check_interval: float = 0.5, max_checks: int = 6) -> bool:
@@ -246,31 +247,21 @@ class _MediaFileHandler(FileSystemEventHandler):
                 print(f"[auto-scan] 文件已存在，跳过: {file_path}")
                 return True
 
-            # 文件入库
             session = SessionLocal()
             try:
-                # 获取文件信息并创建Media记录
-                path_obj = Path(file_path)
-                filename = path_obj.name
-
-                # 判断媒体类型
-                ext = os.path.splitext(file_path)[1].lower()
-                image_exts = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
-                media_type = "image" if ext in image_exts else "video"
-
-                # 创建媒体记录
-                media = Media(
-                    filename=filename,
-                    absolute_path=file_path,
-                    media_type=media_type,
+                access = SourceAccessLayer(session)
+                inserted = access.ingest_local_file(
+                    file_path,
                     source_id=self.source_id,
+                    root_hint=self.root_path,
                 )
-
-                session.add(media)
-                session.commit()
-                print(f"[auto-scan] 新媒体文件入库: {filename}")
-                return True
-
+                if inserted:
+                    session.commit()
+                    print(f"[auto-scan] 新媒体文件入库: {Path(file_path).name}")
+                else:
+                    session.rollback()
+                    print(f"[auto-scan] 文件已存在或类型不受支持，跳过: {file_path}")
+                return inserted
             except Exception as exc:
                 session.rollback()
                 print(f"[auto-scan] 入库失败 {file_path}: {exc}")
@@ -587,12 +578,12 @@ class _ScanWorker:
         if self.is_alive:
             return
 
-        # SMB路径不支持文件系统监控，回退到定期扫描
-        if is_smb_url(self._path):
-            print(f"[auto-scan] SMB路径使用定期扫描: {self._path}")
+        # 远程路径暂不支持文件系统监控，回退到定期扫描
+        if _is_remote_path(self._path):
+            print(f"[auto-scan] 远程路径使用定期扫描: {self._path}")
             self._monitor_thread = threading.Thread(
                 target=self._run_smb_scan,
-                name=f"SMBScanner[{self._path}]",
+                name=f"RemoteScanner[{self._path}]",
                 daemon=True
             )
             self._monitor_thread.start()
@@ -631,9 +622,9 @@ class _ScanWorker:
 
     def trigger(self) -> None:
         """手动触发处理待处理文件"""
-        if is_smb_url(self._path):
-            # SMB路径没有文件系统事件处理器，但可以手动触发扫描
-            print(f"[auto-scan] 手动触发SMB路径扫描: {self._path}")
+        if _is_remote_path(self._path):
+            # 远程路径没有文件系统事件处理器，但可以手动触发扫描
+            print(f"[auto-scan] 手动触发远程路径扫描: {self._path}")
             session = SessionLocal()
             try:
                 added = scan_source_once(session, self._path, source_id=self._source_id)
@@ -661,22 +652,22 @@ class _ScanWorker:
             self._stop_event.wait(1.0)
 
     def _run_smb_scan(self) -> None:
-        """SMB路径定期扫描（回退方案）"""
-        scan_interval = 300.0  # 5分钟扫描一次SMB路径
+        """远程路径定期扫描（回退方案）"""
+        scan_interval = 300.0  # 5分钟扫描一次远程路径
         last_scan_time = 0
 
         while not self._stop_event.is_set():
             current_time = time.time()
 
             try:
-                # 每隔5分钟扫描一次SMB路径
+                # 每隔5分钟扫描一次远程路径
                 if current_time - last_scan_time >= scan_interval:
                     session = SessionLocal()
                     try:
                         added = scan_source_once(session, self._path, source_id=self._source_id)
                         session.commit()
                         if added > 0:
-                            print(f"[auto-scan] SMB路径扫描新增 {added} 个文件: {self._path}")
+                            print(f"[auto-scan] 远程路径扫描新增 {added} 个文件: {self._path}")
                         last_scan_time = current_time
                     except Exception:
                         session.rollback()
@@ -685,8 +676,8 @@ class _ScanWorker:
                         session.close()
 
             except Exception as exc:  # pragma: no cover - 防御性记录
-                self._last_error = f"SMB扫描失败：{exc}"
-                print(f"[auto-scan] SMB扫描失败 {self._path}: {exc}")
+                self._last_error = f"远程扫描失败：{exc}"
+                print(f"[auto-scan] 远程扫描失败 {self._path}: {exc}")
 
             # 每30秒检查一次是否需要停止
             self._stop_event.wait(30.0)
