@@ -43,6 +43,10 @@ class ThumbnailUnavailableError(ServiceError):
     default_status = 404
 
 
+class MetadataUnavailableError(ServiceError):
+    default_status = 404
+
+
 class InvalidRangeError(ServiceError):
     default_status = 416
 

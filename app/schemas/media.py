@@ -41,3 +41,21 @@ class FailedItemModel(BaseModel):
 class DeleteBatchResp(BaseModel):
     deleted: List[int]
     failed: List[FailedItemModel] = []
+
+
+class MediaMetadata(BaseModel):
+    mediaId: int
+    filename: str
+    mediaType: str
+    sourcePath: str
+    size: int
+    mtime: Optional[str] = None
+    ctime: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    duration: Optional[float] = None
+    checksum: Optional[str] = None
+    fps: Optional[float] = None
+
+    class Config:
+        extra = "allow"

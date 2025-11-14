@@ -8,6 +8,7 @@ from app.db import SessionLocal
 from app.schemas.media import (
     DeleteBatchReq,
     DeleteBatchResp,
+    MediaMetadata,
     PageResponse,
     TagRequest,
 )
@@ -96,6 +97,14 @@ def get_media_thumbnail(media_id: int, db: Session = Depends(get_db)):
     try:
         payload = media_service.get_thumbnail_payload(db, media_id=media_id)
         return FileResponse(path=payload.path, media_type=payload.media_type, headers=payload.headers)
+    except ServiceError as exc:
+        _raise_service_error(exc)
+
+
+@router.get("/media/{media_id}/metadata", response_model=MediaMetadata)
+def get_media_metadata(media_id: int, db: Session = Depends(get_db)):
+    try:
+        return media_service.get_media_metadata(db, media_id=media_id)
     except ServiceError as exc:
         _raise_service_error(exc)
 

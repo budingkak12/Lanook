@@ -23,6 +23,7 @@ from PIL import ImageDraw, ImageFont
 import av  # type: ignore
 
 from app.db import Media
+from app.services.asset_models import ArtifactPayload
 from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
 
 
@@ -43,7 +44,7 @@ def thumb_path_for(media: Media) -> Path:
     return THUMBNAILS_DIR / f"{media.id}.jpg"
 
 
-def resolve_cached_thumbnail(media: Media) -> Optional[Path]:
+def resolve_cached_thumbnail(media: Media) -> Optional[ArtifactPayload]:
     """在不触发生成的情况下返回可用的缩略图路径。"""
     if not media.absolute_path or not isinstance(media.absolute_path, str):
         return None
@@ -59,12 +60,12 @@ def resolve_cached_thumbnail(media: Media) -> Optional[Path]:
         except Exception:
             return None
         if th_stat.st_mtime >= mtime and th_stat.st_size >= 2000:
-            return dest
+            return ArtifactPayload(path=dest)
         return None
 
     if _should_regenerate_local(media.absolute_path, dest):
         return None
-    return dest
+    return ArtifactPayload(path=dest)
 
 
 def _should_regenerate_local(src_path: str, thumb_path: Path) -> bool:
@@ -241,7 +242,7 @@ def _generate_video_thumbnail(src: str, dest: Path, target_seconds: float = 1.0)
         return False
 
 
-def get_or_generate_thumbnail(media: Media) -> Optional[Path]:
+def get_or_generate_thumbnail(media: Media) -> Optional[ArtifactPayload]:
     """生成并返回缩略图路径；失败返回 None（不再生成占位图）。
 
     - 图片：等比缩放到不超过 480x480
@@ -259,18 +260,18 @@ def get_or_generate_thumbnail(media: Media) -> Optional[Path]:
             if dest.exists():
                 th = os.stat(dest)
                 if th.st_mtime >= mtime and th.st_size >= 2000:
-                    return dest
+                    return ArtifactPayload(path=dest)
         except Exception:
             # 远端 stat 失败则尝试重建
             pass
     else:
         if not _should_regenerate_local(src, dest):
-            return dest
+            return ArtifactPayload(path=dest)
 
     try:
         ok = _generate_image_thumbnail(src, dest) if media.media_type == "image" else _generate_video_thumbnail(src, dest)
         if ok and dest.exists() and dest.stat().st_size > 0:
-            return dest
+            return ArtifactPayload(path=dest)
         # 不再生成占位图：失败直接返回 None
         if dest.exists():
             try:

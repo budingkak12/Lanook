@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import mimetypes
 import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Iterable, List, Optional
 
 from sqlalchemy.exc import OperationalError
@@ -13,8 +15,16 @@ from sqlalchemy.orm import Query, Session
 
 from app.db import Media, MediaTag, TagDefinition
 from app.db.models_extra import MediaSource
-from app.schemas.media import DeleteBatchResp, FailedItemModel, MediaItem, PageResponse
-from app.services.asset_pipeline import AssetArtifactStatus, request_thumbnail_artifact
+from app.schemas.media import DeleteBatchResp, FailedItemModel, MediaItem, MediaMetadata, PageResponse
+from app.services.asset_pipeline import (
+    ArtifactType,
+    AssetArtifactResult,
+    AssetArtifactStatus,
+    get_cached_artifact,
+    request_metadata_artifact,
+    request_placeholder_artifact,
+    request_thumbnail_artifact,
+)
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from app.services.deletion_service import delete_media_record_and_files
 from app.services.exceptions import (
@@ -29,6 +39,7 @@ from app.services.exceptions import (
     TagAlreadyExistsError,
     TagNotFoundError,
     ThumbnailUnavailableError,
+    MetadataUnavailableError,
 )
 from app.services.fs_providers import is_smb_url, iter_bytes, stat_url
 from app.services.thumbnails_service import build_thumb_headers
@@ -49,6 +60,17 @@ class MediaResourcePayload:
     stream: Iterable[bytes] | None = None
     file_path: str | None = None
     use_file_response: bool = False
+
+
+def _artifact_extra_dict(result: AssetArtifactResult) -> Optional[dict]:
+    if result.extra:
+        return result.extra
+    if result.path:
+        try:
+            return json.loads(result.path.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -303,13 +325,58 @@ def get_thumbnail_payload(db: Session, *, media_id: int) -> ThumbnailPayload:
     media = _require_media(db, media_id)
     if (not is_smb_url(media.absolute_path)) and (not os.path.exists(media.absolute_path)):
         raise FileNotFoundOnDiskError("file not found")
+    cached = get_cached_artifact(db, media.id, ArtifactType.THUMBNAIL)
+    if cached and cached.path and cached.path.exists():
+        headers = build_thumb_headers(str(cached.path))
+        media_type = headers.get("Content-Type", "image/jpeg")
+        return ThumbnailPayload(path=str(cached.path), media_type=media_type, headers=headers)
+
     result = request_thumbnail_artifact(media, db)
-    if result.status != AssetArtifactStatus.READY or not result.path:
-        raise ThumbnailUnavailableError(result.detail or "thumbnail not available")
-    thumb_path = result.path
-    headers = build_thumb_headers(str(thumb_path))
-    media_type = headers.get("Content-Type", "image/jpeg")
-    return ThumbnailPayload(path=str(thumb_path), media_type=media_type, headers=headers)
+    if result.status == AssetArtifactStatus.READY and result.path:
+        headers = build_thumb_headers(str(result.path))
+        media_type = headers.get("Content-Type", "image/jpeg")
+        return ThumbnailPayload(path=str(result.path), media_type=media_type, headers=headers)
+
+    placeholder_path = _ensure_placeholder_thumbnail(db, media)
+    if placeholder_path and placeholder_path.exists():
+        headers = build_thumb_headers(str(placeholder_path))
+        media_type = headers.get("Content-Type", "image/jpeg")
+        return ThumbnailPayload(path=str(placeholder_path), media_type=media_type, headers=headers)
+
+    raise ThumbnailUnavailableError(result.detail or "thumbnail not available")
+
+
+def _ensure_placeholder_thumbnail(db: Session, media: Media) -> Optional[Path]:
+    cached = get_cached_artifact(db, media.id, ArtifactType.PLACEHOLDER)
+    if cached and cached.path and cached.path.exists():
+        return cached.path
+    result = request_placeholder_artifact(media, db, wait_timeout=2.0)
+    if result.status == AssetArtifactStatus.READY and result.path and result.path.exists():
+        return result.path
+    return None
+
+
+def get_media_metadata(db: Session, *, media_id: int, wait_timeout: Optional[float] = None) -> MediaMetadata:
+    media = _require_media(db, media_id)
+    payload_dict: Optional[dict] = None
+
+    cached = get_cached_artifact(db, media.id, ArtifactType.METADATA)
+    if cached:
+        payload_dict = _artifact_extra_dict(cached)
+
+    if payload_dict is None:
+        result = request_metadata_artifact(media, db, wait_timeout=wait_timeout)
+        if result.status != AssetArtifactStatus.READY:
+            raise MetadataUnavailableError(result.detail or "metadata not available")
+        payload_dict = _artifact_extra_dict(result)
+
+    if not payload_dict:
+        raise MetadataUnavailableError("metadata payload empty")
+
+    try:
+        return MediaMetadata(**payload_dict)
+    except Exception as exc:
+        raise MetadataUnavailableError("metadata payload invalid") from exc
 
 
 def get_media_resource_payload(

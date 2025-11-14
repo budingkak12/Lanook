@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import threading
 from dataclasses import dataclass
@@ -8,18 +9,25 @@ from enum import Enum
 from itertools import count
 from pathlib import Path
 from queue import Empty, PriorityQueue
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import Media, SessionLocal, create_database_and_tables
 from app.db.models_extra import AssetArtifact
+from app.services.asset_handlers.metadata import metadata_cache_lookup, metadata_generator
+from app.services.asset_handlers.placeholder import placeholder_cache_lookup, placeholder_generator
+from app.services.asset_handlers.transcode import transcode_cache_lookup, transcode_generator
+from app.services.asset_models import ArtifactPayload
 from app.services.thumbnails_service import get_or_generate_thumbnail, resolve_cached_thumbnail
 
 
 class ArtifactType(str, Enum):
     THUMBNAIL = "thumbnail"
+    METADATA = "metadata"
+    PLACEHOLDER = "placeholder"
+    TRANSCODE = "transcode"
 
 
 class AssetArtifactStatus(str, Enum):
@@ -33,8 +41,8 @@ class AssetArtifactStatus(str, Enum):
 @dataclass
 class ArtifactHandler:
     artifact_type: ArtifactType
-    cache_lookup: Callable[[Media], Optional[Path]]
-    generator: Callable[[Media], Optional[Path]]
+    cache_lookup: Callable[[Media], Optional[ArtifactPayload]]
+    generator: Callable[[Media], Optional[ArtifactPayload]]
     priority: int = 100
 
 
@@ -49,6 +57,7 @@ class AssetArtifactResult:
     status: AssetArtifactStatus
     path: Optional[Path] = None
     detail: Optional[str] = None
+    extra: Optional[Dict[str, Any]] = None
 
 
 class _JobSignal:
@@ -57,7 +66,7 @@ class _JobSignal:
         self._lock = threading.Lock()
         self.inflight = False
         self.status = AssetArtifactStatus.QUEUED
-        self.path: Optional[str] = None
+        self.payload: Optional[ArtifactPayload] = None
         self.error: Optional[str] = None
 
     def mark_enqueued(self) -> bool:
@@ -66,7 +75,7 @@ class _JobSignal:
                 return False
             self.inflight = True
             self.status = AssetArtifactStatus.QUEUED
-            self.path = None
+            self.payload = None
             self.error = None
             self.event.clear()
             return True
@@ -75,11 +84,11 @@ class _JobSignal:
         with self._lock:
             self.status = AssetArtifactStatus.PROCESSING
 
-    def mark_success(self, path: str) -> None:
+    def mark_success(self, payload: ArtifactPayload) -> None:
         with self._lock:
             self.inflight = False
             self.status = AssetArtifactStatus.READY
-            self.path = path
+            self.payload = payload
             self.error = None
             self.event.set()
 
@@ -88,12 +97,12 @@ class _JobSignal:
             self.inflight = False
             self.status = AssetArtifactStatus.FAILED
             self.error = message
-            self.path = None
+            self.payload = None
             self.event.set()
 
-    def snapshot(self) -> tuple[AssetArtifactStatus, Optional[str], Optional[str]]:
+    def snapshot(self) -> tuple[AssetArtifactStatus, Optional[ArtifactPayload], Optional[str]]:
         with self._lock:
-            return self.status, self.path, self.error
+            return self.status, self.payload, self.error
 
 
 class AssetPipeline:
@@ -151,6 +160,30 @@ class AssetPipeline:
                 priority=int(os.environ.get("MEDIAAPP_THUMBNAIL_PRIORITY", "80")),
             )
         )
+        self.register_handler(
+            ArtifactHandler(
+                artifact_type=ArtifactType.PLACEHOLDER,
+                cache_lookup=placeholder_cache_lookup,
+                generator=placeholder_generator,
+                priority=int(os.environ.get("MEDIAAPP_PLACEHOLDER_PRIORITY", "40")),
+            )
+        )
+        self.register_handler(
+            ArtifactHandler(
+                artifact_type=ArtifactType.METADATA,
+                cache_lookup=metadata_cache_lookup,
+                generator=metadata_generator,
+                priority=int(os.environ.get("MEDIAAPP_METADATA_PRIORITY", "60")),
+            )
+        )
+        self.register_handler(
+            ArtifactHandler(
+                artifact_type=ArtifactType.TRANSCODE,
+                cache_lookup=transcode_cache_lookup,
+                generator=transcode_generator,
+                priority=int(os.environ.get("MEDIAAPP_TRANSCODE_PRIORITY", "200")),
+            )
+        )
 
     # ------------------------------------------------------------------
     # Request entrypoint
@@ -171,16 +204,20 @@ class AssetPipeline:
         wait_seconds = self.thumbnail_wait_timeout if wait_timeout is None else wait_timeout
         record = self._get_or_create_record(session, media.id, artifact_type)
 
-        cached_path: Optional[Path] = None
+        cached_payload: Optional[ArtifactPayload] = None
         try:
-            cached_path = handler.cache_lookup(media)
+            cached_payload = handler.cache_lookup(media)
         except Exception:
-            cached_path = None
+            cached_payload = None
 
-        if cached_path:
-            self._mark_record_ready(session, record, cached_path)
-            self._update_signal_ready(media.id, artifact_type, cached_path)
-            return AssetArtifactResult(status=AssetArtifactStatus.READY, path=cached_path)
+        if cached_payload and cached_payload.has_materialized_output():
+            self._mark_record_ready(session, record, cached_payload)
+            self._update_signal_ready(media.id, artifact_type, cached_payload)
+            return AssetArtifactResult(
+                status=AssetArtifactStatus.READY,
+                path=cached_payload.path,
+                extra=cached_payload.extra,
+            )
 
         if record.status != AssetArtifactStatus.PROCESSING.value:
             self._mark_record_queued(session, record, handler.priority)
@@ -192,9 +229,9 @@ class AssetPipeline:
             return AssetArtifactResult(status=AssetArtifactStatus.QUEUED)
 
         finished = signal.event.wait(wait_seconds)
-        status, path, detail = signal.snapshot()
-        if finished and status == AssetArtifactStatus.READY and path:
-            return AssetArtifactResult(status=AssetArtifactStatus.READY, path=Path(path))
+        status, payload, detail = signal.snapshot()
+        if finished and status == AssetArtifactStatus.READY and payload:
+            return AssetArtifactResult(status=AssetArtifactStatus.READY, path=payload.path, extra=payload.extra)
         if finished and status == AssetArtifactStatus.FAILED:
             return AssetArtifactResult(status=AssetArtifactStatus.FAILED, detail=detail)
         return AssetArtifactResult(status=AssetArtifactStatus.TIMEOUT)
@@ -248,13 +285,12 @@ class AssetPipeline:
 
         try:
             generated = handler.generator(media)
-            if generated is None or not Path(generated).exists():
+            if generated is None or not generated.has_materialized_output():
                 raise RuntimeError("asset generator did not produce output")
-            result_path = Path(generated)
             with SessionLocal() as session:
                 record = self._get_or_create_record(session, task.media_id, task.artifact_type)
-                self._mark_record_ready(session, record, result_path)
-            signal.mark_success(str(result_path))
+                self._mark_record_ready(session, record, generated)
+            signal.mark_success(generated)
         except Exception as exc:
             message = (str(exc) or exc.__class__.__name__)[:2000]
             self._mark_failure(task.media_id, task.artifact_type, message)
@@ -287,9 +323,11 @@ class AssetPipeline:
                 raise
         return record
 
-    def _mark_record_ready(self, session: Session, record: AssetArtifact, path: Path) -> None:
+    def _mark_record_ready(self, session: Session, record: AssetArtifact, payload: ArtifactPayload) -> None:
         record.status = AssetArtifactStatus.READY.value
-        record.file_path = str(path)
+        record.file_path = str(payload.path) if payload.path else None
+        record.extra_json = json.dumps(payload.extra, ensure_ascii=False) if payload.extra is not None else None
+        record.checksum = payload.checksum
         record.finished_at = datetime.utcnow()
         record.last_error = None
         session.commit()
@@ -300,6 +338,8 @@ class AssetPipeline:
         record.queued_at = datetime.utcnow()
         record.file_path = None
         record.finished_at = None
+        record.extra_json = None
+        record.checksum = None
         session.commit()
 
     def _mark_failure(self, media_id: int, artifact_type: ArtifactType, message: str) -> None:
@@ -314,6 +354,8 @@ class AssetPipeline:
             record.status = AssetArtifactStatus.FAILED.value
             record.last_error = message
             record.file_path = None
+            record.extra_json = None
+            record.checksum = None
             record.finished_at = datetime.utcnow()
             session.commit()
 
@@ -333,9 +375,9 @@ class AssetPipeline:
                 self._signals[key] = signal
             return signal
 
-    def _update_signal_ready(self, media_id: int, artifact_type: ArtifactType, path: Path) -> None:
+    def _update_signal_ready(self, media_id: int, artifact_type: ArtifactType, payload: ArtifactPayload) -> None:
         signal = self._ensure_signal(media_id, artifact_type)
-        signal.mark_success(str(path))
+        signal.mark_success(payload)
 
 
 _PIPELINE_LOCK = threading.Lock()
@@ -368,3 +410,38 @@ def shutdown_pipeline() -> None:
 def request_thumbnail_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
     pipeline = ensure_pipeline_started()
     return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.THUMBNAIL, session=session, wait_timeout=wait_timeout)
+
+
+def request_placeholder_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
+    pipeline = ensure_pipeline_started()
+    return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.PLACEHOLDER, session=session, wait_timeout=wait_timeout)
+
+
+def request_metadata_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
+    pipeline = ensure_pipeline_started()
+    return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.METADATA, session=session, wait_timeout=wait_timeout)
+
+
+def request_transcode_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
+    pipeline = ensure_pipeline_started()
+    return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.TRANSCODE, session=session, wait_timeout=wait_timeout)
+
+
+def get_cached_artifact(session: Session, media_id: int, artifact_type: ArtifactType) -> Optional[AssetArtifactResult]:
+    record = (
+        session.query(AssetArtifact)
+        .filter(AssetArtifact.media_id == media_id, AssetArtifact.artifact_type == artifact_type.value)
+        .first()
+    )
+    if not record or record.status != AssetArtifactStatus.READY.value:
+        return None
+    path = Path(record.file_path) if record.file_path else None
+    if path and not path.exists():
+        return None
+    extra: Optional[Dict[str, Any]] = None
+    if record.extra_json:
+        try:
+            extra = json.loads(record.extra_json)
+        except Exception:
+            extra = None
+    return AssetArtifactResult(status=AssetArtifactStatus.READY, path=path, extra=extra)

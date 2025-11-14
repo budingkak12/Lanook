@@ -23,6 +23,7 @@ sample_media/
 media_app.db
 thumbnails/
 media_snapshots/
+artifacts/
 
 # uv caches
 .uv_cache/
