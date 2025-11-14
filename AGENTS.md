@@ -14,6 +14,12 @@
         ↓
 [ Web 前端 / API 层 ]
 
+smb 源连接信息
+### 1. Samba/SMB 连接
+- **协议**: `smb://`
+- **地址**: `smb://10.175.87.74` 
+- **用户名**: `testuser`
+- **密码**: `testpass`
 ## web前端
 - 使用http://localhost:3000/开发/调试功能，前端直接指向后端 10.175.87.74:8000
 ## 你必须做的事情
@@ -23,7 +29,7 @@
 ## 项目结构与模块组织
 - 后端（FastAPI）：`main.py`（路由/CORS/流式），数据库/索引逻辑在 `app/db/` 模块，脚本入口在 `scripts/init_db.py`。
 - 数据：`media_app.db`（SQLite）、`sample_media/`、`thumbnails/`（由任务生成，勿提交）。
-- 工具脚本：`api_flow_test.py`。
+- python 测试 流程：总共三部，1执行prepare_test_media.py，2 启动后端。3 执行`api_flow_test.py`。
 
 ## 构建、测试与本地开发
 - 安装后端依赖：`uv pip install -r requirements.txt`。

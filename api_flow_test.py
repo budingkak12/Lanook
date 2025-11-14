@@ -3,7 +3,8 @@ API 流程测试脚本（局域网无用户版）
 ================================================
 - 覆盖媒体根设置、来源校验/扫描、分页、缩略图、标签增删、Range、删除（单删/批删）。
 - 直接通过 HTTP 调用已运行的服务，不尝试进程内或直连数据库。
-- 默认会重置后端数据库并重新扫描 `sample_media/`，可通过环境变量跳过。
+- 运行本脚本前请先执行 `uv run python prepare_test_media.py`（或自定义的前置脚本）删除旧 DB/缩略图并恢复 `sample_media/`，随后手动启动后端。
+- 测试流程包含创建本地来源 + SMB 来源（禁用扫描）并完成初始化后的全链路校验。
 
 运行方式：
     uv run python api_flow_test.py
@@ -16,6 +17,7 @@ API 流程测试脚本（局域网无用户版）
     - TEST_SAMPLE_DIR      覆盖示例媒体目录（默认 repo 根的 sample_media/）
     - TEST_SCAN_TIMEOUT    扫描等待秒数（默认 120）
     - TEST_SCAN_POLL       扫描状态轮询间隔（默认 0.5 秒）
+    - TEST_SMB_HOST/SHARE  若需测试 SMB 来源，可通过这些变量覆盖默认 NAS 参数
 """
 
 from __future__ import annotations
@@ -38,6 +40,19 @@ SCAN_POLL_INTERVAL = float(os.environ.get("TEST_SCAN_POLL", "0.5"))
 SAMPLE_DIR = Path(
     os.environ.get("TEST_SAMPLE_DIR") or (Path(__file__).resolve().parent / "sample_media")
 ).expanduser().resolve()
+
+_DEFAULT_SMB_HOST = os.environ.get("TEST_SMB_HOST", "10.175.87.74").strip()
+_DEFAULT_SMB_SHARE = os.environ.get("TEST_SMB_SHARE", "PublicShare").strip() or "PublicShare"
+_DEFAULT_SMB_SUBPATH = (os.environ.get("TEST_SMB_SUBPATH") or "").strip("/")
+SMB_DISPLAY_NAME = os.environ.get("TEST_SMB_DISPLAY_NAME", "NAS-PublicShare").strip() or "NAS-PublicShare"
+SMB_USERNAME = os.environ.get("TEST_SMB_USERNAME", "testuser")
+SMB_PASSWORD = os.environ.get("TEST_SMB_PASSWORD", "testpass")
+SMB_DOMAIN = os.environ.get("TEST_SMB_DOMAIN")
+_SMB_ANON_ENV = os.environ.get("TEST_SMB_ANONYMOUS")
+if _SMB_ANON_ENV is None:
+    SMB_ANONYMOUS = not (SMB_USERNAME and SMB_PASSWORD)
+else:
+    SMB_ANONYMOUS = _SMB_ANON_ENV.strip().lower() not in {"0", "false", "no", "off"}
 
 
 # ---------------------------------------------------------------------------
@@ -228,21 +243,15 @@ def ensure_init_state(
 # 引导/准备
 # ---------------------------------------------------------------------------
 
-def _restore_snapshots_if_available() -> None:
-    try:
-        import restore_from_snapshots as _rfs
-
-        rc = _rfs.main()
-        if VERBOSE:
-            print(f"[restore_from_snapshots] exit={rc}")
-    except Exception as exc:
-        print(f"[restore_from_snapshots] 忽略错误: {exc}")
-
-
 def reset_backend_state() -> None:
     if SKIP_RESET:
         if VERBOSE:
             print("[reset] 跳过后端重置 (TEST_SKIP_RESET=1)")
+        return
+    db_path = Path(__file__).resolve().parent / "media_app.db"
+    if not db_path.exists():
+        if VERBOSE:
+            print("[reset] 检测到数据库文件不存在，跳过 reset 调用，等待后端自动初始化。")
         return
     resp, _ = http_call(
         title="Reset Initialization",
@@ -332,6 +341,95 @@ def ensure_media_source(sample_dir: Path) -> Dict[str, Any]:
     data = _decode_json(body)
     assert_true(data.get("id") is not None, "创建媒体来源失败")
     return data
+
+
+def create_smb_source_stub() -> Optional[int]:
+    host = _DEFAULT_SMB_HOST
+    share = _DEFAULT_SMB_SHARE
+    if not host or not share:
+        if VERBOSE:
+            print("[smb] 未配置 TEST_SMB_HOST/SHARE，跳过 SMB 来源测试。")
+        return None
+
+    validate_payload: Dict[str, Any] = {
+        "type": "smb",
+        "host": host,
+        "share": share,
+        "anonymous": SMB_ANONYMOUS,
+    }
+    if _DEFAULT_SMB_SUBPATH:
+        validate_payload["subPath"] = _DEFAULT_SMB_SUBPATH
+    if not SMB_ANONYMOUS:
+        validate_payload["username"] = SMB_USERNAME or ""
+        validate_payload["password"] = SMB_PASSWORD or ""
+        if SMB_DOMAIN:
+            validate_payload["domain"] = SMB_DOMAIN
+
+    v_resp, v_body = http_call(
+        title="Validate SMB Source",
+        method="POST",
+        path="/setup/source/validate",
+        json_body=validate_payload,
+        allow_error=True,
+    )
+    v_code = _status_code(v_resp)
+    if 200 <= v_code < 300:
+        v_data = _decode_json(v_body)
+        assert_true(v_data.get("ok"), "SMB 来源校验失败")
+    elif v_code == 404:
+        raise RuntimeError("SMB 来源校验失败：无法连接到 NAS")
+    else:
+        raise RuntimeError(f"SMB 来源校验失败: HTTP {v_code}")
+
+    base_root = f"smb://{host}/{share}"
+    if _DEFAULT_SMB_SUBPATH:
+        base_root += f"/{_DEFAULT_SMB_SUBPATH}"
+    if not base_root.endswith("/"):
+        base_root += "/"
+
+    payload: Dict[str, Any] = {
+        "type": "smb",
+        "rootPath": base_root,
+        "host": host,
+        "share": share,
+        "displayName": SMB_DISPLAY_NAME,
+        "scan": False,
+        "scanStrategy": "manual",
+        "anonymous": SMB_ANONYMOUS,
+    }
+    if _DEFAULT_SMB_SUBPATH:
+        payload["subPath"] = _DEFAULT_SMB_SUBPATH
+    if not SMB_ANONYMOUS:
+        payload["username"] = SMB_USERNAME or ""
+        payload["password"] = SMB_PASSWORD or ""
+        if SMB_DOMAIN:
+            payload["domain"] = SMB_DOMAIN
+
+    resp, body = http_call(
+        title="Create SMB Source",
+        method="POST",
+        path="/setup/source",
+        json_body=payload,
+        allow_error=True,
+    )
+    code = _status_code(resp)
+    if 200 <= code < 300:
+        data = _decode_json(body)
+        assert_true(data.get("id") is not None, "SMB 来源未返回 id")
+        if VERBOSE:
+            print(f"[smb] SMB 来源已创建，id={data['id']}")
+        return int(data["id"])
+    if code == 409:
+        existing = list_media_sources(include_inactive=True)
+        for src in existing:
+            if str(src.get("type", "")).lower() != "smb":
+                continue
+            root = str(src.get("rootPath") or "").lower()
+            if host.lower() in root and share.lower() in root:
+                if VERBOSE:
+                    print(f"[smb] SMB 来源已存在，复用 id={src.get('id')}")
+                return int(src.get("id"))
+    raise RuntimeError(f"创建 SMB 来源失败: HTTP {code}")
 
 
 def check_filesystem_endpoints(sample_dir: Path) -> None:
@@ -444,29 +542,28 @@ def exercise_network_endpoints() -> None:
     assert_true(_status_code(resp_missing_share) == 422, "缺少 share 应返回 422")
 
 
-def exercise_media_source_lifecycle(source_id: Optional[int]) -> None:
-    if source_id is None:
-        if VERBOSE:
-            print("[source] 未提供 source_id，跳过来源生命周期测试。")
-        return
-    http_call(
-        title="Delete Media Source",
-        method="DELETE",
-        path=f"/media-sources/{source_id}",
-        query={"hard": "false"},
-    )
-    inactive_sources = list_media_sources(include_inactive=True)
-    deleted = next((s for s in inactive_sources if s.get("id") == source_id), None)
-    assert_true(deleted is not None, "删除来源后应能在列表中找到")
-    assert_true(deleted.get("status") != "active", "删除来源应变为 inactive")
+def exercise_media_source_lifecycle(source_ids: list[Optional[int]]) -> None:
+    for source_id in source_ids:
+        if source_id is None:
+            continue
+        http_call(
+            title=f"Delete Media Source {source_id}",
+            method="DELETE",
+            path=f"/media-sources/{source_id}",
+            query={"hard": "false"},
+        )
+        inactive_sources = list_media_sources(include_inactive=True)
+        deleted = next((s for s in inactive_sources if s.get("id") == source_id), None)
+        assert_true(deleted is not None, f"删除来源 {source_id} 后应能在列表中找到")
+        assert_true(deleted.get("status") != "active", f"来源 {source_id} 删除后应标记为 inactive")
 
-    _, restored_body = http_call(
-        title="Restore Media Source",
-        method="POST",
-        path=f"/media-sources/{source_id}/restore",
-    )
-    restored = _decode_json(restored_body)
-    assert_true(restored.get("status") == "active", "恢复来源应重新激活")
+        _, restored_body = http_call(
+            title=f"Restore Media Source {source_id}",
+            method="POST",
+            path=f"/media-sources/{source_id}/restore",
+        )
+        restored = _decode_json(restored_body)
+        assert_true(restored.get("status") == "active", f"来源 {source_id} 恢复后应重新激活")
 
 
 def start_scan_job(source_id: int) -> str:
@@ -536,6 +633,14 @@ def run_media_flow() -> None:
 
     check_scan_progress(sample_dir)
     check_auto_scan_settings()
+
+    smb_source_id = create_smb_source_stub()
+    if smb_source_id is not None:
+        active_sources = list_media_sources(include_inactive=False)
+        assert_true(
+            any(int(src.get("id")) == smb_source_id for src in active_sources if src.get("id") is not None),
+            "SMB 来源未出现在媒体来源列表中",
+        )
 
     normalized_sample = _normalize_local_path(str(sample_dir))
     lifecycle_source_id: Optional[int] = None
@@ -758,17 +863,13 @@ def run_media_flow() -> None:
             )
             assert_true(_status_code(r_chk) == 404, f"被批删的 {mid} 应返回 404")
 
-    exercise_media_source_lifecycle(lifecycle_source_id)
+    exercise_media_source_lifecycle([lifecycle_source_id, smb_source_id])
 
     print("\nAll API flow steps completed successfully.")
-
-    # 结束后恢复快照，保持仓库状态稳定
-    _restore_snapshots_if_available()
 
 
 def main() -> None:
     global BASE_URL
-    _restore_snapshots_if_available()
     BASE_URL = _select_base_url(BASE_URL)
     if VERBOSE:
         print("Client Mode = network")
