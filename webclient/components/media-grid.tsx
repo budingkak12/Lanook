@@ -21,7 +21,11 @@ import {
 import { apiFetch, batchDeleteMedia, friendlyDeleteError, resolveApiUrl } from "@/lib/api"
 
 type MediaGridProps = {
-  sessionId: string | null
+  sessionId?: string | null
+  /**
+   * 当提供 tag 时走标签搜索模式，不要求 sessionId。
+   */
+  tag?: string | null
   onMediaClick: (media: MediaItem) => void
   onItemsChange?: (items: MediaItem[]) => void
 }
@@ -57,7 +61,7 @@ export type MediaGridHandle = {
 }
 
 export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function MediaGrid(
-  { sessionId, onMediaClick, onItemsChange },
+  { sessionId = null, tag = null, onMediaClick, onItemsChange },
   ref,
 ) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -102,11 +106,20 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
   const fetchMedia = useCallback(
     async (offset: number, mode: "replace" | "append" = "replace", currentSessionId?: string) => {
+      const trimmedTag = tag?.trim() ?? ""
+      const isTagMode = trimmedTag.length > 0
       const effectiveSessionId = currentSessionId || sessionId
-      if (!effectiveSessionId) {
+
+      if (!isTagMode && !effectiveSessionId) {
         setMediaItems([])
         setHasMore(false)
         setError("尚未获取会话，请稍候重试。")
+        return 0
+      }
+      if (isTagMode && trimmedTag.length === 0) {
+        setMediaItems([])
+        setHasMore(false)
+        setError(null)
         return 0
       }
 
@@ -127,11 +140,16 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
       try {
         const params = new URLSearchParams({
-          seed: effectiveSessionId,
           offset: String(offset),
           limit: String(PAGE_SIZE),
-          order: "seeded",
         })
+        if (isTagMode) {
+          params.set("tag", trimmedTag)
+        } else {
+          params.set("seed", effectiveSessionId!)
+          params.set("order", "seeded")
+        }
+
         const response = await apiFetch(`/media-list?${params.toString()}`, { signal: controller.signal })
         if (!response.ok) {
           throw new Error(`获取媒体列表失败：${response.status}`)
@@ -170,23 +188,24 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       }
       return 0
     },
-    [normalizeItems, toast],
+    [normalizeItems, sessionId, tag, toast],
   )
 
   useEffect(() => {
+    const trimmedTag = tag?.trim() ?? ""
     setMediaItems([])
-    setHasMore(true)
+    setHasMore(trimmedTag.length > 0 || !!sessionId)
     resetSelection()
     setError(null)
     abortRef.current?.abort()
 
-    if (!sessionId) {
+    if (!sessionId && trimmedTag.length === 0) {
       return
     }
 
     // 使用 setTimeout 来避免 React StrictMode 的双重执行问题
     const timeoutId = setTimeout(() => {
-      fetchMedia(0, "replace", sessionId)
+      fetchMedia(0, "replace", sessionId ?? undefined)
     }, 0)
 
     return () => {
@@ -194,7 +213,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       abortRef.current?.abort()
       fetchingRef.current = false
     }
-  }, [sessionId, fetchMedia, resetSelection, refreshVersion])
+  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag])
 
   useEffect(() => {
     if (typeof window === "undefined") {

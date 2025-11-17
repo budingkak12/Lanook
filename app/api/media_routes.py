@@ -64,8 +64,14 @@ def remove_tag(req: TagRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/tags")
-def list_tags(db: Session = Depends(get_db)):
+def list_tags(
+    with_translation: bool = Query(False, description="返回包含 display_name 的对象数组"),
+    db: Session = Depends(get_db),
+):
     try:
+        if with_translation:
+            tags = media_service.list_tags_with_translation(db)
+            return {"tags": tags}
         tags = media_service.list_tags(db)
         return {"tags": tags}
     except ServiceError as exc:

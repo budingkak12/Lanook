@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import Iterable, List, Optional, Sequence, Dict
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -360,7 +360,66 @@ def remove_tag(db: Session, *, media_id: int, tag: str) -> None:
 
 
 def list_tags(db: Session) -> List[str]:
-    return [t.name for t in db.query(TagDefinition).all()]
+    rows = (
+        db.query(TagDefinition.name)
+        .join(MediaTag, MediaTag.tag_name == TagDefinition.name)
+        .distinct()
+        .order_by(TagDefinition.name)
+        .all()
+    )
+    return [name for (name,) in rows]
+
+
+# -------- 标签译文支持 --------
+_TAG_TRANSLATION_CACHE: Dict[str, str] | None = None
+_TAG_TRANSLATION_MTIME: float | None = None
+
+
+def _load_tag_translations() -> Dict[str, str]:
+    """
+    从 data/tags-translate.csv 读取译表：每行 `英文,译文`，无表头。
+    - 文件缺失或读取失败返回空表
+    - 格式要求恰好一个逗号；遇到格式错误返回空表（与安卓端容错一致）
+    - 基于文件 mtime 做简易缓存
+    """
+    global _TAG_TRANSLATION_CACHE, _TAG_TRANSLATION_MTIME
+    file_path = Path(__file__).resolve().parent.parent / "data" / "tags-translate.csv"
+
+    try:
+        mtime = file_path.stat().st_mtime
+    except FileNotFoundError:
+        _TAG_TRANSLATION_CACHE = {}
+        _TAG_TRANSLATION_MTIME = None
+        return {}
+
+    if _TAG_TRANSLATION_CACHE is not None and _TAG_TRANSLATION_MTIME == mtime:
+        return _TAG_TRANSLATION_CACHE
+
+    try:
+        content = file_path.read_text(encoding="utf-8")
+        result: Dict[str, str] = {}
+        for raw in content.splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            if line.count(",") != 1:
+                raise ValueError(f"invalid csv line: {line}")
+            en, zh = [p.strip() for p in line.split(",", 1)]
+            if en and zh:
+                result[en] = zh
+        _TAG_TRANSLATION_CACHE = result
+        _TAG_TRANSLATION_MTIME = mtime
+        return result
+    except Exception:
+        _TAG_TRANSLATION_CACHE = {}
+        _TAG_TRANSLATION_MTIME = mtime
+        return {}
+
+
+def list_tags_with_translation(db: Session) -> List[Dict[str, str | None]]:
+    translations = _load_tag_translations()
+    tags = list_tags(db)
+    return [{"name": name, "display_name": translations.get(name)} for name in tags]
 
 
 # ---------------------------------------------------------------------------

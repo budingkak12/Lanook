@@ -123,6 +123,43 @@ export async function setFavorite(mediaId: number, enabled: boolean): Promise<vo
   await setTag(mediaId, "favorite", enabled)
 }
 
+// ===== tag list (cached) =====
+
+let cachedAllTags: TagItem[] | null = null
+let fetchingAllTags: Promise<TagItem[]> | null = null
+
+/**
+ * 获取全部标签列表并在内存缓存，避免重复请求。
+ */
+export type TagItem = {
+  name: string
+  display_name?: string | null
+}
+
+export async function getAllTags(): Promise<TagItem[]> {
+  if (cachedAllTags) return cachedAllTags
+  if (fetchingAllTags) return fetchingAllTags
+
+  fetchingAllTags = (async () => {
+    try {
+      const resp = await apiFetch("/tags?with_translation=true")
+      if (!resp.ok) return []
+      const data = (await resp.json()) as { tags?: TagItem[] }
+      const sanitized = (data.tags ?? []).filter(
+        (tag): tag is TagItem => typeof tag?.name === "string" && tag.name.trim().length > 0,
+      )
+      cachedAllTags = sanitized
+      return cachedAllTags
+    } catch {
+      return []
+    } finally {
+      fetchingAllTags = null
+    }
+  })()
+
+  return fetchingAllTags
+}
+
 export function friendlyDeleteError(reasons: (string | undefined | null)[]): string | null {
   const normalized = reasons
     .filter((reason): reason is string => typeof reason === "string" && reason.trim().length > 0)
