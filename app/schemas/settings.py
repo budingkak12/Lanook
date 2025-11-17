@@ -14,3 +14,15 @@ class AutoScanUpdateRequest(BaseModel):
     enabled: bool
     scan_mode: Optional[Literal["realtime", "scheduled", "disabled"]] = None
     scan_interval: Optional[Literal["hourly", "daily", "weekly"]] = None
+
+
+class DbResetRequest(BaseModel):
+    confirm: bool
+    drop_existing: bool = True
+
+
+class DbResetResponse(BaseModel):
+    db_path: str
+    deleted: bool
+    recreated: bool
+    message: Optional[str] = None

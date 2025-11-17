@@ -99,6 +99,9 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
 
       // 设置模式下提供用户反馈
       if (mode === 'settings') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('media-sources-changed'))
+        }
         toast({
           title: "删除成功",
           description: "媒体路径已标记为删除，媒体列表将立即更新"

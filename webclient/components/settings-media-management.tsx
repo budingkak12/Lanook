@@ -25,10 +25,17 @@ export function SettingsMediaManagement({ className }: SettingsMediaManagementPr
   const [refreshKey, setRefreshKey] = useState(0)
   const { toast } = useToast()
 
+  const notifySourcesChanged = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('media-sources-changed'))
+    }
+  }
+
   // 添加源成功后，创建时已传 scan=true，这里不再二次触发扫描
   const handleSourceAdded = async (source: MediaSource) => {
     setShowAddSource(false)
     setRefreshKey(prev => prev + 1)
+    notifySourcesChanged()
     toast({
       title: "添加成功并开始扫描",
       description: `"${source.displayName || source.rootPath}" 已添加并开始后台扫描`

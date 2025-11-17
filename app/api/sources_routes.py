@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import shutil
 from datetime import timezone
 from pathlib import Path
 from typing import List
@@ -57,7 +59,7 @@ def _iso(dt):
     return dt.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _normalize_host_input(host: str) -> str:
+def _normalize_host_input(host: str | None) -> str:
     """将前端传入的 host 规范化为纯主机/IP 字符串。
 
     兼容以下异常形式：
@@ -65,9 +67,17 @@ def _normalize_host_input(host: str) -> str:
     - "('nas.local', 445)" → "nas.local"
     - "10.0.0.1:445" → "10.0.0.1"
     - "[fe80::1]" → "fe80::1"
+    - "smb://host/share"、"\\\\host\\share" → "host"
     - 带多余引号/空白 → 去除
     """
+    from urllib.parse import urlparse
+
+    if host is None:
+        return ""
+
     s = str(host).strip()
+    if not s:
+        return ""
     # 去掉包裹引号
     if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
         s = s[1:-1].strip()
@@ -80,7 +90,37 @@ def _normalize_host_input(host: str) -> str:
                 s = str(tup[0]).strip()
         except Exception:
             pass
-    # IPv6 方括号
+    lowered = s.lower()
+    if '://' in lowered:
+        try:
+            parsed = urlparse(s)
+        except Exception:
+            parsed = None
+        if parsed and parsed.scheme:
+            if parsed.hostname:
+                s = parsed.hostname
+            elif parsed.netloc:
+                s = parsed.netloc
+            else:
+                s = s.split('://', 1)[-1]
+    elif s.startswith('\\\\'):
+        s = s[2:]
+    elif s.startswith('//'):
+        s = s[2:]
+    # 去掉路径/共享部分
+    for sep in ('/', '\\'):
+        if sep in s:
+            s = s.split(sep, 1)[0]
+    # IPv6 方括号 + 端口
+    if s.startswith('['):
+        closing = s.find(']')
+        if closing != -1:
+            inner = s[1:closing]
+            remainder = s[closing + 1:]
+            if remainder.startswith(':') and remainder[1:].isdigit():
+                s = inner
+            elif not remainder:
+                s = inner
     if s.startswith("[") and s.endswith("]"):
         s = s[1:-1]
     # host:port（排除 IPv6）
@@ -89,6 +129,62 @@ def _normalize_host_input(host: str) -> str:
         if port_part.isdigit():
             s = host_part
     return s
+
+
+def _discover_shares_via_smbclient(host: str, *, username: str | None, password: str | None, anonymous: bool):
+    """使用 smbclient 枚举共享，尽量对齐桌面/手机体验。
+
+    返回 (shares: list[str], err: str | None)。err 仅在需中断时返回，其余错误交由上层回退探测。
+    """
+    if not shutil.which("smbclient"):
+        return [], None
+
+    cmd = [
+        "smbclient",
+        "-L",
+        f"//{host}",
+        "-m",
+        "SMB3",
+        "--option",
+        "client min protocol=SMB2",
+        "--option",
+        "client max protocol=SMB3",
+        "-g",  # 机器可解析输出
+    ]
+    if anonymous:
+        cmd.append("-N")
+    else:
+        user_field = username or ""
+        pwd_field = password or ""
+        cmd.extend(["-U", f"{user_field}%{pwd_field}"])
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+    except subprocess.TimeoutExpired:
+        return [], "smbclient 列举超时"
+    except FileNotFoundError:
+        return [], None
+    except Exception as exc:  # pragma: no cover - 环境异常
+        return [], str(exc)
+
+    stderr = (result.stderr or "").lower()
+    if "logon failure" in stderr or "nt_status_logon_failure" in stderr:
+        return [], "auth_failed"
+    if "bad network name" in stderr:
+        # 主机在线但无共享/名称错，继续走回退逻辑
+        return [], None
+    if "host is down" in stderr or "no route" in stderr or "could not resolve" in stderr:
+        return [], "unreachable"
+
+    shares: list[str] = []
+    if result.returncode == 0 and result.stdout:
+        for line in result.stdout.splitlines():
+            parts = line.split("|")
+            if len(parts) >= 2 and parts[0] == "Disk":
+                name = parts[1].strip()
+                if name and name not in shares:
+                    shares.append(name)
+    return shares, None
 
 
 def _bootstrap_source_scan(root_path: str, *, limit: int = 50) -> None:
@@ -496,7 +592,7 @@ def start_scan(source_id: int = Query(..., description="来源ID"), background: 
 def discover_network_shares(request: dict):
     """
     发现网络设备的SMB共享
-    输入: {host, username?, password?, anonymous: bool}
+    输入: {host, username?, password?, anonymous: bool, shareHints?: list[str]}
     输出: {success: bool, shares: [{name, path, accessible}], error?: string}
     """
     host = _normalize_host_input(request.get("host"))
@@ -511,6 +607,32 @@ def discover_network_shares(request: dict):
     if not anonymous and not (username and password):
         raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
 
+    normalized_host = _normalize_host_input(request.get("host"))
+    if not normalized_host:
+        raise HTTPException(status_code=422, detail="host required")
+
+    username = request.get("username")
+    password = request.get("password")
+    anonymous = request.get("anonymous", False)
+
+    # 验证认证参数
+    if not anonymous and not (username and password):
+        raise HTTPException(status_code=422, detail="anonymous 或用户名密码其一必填")
+
+    # 先尝试 smbclient，体验和手机/桌面一致
+    shares = []
+    cli_shares, cli_err = _discover_shares_via_smbclient(
+        normalized_host,
+        username=username,
+        password=password,
+        anonymous=anonymous,
+    )
+    shares.extend(cli_shares)
+    if cli_err == "auth_failed":
+        raise HTTPException(status_code=403, detail="认证失败，请检查用户名和密码")
+    if cli_err == "unreachable":
+        raise HTTPException(status_code=404, detail="无法连接到设备，请检查IP地址")
+
     try:
         from smbprotocol.connection import Connection
         from smbprotocol.session import Session
@@ -518,53 +640,73 @@ def discover_network_shares(request: dict):
         import uuid
 
         # 建立连接
-        conn = Connection(uuid.uuid4(), host, 445)
+        conn = Connection(uuid.uuid4(), normalized_host, 445)
         conn.connect()
         sess = Session(conn, username=username or "", password=password or "")
         sess.connect()
 
-        # 常见共享名称列表
+        # 常见共享名称列表（加入动态候选）
         common_shares = [
             'PublicShare', 'Public', 'Users', 'Share', 'Shared', 'Files',
             'Data', 'Media', 'Documents', 'Downloads', 'home', 'shared',
             'scans', 'backup', 'temp', 'www', 'ftp', 'smb', 'smbshare',
             'guest', 'anonymous', 'upload', 'incoming', 'outgoing'
         ]
-        shares = []
+
+        share_hints = request.get("shareHints") or []
+        if isinstance(share_hints, str):
+            share_hints = [share_hints]
+
+        candidate_shares: list[str] = []
+
+        def _add_candidate(name: str | None):
+            if not name:
+                return
+            cleaned = str(name).strip().strip('/\\')
+            if not cleaned:
+                return
+            if cleaned not in candidate_shares:
+                candidate_shares.append(cleaned)
+
+        for name in common_shares:
+            _add_candidate(name)
+
+        for hint in share_hints:
+            _add_candidate(hint)
+
+        if username:
+            variants = {username, username.lower(), username.upper(), username.capitalize(), f"{username}$"}
+            for v in variants:
+                _add_candidate(v)
+
+        for i in range(1, 11):
+            _add_candidate(f"share{i}")
+
+        shares = shares or []
 
         # 尝试连接共享名称来测试可访问性
-        for share_name in common_shares:
+        for share_name in candidate_shares:
             try:
-                test_tree = TreeConnect(sess, f"\\\\{host}\\{share_name}")
+                if any(existing['name'] == share_name for existing in shares):
+                    continue
+                test_tree = TreeConnect(sess, f"\\\\{normalized_host}\\{share_name}")
                 test_tree.connect()
                 test_tree.disconnect()
                 shares.append({
                     'name': share_name,
-                    'path': f"smb://{host}/{share_name}",
+                    'path': f"smb://{normalized_host}/{share_name}",
                     'accessible': True
                 })
             except Exception:
                 continue
 
         # 尝试数字编号的共享
-        for i in range(1, 11):
-            share_name = f"share{i}"
-            try:
-                test_tree = TreeConnect(sess, f"\\\\{host}\\{share_name}")
-                test_tree.connect()
-                test_tree.disconnect()
-                shares.append({
-                    'name': share_name,
-                    'path': f"smb://{host}/{share_name}",
-                    'accessible': True
-                })
-            except Exception:
-                continue
 
         # 关闭连接
         sess.disconnect()
         conn.disconnect(True)
 
+        shares.sort(key=lambda x: x['name'].lower())
         return { 'success': True, 'shares': shares }
 
     except Exception as e:

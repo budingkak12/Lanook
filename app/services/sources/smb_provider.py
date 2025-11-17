@@ -293,8 +293,15 @@ class SMBFSProvider:
         clear_smb_password(parts.host, parts.share, parts.username)
 
 
-def _normalize_host_input(host: str) -> str:
+def _normalize_host_input(host: str | None) -> str:
+    from urllib.parse import urlparse
+
+    if host is None:
+        return ""
+
     s = str(host).strip()
+    if not s:
+        return ""
     if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
         s = s[1:-1].strip()
     if s.startswith("(") and s.endswith(")"):
@@ -306,6 +313,34 @@ def _normalize_host_input(host: str) -> str:
                 s = str(tup[0]).strip()
         except Exception:
             pass
+    if '://' in s:
+        try:
+            parsed = urlparse(s)
+        except Exception:
+            parsed = None
+        if parsed and parsed.scheme:
+            if parsed.hostname:
+                s = parsed.hostname
+            elif parsed.netloc:
+                s = parsed.netloc
+            else:
+                s = s.split('://', 1)[-1]
+    elif s.startswith('\\\\'):
+        s = s[2:]
+    elif s.startswith('//'):
+        s = s[2:]
+    for sep in ('/', '\\'):
+        if sep in s:
+            s = s.split(sep, 1)[0]
+    if s.startswith('['):
+        closing = s.find(']')
+        if closing != -1:
+            inner = s[1:closing]
+            remainder = s[closing + 1:]
+            if remainder.startswith(':') and remainder[1:].isdigit():
+                s = inner
+            elif not remainder:
+                s = inner
     if s.startswith("[") and s.endswith("]"):
         s = s[1:-1]
     if ":" in s and s.count(":") == 1:
@@ -359,4 +394,3 @@ def _smb_close(conn, sess, tree, file):  # pragma: no cover - 资源释放分支
 
 SMB_PROVIDER = SMBFSProvider()
 register_provider(SMB_PROVIDER)
-

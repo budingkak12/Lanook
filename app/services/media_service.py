@@ -8,13 +8,15 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Sequence
 
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Query, Session
 
 from app.db import Media, MediaTag, TagDefinition
 from app.db.models_extra import MediaSource
+from app.services import media_cache
 from app.schemas.media import DeleteBatchResp, FailedItemModel, MediaItem, MediaMetadata, PageResponse
 from app.services.asset_pipeline import (
     ArtifactType,
@@ -23,7 +25,6 @@ from app.services.asset_pipeline import (
     get_cached_artifact,
     request_metadata_artifact,
     request_placeholder_artifact,
-    request_thumbnail_artifact,
 )
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from app.services.deletion_service import delete_media_record_and_files
@@ -42,7 +43,8 @@ from app.services.exceptions import (
     MetadataUnavailableError,
 )
 from app.services.fs_providers import is_smb_url, iter_bytes, stat_url
-from app.services.thumbnails_service import build_thumb_headers
+from app.services.thumbnails_service import build_thumb_headers, get_or_generate_thumbnail
+from app.services.asset_handlers.placeholder import placeholder_generator
 
 
 @dataclass
@@ -88,10 +90,6 @@ def _filter_active_media(query: Query) -> Query:
         | (MediaSource.status == "active")
         | (MediaSource.status.is_(None))
     )
-
-
-def _seeded_key(seed: str, media_id: int) -> str:
-    return hashlib.sha256(f"{seed}:{media_id}".encode()).hexdigest()
 
 
 def _to_media_item(
@@ -185,6 +183,82 @@ def _local_file_iter(path: str, start_pos: int, total_len: int, chunk_size: int 
     return _iterator()
 
 
+def _safe_cache_commit(db: Session) -> None:
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+
+
+def _record_cache_hits(db: Session, media_ids: Sequence[int]) -> None:
+    ids = [int(mid) for mid in media_ids if isinstance(mid, int)]
+    if not ids:
+        return
+    try:
+        media_cache.record_media_hits(db, ids)
+        _safe_cache_commit(db)
+    except Exception:
+        db.rollback()
+
+
+def _derive_seed_numbers(seed: str) -> tuple[int, int]:
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    factor = int(digest[:8], 16) or 1
+    modulus = int(digest[8:16], 16) or 2147483647
+    if modulus <= factor:
+        modulus = 2147483647
+    return factor, modulus
+
+
+def _query_cached_media_rows(
+    db: Session,
+    *,
+    order_clause: str,
+    offset: int,
+    limit: int,
+    extra_params: Optional[dict[str, int]] = None,
+):
+    if limit <= 0:
+        return [], False
+    sql = text(
+        f"""
+        SELECT media_id, filename, media_type, created_at, like_count, favorite_count
+        FROM media_cached_summary
+        ORDER BY {order_clause}
+        LIMIT :page_limit OFFSET :offset
+        """
+    )
+    params: dict[str, int] = {"page_limit": limit + 1, "offset": max(offset, 0)}
+    if extra_params:
+        params.update(extra_params)
+    rows = db.execute(sql, params).fetchall()
+    has_more = len(rows) > limit
+    return rows[:limit], has_more
+
+
+def _rows_to_media_items(rows) -> List[MediaItem]:
+    items: List[MediaItem] = []
+    for row in rows:
+        mapping = row._mapping
+        media_id = int(mapping["media_id"])
+        created = mapping["created_at"]
+        created_str = created.isoformat() if isinstance(created, datetime) else str(created)
+        items.append(
+            MediaItem(
+                id=media_id,
+                url=f"/media-resource/{media_id}",
+                resourceUrl=f"/media-resource/{media_id}",
+                type=str(mapping["media_type"]),
+                filename=str(mapping["filename"]),
+                createdAt=created_str,
+                thumbnailUrl=f"/media/{media_id}/thumbnail",
+                liked=bool(mapping["like_count"]),
+                favorited=bool(mapping["favorite_count"]),
+            )
+        )
+    return items
+
+
 # ---------------------------------------------------------------------------
 # 媒体列表与标签
 # ---------------------------------------------------------------------------
@@ -209,10 +283,11 @@ def get_media_page(
             .order_by(MediaTag.created_at.desc())
         )
         q = _filter_active_media(q)
-        total_items = q.all()
-        sliced = total_items[offset : offset + limit]
+        rows = q.offset(offset).limit(limit + 1).all()
+        sliced = rows[:limit]
         items = [_to_media_item(db, m, include_thumb=True) for m in sliced]
-        has_more = (offset + len(items)) < len(total_items)
+        has_more = len(rows) > limit
+        _record_cache_hits(db, [m.id for m in sliced])
         return PageResponse(items=items, offset=offset, hasMore=has_more)
 
     # 非标签模式需要 seed
@@ -220,22 +295,23 @@ def get_media_page(
         raise SeedRequiredError("seed required when tag not provided")
 
     if order == "recent":
-        q = _filter_active_media(db.query(Media).order_by(Media.created_at.desc()))
-        total_items = q.all()
-        sliced = total_items[offset : offset + limit]
-        items = [_to_media_item(db, m, include_thumb=True) for m in sliced]
-        has_more = (offset + len(items)) < len(total_items)
-        return PageResponse(items=items, offset=offset, hasMore=has_more)
-
-    all_items = _filter_active_media(db.query(Media)).all()
-    all_items.sort(key=lambda m: _seeded_key(seed, m.id))
-    liked_ids = {
-        media_id for (media_id,) in db.query(MediaTag.media_id).filter(MediaTag.tag_name == "like")
-    }
-    ordered_items = [m for m in all_items if m.id not in liked_ids] + [m for m in all_items if m.id in liked_ids]
-    sliced = ordered_items[offset : offset + limit]
-    items = [_to_media_item(db, m, include_thumb=True) for m in sliced]
-    has_more = (offset + len(items)) < len(ordered_items)
+        rows, has_more = _query_cached_media_rows(
+            db,
+            order_clause="created_at DESC, media_id DESC",
+            offset=offset,
+            limit=limit,
+        )
+    else:
+        seed_factor, seed_mod = _derive_seed_numbers(seed)
+        rows, has_more = _query_cached_media_rows(
+            db,
+            order_clause="((media_id * :seed_factor) % :seed_mod) ASC, hot_score DESC, created_at DESC",
+            offset=offset,
+            limit=limit,
+            extra_params={"seed_factor": seed_factor, "seed_mod": seed_mod},
+        )
+    items = _rows_to_media_items(rows)
+    _record_cache_hits(db, [item.id for item in items])
     return PageResponse(items=items, offset=offset, hasMore=has_more)
 
 
@@ -254,6 +330,7 @@ def add_tag(db: Session, *, media_id: int, tag: str) -> None:
     if existing:
         raise TagAlreadyExistsError("tag already exists for media")
     db.add(MediaTag(media_id=media_id, tag_name=tag))
+    media_cache.sync_tag_snapshot(db, [media_id])
     try:
         db.commit()
     except OperationalError as exc:
@@ -273,6 +350,7 @@ def remove_tag(db: Session, *, media_id: int, tag: str) -> None:
         raise TagNotFoundError("tag not set for media")
     try:
         db.delete(mt)
+        media_cache.sync_tag_snapshot(db, [media_id])
         db.commit()
     except OperationalError as exc:
         db.rollback()
@@ -296,6 +374,7 @@ def delete_media(db: Session, *, media_id: int, delete_file: bool) -> None:
     ok, reason = delete_media_record_and_files(db, media, delete_file=delete_file)
     if not ok:
         raise ServiceError(reason or "failed to delete media")
+    media_cache.purge_cache_for_media(db, [media_id])
     try:
         db.commit()
     except OperationalError as exc:
@@ -307,6 +386,9 @@ def delete_media(db: Session, *, media_id: int, delete_file: bool) -> None:
 
 def batch_delete_media(db: Session, *, ids: List[int], delete_file: bool) -> DeleteBatchResp:
     deleted, failed = svc_batch_delete(db, ids, delete_file=delete_file)
+    if deleted:
+        media_cache.purge_cache_for_media(db, deleted)
+        _safe_cache_commit(db)
     if not deleted and failed and len(failed) == len(ids):
         reasons = " ".join(filter(None, [f.reason or "" for f in failed])).lower()
         if "commit_failed" in reasons or "readonly" in reasons or "read-only" in reasons:
@@ -329,20 +411,31 @@ def get_thumbnail_payload(db: Session, *, media_id: int) -> ThumbnailPayload:
     if cached and cached.path and cached.path.exists():
         headers = build_thumb_headers(str(cached.path))
         media_type = headers.get("Content-Type", "image/jpeg")
+        media_cache.mark_thumbnail_state(db, media.id, "ready")
+        _safe_cache_commit(db)
         return ThumbnailPayload(path=str(cached.path), media_type=media_type, headers=headers)
 
-    result = request_thumbnail_artifact(media, db)
-    if result.status == AssetArtifactStatus.READY and result.path:
-        headers = build_thumb_headers(str(result.path))
+    # 直接等待缩略图生成完成，避免 8 秒超时导致首页无法看到缩略图。
+    # 对 SMB 等慢速源，会在 HTTP 请求内同步等待生成结果（期间 pipeline worker 仍负责执行生成逻辑）。
+    # 同步生成，确保首次访问也能拿到缩略图（慢源会阻塞该请求，但保证拿到结果或明确失败）。
+    generated = get_or_generate_thumbnail(media)
+    if generated and generated.path and generated.path.exists():
+        headers = build_thumb_headers(str(generated.path))
         media_type = headers.get("Content-Type", "image/jpeg")
-        return ThumbnailPayload(path=str(result.path), media_type=media_type, headers=headers)
+        media_cache.mark_thumbnail_state(db, media.id, "ready")
+        _safe_cache_commit(db)
+        return ThumbnailPayload(path=str(generated.path), media_type=media_type, headers=headers)
 
     placeholder_path = _ensure_placeholder_thumbnail(db, media)
     if placeholder_path and placeholder_path.exists():
         headers = build_thumb_headers(str(placeholder_path))
         media_type = headers.get("Content-Type", "image/jpeg")
+        media_cache.mark_thumbnail_state(db, media.id, "placeholder")
+        _safe_cache_commit(db)
         return ThumbnailPayload(path=str(placeholder_path), media_type=media_type, headers=headers)
 
+    media_cache.mark_thumbnail_state(db, media.id, "missing")
+    _safe_cache_commit(db)
     raise ThumbnailUnavailableError(result.detail or "thumbnail not available")
 
 
@@ -353,6 +446,13 @@ def _ensure_placeholder_thumbnail(db: Session, media: Media) -> Optional[Path]:
     result = request_placeholder_artifact(media, db, wait_timeout=2.0)
     if result.status == AssetArtifactStatus.READY and result.path and result.path.exists():
         return result.path
+    # 队列超时/失败时，直接同步生成占位缩略图，避免返回 404
+    try:
+        payload = placeholder_generator(media)
+        if payload and payload.path and payload.path.exists():
+            return payload.path
+    except Exception:
+        pass
     return None
 
 
@@ -363,19 +463,31 @@ def get_media_metadata(db: Session, *, media_id: int, wait_timeout: Optional[flo
     cached = get_cached_artifact(db, media.id, ArtifactType.METADATA)
     if cached:
         payload_dict = _artifact_extra_dict(cached)
+        if payload_dict:
+            media_cache.mark_metadata_state(db, media.id, "ready")
+            _safe_cache_commit(db)
 
     if payload_dict is None:
         result = request_metadata_artifact(media, db, wait_timeout=wait_timeout)
         if result.status != AssetArtifactStatus.READY:
+            media_cache.mark_metadata_state(db, media.id, result.status.value.lower())
+            _safe_cache_commit(db)
             raise MetadataUnavailableError(result.detail or "metadata not available")
         payload_dict = _artifact_extra_dict(result)
 
     if not payload_dict:
+        media_cache.mark_metadata_state(db, media.id, "missing")
+        _safe_cache_commit(db)
         raise MetadataUnavailableError("metadata payload empty")
 
     try:
-        return MediaMetadata(**payload_dict)
+        model = MediaMetadata(**payload_dict)
+        media_cache.mark_metadata_state(db, media.id, "ready")
+        _safe_cache_commit(db)
+        return model
     except Exception as exc:
+        media_cache.mark_metadata_state(db, media.id, "invalid")
+        _safe_cache_commit(db)
         raise MetadataUnavailableError("metadata payload invalid") from exc
 
 

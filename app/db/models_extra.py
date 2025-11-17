@@ -58,3 +58,19 @@ class AssetArtifact(Base):
     attempt_count = Column(Integer, nullable=False, default=0)
 
     __table_args__ = (UniqueConstraint("media_id", "artifact_type", name="uq_media_artifact"),)
+
+
+class MediaCacheState(Base):
+    __tablename__ = "media_cache_state"
+
+    media_id = Column(Integer, ForeignKey("media.id"), primary_key=True)
+    thumbnail_status = Column(String, nullable=False, default="unknown", server_default="unknown")
+    thumbnail_updated_at = Column(DateTime, nullable=True)
+    metadata_status = Column(String, nullable=False, default="unknown", server_default="unknown")
+    metadata_updated_at = Column(DateTime, nullable=True)
+    like_count = Column(Integer, nullable=False, default=0, server_default="0")
+    favorite_count = Column(Integer, nullable=False, default=0, server_default="0")
+    hit_count = Column(Integer, nullable=False, default=0, server_default="0")
+    hot_score = Column(Integer, nullable=False, default=0, server_default="0")
+    last_accessed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

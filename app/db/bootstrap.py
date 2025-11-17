@@ -36,6 +36,7 @@ def create_database_and_tables(echo: bool = True) -> None:
         print("正在创建数据库表...")
     Base.metadata.create_all(bind=engine)
     _ensure_schema_upgrades()
+    _ensure_cache_views()
     if echo:
         print("✅ 表结构创建成功。")
 
@@ -333,6 +334,51 @@ def repair_media_sources_metadata() -> None:
             session.commit()
     finally:
         session.close()
+
+
+def _ensure_cache_views() -> None:
+    """保证缓存视图（只读索引）存在并保持最新结构。"""
+
+    summary_sql = text(
+        """
+        CREATE VIEW IF NOT EXISTS media_cached_summary AS
+        SELECT
+            m.id              AS media_id,
+            m.filename        AS filename,
+            m.media_type      AS media_type,
+            m.created_at      AS created_at,
+            COALESCE(c.thumbnail_status, 'unknown')     AS thumbnail_status,
+            COALESCE(c.metadata_status, 'unknown')      AS metadata_status,
+            COALESCE(c.like_count, 0)                   AS like_count,
+            COALESCE(c.favorite_count, 0)               AS favorite_count,
+            COALESCE(c.hot_score, 0)                    AS hot_score,
+            COALESCE(c.hit_count, 0)                    AS hit_count,
+            COALESCE(c.last_accessed_at, m.created_at)  AS last_accessed_at,
+            COALESCE(c.updated_at, m.created_at)        AS cache_updated_at
+        FROM media AS m
+        LEFT JOIN media_cache_state AS c ON c.media_id = m.id
+        """
+    )
+
+    hot_sql = text(
+        """
+        CREATE VIEW IF NOT EXISTS media_hot_cache AS
+        SELECT
+            media_id,
+            hot_score,
+            hit_count,
+            last_accessed_at,
+            cache_updated_at
+        FROM media_cached_summary
+        """
+    )
+
+    with engine.begin() as conn:
+        # 先清理依赖视图，再重建，避免结构变化导致查询失败
+        conn.execute(text("DROP VIEW IF EXISTS media_hot_cache"))
+        conn.execute(text("DROP VIEW IF EXISTS media_cached_summary"))
+        conn.execute(summary_sql)
+        conn.execute(hot_sql)
 
 
 __all__ = [

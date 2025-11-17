@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, status
 
-from app.schemas.settings import AutoScanStatusResponse, AutoScanUpdateRequest
+from app.schemas.settings import AutoScanStatusResponse, AutoScanUpdateRequest, DbResetRequest, DbResetResponse
 from app.services.auto_scan_service import (
     ensure_auto_scan_service,
     gather_runtime_status,
@@ -13,6 +13,7 @@ from app.services.auto_scan_service import (
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
 from app.db import SessionLocal, Media, MediaTag, SCAN_MODE_KEY, SCAN_INTERVAL_KEY
+from app.services.db_reset_service import reset_database_file
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -171,3 +172,34 @@ def reset_initialization(request: Request):
         db.close()
 
     return {"message": "初始化状态已完全重置，所有数据库信息已清除"}
+
+
+@router.post("/db-reset", response_model=DbResetResponse, status_code=status.HTTP_200_OK)
+def reset_database(payload: DbResetRequest, request: Request):
+    if not payload.confirm:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请显式确认后再执行数据库重置。")
+
+    try:
+        result = reset_database_file(drop_existing=payload.drop_existing)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except Exception as exc:  # pragma: no cover - 运行时兜底
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"数据库重置失败：{exc}")
+
+    coordinator = getattr(request.app.state, "init_coordinator", None)
+    if coordinator is None:
+        coordinator = InitializationCoordinator()
+        request.app.state.init_coordinator = coordinator
+
+    coordinator.reset(
+        state=InitializationState.IDLE,
+        media_root_path=None,
+        message="数据库已重置，请重新设置媒体库路径。",
+    )
+
+    return DbResetResponse(
+        db_path=str(result.db_path),
+        deleted=result.deleted,
+        recreated=result.recreated,
+        message="数据库文件已重建并回到初始化流程。",
+    )

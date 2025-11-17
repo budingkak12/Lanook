@@ -61,6 +61,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
   ref,
 ) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
+  const [refreshVersion, setRefreshVersion] = useState(0)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -193,7 +194,24 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       abortRef.current?.abort()
       fetchingRef.current = false
     }
-  }, [sessionId, fetchMedia, resetSelection])
+  }, [sessionId, fetchMedia, resetSelection, refreshVersion])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const handleSourcesChanged = () => {
+      resetSelection()
+      setHasMore(true)
+      setMediaItems([])
+      setError(null)
+      setRefreshVersion((prev) => prev + 1)
+    }
+    window.addEventListener("media-sources-changed", handleSourcesChanged)
+    return () => {
+      window.removeEventListener("media-sources-changed", handleSourcesChanged)
+    }
+  }, [resetSelection])
 
   useEffect(() => {
     if (!loadMoreRef.current) {
