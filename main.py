@@ -18,6 +18,7 @@ from app.api.settings_routes import router as settings_router
 from app.api.sources_routes import router as sources_router
 from app.api.task_routes import router as task_router
 from app.api.media_routes import router as media_router
+from app.api.face_routes import router as face_router
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
 from app.services.asset_pipeline import ensure_pipeline_started, shutdown_pipeline
@@ -45,6 +46,7 @@ app.include_router(settings_router)
 app.include_router(sources_router)
 app.include_router(task_router)
 app.include_router(media_router)
+app.include_router(face_router)
 
 # 轻量健康检查，供 Android 客户端自动探测可用服务地址
 @app.get("/health")

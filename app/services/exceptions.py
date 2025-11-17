@@ -53,3 +53,11 @@ class InvalidRangeError(ServiceError):
 
 class RangeNotSatisfiableError(ServiceError):
     default_status = 416
+
+
+class FaceProcessingError(ServiceError):
+    default_status = 500
+
+
+class FaceClusterNotFoundError(ServiceError):
+    default_status = 404
