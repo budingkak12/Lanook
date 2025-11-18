@@ -33,7 +33,7 @@ def _raise_service_error(exc: ServiceError):
 @router.post("/rebuild", response_model=RebuildFacesResponse)
 def rebuild_face_clusters(req: RebuildFacesRequest, db: Session = Depends(get_db)):
     try:
-        media_count, face_count, cluster_count, path = face_cluster_service.rebuild_clusters(
+        media_count, face_count, cluster_count, path, version = face_cluster_service.rebuild_clusters(
             db,
             base_path=req.base_path,
             similarity_threshold=req.similarity_threshold,
@@ -47,6 +47,7 @@ def rebuild_face_clusters(req: RebuildFacesRequest, db: Session = Depends(get_db
         clusterCount=cluster_count,
         threshold=req.similarity_threshold,
         basePath=str(path),
+        pipelineVersion=version,
     )
 
 

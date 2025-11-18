@@ -8,6 +8,7 @@ from typing import Iterable, List, Sequence
 import cv2
 import numpy as np
 from insightface.app import FaceAnalysis
+from sklearn.cluster import AgglomerativeClustering
 from sqlalchemy.orm import Session
 
 from app.db import Media
@@ -18,11 +19,16 @@ from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingErro
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 _face_app: FaceAnalysis | None = None
 
+PIPELINE_VERSION = "face-v2"
+_FACE_MODEL_NAME = os.environ.get("FACE_CLUSTER_MODEL", "buffalo_l")
+_MIN_DET_SCORE = 0.6
+_MIN_FACE_SIZE = 48  # pixels
+
 
 def _get_face_app() -> FaceAnalysis:
     global _face_app
     if _face_app is None:
-        face_app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
+        face_app = FaceAnalysis(name=_FACE_MODEL_NAME, providers=["CPUExecutionProvider"])
         face_app.prepare(ctx_id=-1, det_size=(640, 640))
         _face_app = face_app
     return _face_app
@@ -111,7 +117,7 @@ def _cluster_embeddings(faces: List[_DetectedFace], threshold: float):
     return assignments, clusters
 
 
-def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float) -> tuple[int, int, int, Path]:
+def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float) -> tuple[int, int, int, Path, str]:
     root = _resolve_base_path(base_path)
     face_app = _get_face_app()
 
@@ -131,6 +137,14 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
         for idx, face in enumerate(faces):
             if face.embedding is None:
                 continue
+            bbox = face.bbox
+            left, top, right, bottom = map(float, bbox)
+            width = max(right - left, 1.0)
+            height = max(bottom - top, 1.0)
+            if width < _MIN_FACE_SIZE or height < _MIN_FACE_SIZE:
+                continue
+            if face.det_score is not None and face.det_score < _MIN_DET_SCORE:
+                continue
             detected.append(
                 _DetectedFace(
                     embedding=face.embedding.astype(np.float32),
@@ -146,15 +160,39 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
         db.commit()
         return media_count, 0, 0, root
 
-    assignments, clusters = _cluster_embeddings(detected, similarity_threshold)
+    embeddings = np.stack([_normalize(face.embedding.astype(np.float32)) for face in detected], axis=0)
+    if embeddings.shape[0] >= 2:
+        distance_threshold = max(1.0 - similarity_threshold, 1e-3)
+        clustering = AgglomerativeClustering(
+            n_clusters=None,
+            metric="cosine",
+            linkage="average",
+            distance_threshold=distance_threshold,
+        )
+        labels = clustering.fit_predict(embeddings)
+    else:
+        labels = np.zeros(embeddings.shape[0], dtype=int)
+
+    if hasattr(labels, "tolist"):
+        label_list = [int(v) for v in labels.tolist()]
+    else:
+        label_list = [int(v) for v in labels]
+
+    clusters: dict[int, list[int]] = {}
+    for idx, label in enumerate(label_list):
+        clusters.setdefault(label, []).append(idx)
+
+    ordered = sorted(clusters.items(), key=lambda item: (-len(item[1]), item[0]))
+    label_to_new_index = {label: new_idx for new_idx, (label, _) in enumerate(ordered)}
+    sorted_clusters = [members for _, members in ordered]
 
     cluster_objs: list[FaceCluster] = []
-    for cid, info in enumerate(clusters, start=1):
-        rep_idx = info["members"][0]
+    for cid, member_indices in enumerate(sorted_clusters, start=1):
+        rep_idx = member_indices[0]
         rep_face = detected[rep_idx]
         cluster_obj = FaceCluster(
             label=f"Cluster {cid:02d}",
-            face_count=len(info["members"]),
+            face_count=len(member_indices),
             representative_media_id=rep_face.media_id,
         )
         db.add(cluster_obj)
@@ -164,7 +202,8 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     face_rows: list[FaceEmbedding] = []
     for idx, face in enumerate(detected):
-        cluster_obj = cluster_objs[assignments[idx]]
+        mapped_index = label_to_new_index[label_list[idx]]
+        cluster_obj = cluster_objs[mapped_index]
         bbox = face.bbox
         left, top, right, bottom = map(int, bbox)
         row = FaceEmbedding(
@@ -184,13 +223,13 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     db.flush()
 
-    for idx, cluster_obj in enumerate(cluster_objs):
-        rep_idx = clusters[idx]["members"][0]
+    for cid, cluster_obj in enumerate(cluster_objs):
+        rep_idx = sorted_clusters[cid][0]
         cluster_obj.representative_face_id = face_rows[rep_idx].id
 
     db.commit()
 
-    return media_count, len(detected), len(cluster_objs), root
+    return media_count, len(detected), len(cluster_objs), root, f"{PIPELINE_VERSION}:{_FACE_MODEL_NAME}"
 
 
 def list_clusters(db: Session) -> list[FaceCluster]:
