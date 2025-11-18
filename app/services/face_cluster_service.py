@@ -90,31 +90,8 @@ class _DetectedFace:
 
 
 def _cluster_embeddings(faces: List[_DetectedFace], threshold: float):
-    clusters: list[dict] = []
-    assignments: list[int] = []
-    for idx, face in enumerate(faces):
-        vec = _normalize(face.embedding.astype(np.float32))
-        best_idx = -1
-        best_score = -1.0
-        for cid, info in enumerate(clusters):
-            score = float(np.dot(info["centroid"], vec))
-            if score > best_score:
-                best_score = score
-                best_idx = cid
-        if best_idx >= 0 and best_score >= threshold:
-            info = clusters[best_idx]
-            info["members"].append(idx)
-            info["centroid_sum"] += vec
-            info["centroid"] = _normalize(info["centroid_sum"] / len(info["members"]))
-            assignments.append(best_idx)
-        else:
-            clusters.append({
-                "centroid": vec,
-                "centroid_sum": vec.copy(),
-                "members": [idx],
-            })
-            assignments.append(len(clusters) - 1)
-    return assignments, clusters
+    # 已弃用（V1/V2 兼容函数），保留占位以防外部引用；V3 直接使用 HDBSCAN
+    return [], []
 
 
 def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float) -> tuple[int, int, int, Path, str]:
