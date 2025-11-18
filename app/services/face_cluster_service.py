@@ -7,8 +7,8 @@ from typing import Iterable, List, Sequence
 
 import cv2
 import numpy as np
+import hdbscan
 from insightface.app import FaceAnalysis
-from sklearn.cluster import AgglomerativeClustering
 from sqlalchemy.orm import Session
 
 from app.db import Media
@@ -19,7 +19,7 @@ from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingErro
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 _face_app: FaceAnalysis | None = None
 
-PIPELINE_VERSION = "face-v2"
+PIPELINE_VERSION = "face-v3"
 _FACE_MODEL_NAME = os.environ.get("FACE_CLUSTER_MODEL", "buffalo_l")
 _MIN_DET_SCORE = 0.6
 _MIN_FACE_SIZE = 48  # pixels
@@ -158,18 +158,21 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     if not detected:
         db.commit()
-        return media_count, 0, 0, root
+        return media_count, 0, 0, root, f"{PIPELINE_VERSION}:{_FACE_MODEL_NAME}"
 
     embeddings = np.stack([_normalize(face.embedding.astype(np.float32)) for face in detected], axis=0)
     if embeddings.shape[0] >= 2:
-        distance_threshold = max(1.0 - similarity_threshold, 1e-3)
-        clustering = AgglomerativeClustering(
-            n_clusters=None,
-            metric="cosine",
-            linkage="average",
-            distance_threshold=distance_threshold,
+        min_cluster_size = max(2, int(len(embeddings) * 0.05))
+        min_samples = max(1, int(min_cluster_size * 0.5))
+        epsilon = max(0.25 * (1 - similarity_threshold), 1e-3)
+        clusterer = hdbscan.HDBSCAN(
+            min_cluster_size=min_cluster_size,
+            min_samples=min_samples,
+            metric="euclidean",
+            cluster_selection_epsilon=epsilon,
+            cluster_selection_method="eom",
         )
-        labels = clustering.fit_predict(embeddings)
+        labels = clusterer.fit_predict(embeddings)
     else:
         labels = np.zeros(embeddings.shape[0], dtype=int)
 
@@ -179,8 +182,18 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
         label_list = [int(v) for v in labels]
 
     clusters: dict[int, list[int]] = {}
+    noise_indices: list[int] = []
     for idx, label in enumerate(label_list):
+        if label < 0:
+            noise_indices.append(idx)
+            continue
         clusters.setdefault(label, []).append(idx)
+
+    # 把噪声单独作为小簇，避免漏掉人脸
+    next_label = (max(clusters.keys()) + 1) if clusters else 0
+    for idx in noise_indices:
+        clusters[next_label] = [idx]
+        next_label += 1
 
     ordered = sorted(clusters.items(), key=lambda item: (-len(item[1]), item[0]))
     label_to_new_index = {label: new_idx for new_idx, (label, _) in enumerate(ordered)}
