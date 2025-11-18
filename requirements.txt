@@ -15,3 +15,6 @@ onnxruntime==1.19.2
 opencv-python-headless==4.10.0.84
 insightface==0.7.3
 hdbscan==0.8.33
+torch==2.3.1
+sentence-transformers==3.0.1
+faiss-cpu==1.8.0.post1

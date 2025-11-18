@@ -1,449 +1,456 @@
 /Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fs/__init__.py:4: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   __import__("pkg_resources").declare_namespace(__name__)  # type: ignore
-/Users/wang/Documents/mytikt/main.py:63: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:91: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:111: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:138: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:150: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("startup")
-/Users/wang/Documents/mytikt/main.py:159: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("shutdown")
-/Users/wang/Documents/mytikt/main.py:168: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("shutdown")
-/Users/wang/Documents/mytikt/main.py:176: DeprecationWarning: 
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-        
-  @app.on_event("startup")
-INFO:     Started server process [25651]
+INFO:     Started server process [71054]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-[startup] 正在清理端口 8000...
-[startup] 端口 8000 没有被占用
-[startup] 端口清理完成
-[boot] Media App API 即将启动: http://172.29.45.74:8000  (本机: http://localhost:8000)
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
 [startup] 前端静态资源已托管: /Users/wang/Documents/mytikt/webclient/out
 [startup] Skip DB init (set MEDIA_APP_INIT_ON_STARTUP=1 to enable).
-[auto-scan] 启动失败：尚未配置媒体目录，文件索引服务暂不可用。
+[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/sample_media
+[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/media_snapshots
+[auto-scan] 已启动 2 个目录实时监控任务。
 [startup] 资产处理流水线已启动。
 [boot] Media App API 即将启动: http://172.29.45.74:8000  (本机: http://localhost:8000)
 [startup] 前端自动打开: 已禁用 (修改 main.py 中的 AUTO_OPEN_BROWSER 变量)
 [startup] 提示: 将 AUTO_OPEN_BROWSER 改为 True 可启用自动打开前端
-INFO:     172.29.45.74:50564 - "OPTIONS /network/discover HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50564 - "POST /network/discover HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50565 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:50607 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "OPTIONS /setup/source HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "POST /setup/source HTTP/1.1" 201 Created
-INFO:     172.29.45.74:51797 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "OPTIONS /media-root HTTP/1.1" 200 OK
-正在填充初始数据...
-  - 添加标签类型: 'like'
-  - 添加标签类型: 'favorite'
-  - 添加默认设置: 'scan_interval' = 'hourly'
-✅ 初始数据填充完毕。
-[media-root] 首批导入 28 个媒体文件。
-[auto-scan] 远程路径使用定期扫描: smb://wang@172.29.45.74/WANG/Documents/mytikt/nas-test/share
-[auto-scan] 手动触发远程路径扫描: smb://wang@172.29.45.74/WANG/Documents/mytikt/nas-test/share
-[auto-scan] 已启动 1 个目录实时监控任务。
-[auto-scan] 手动触发远程路径扫描: smb://wang@172.29.45.74/WANG/Documents/mytikt/nas-test/share
-[auto-scan] 手动触发远程路径扫描: smb://wang@172.29.45.74/WANG/Documents/mytikt/nas-test/share
-INFO:     172.29.45.74:51796 - "POST /media-root HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51796 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51797 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51859 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51859 - "GET /media-list?seed=1239060581959&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51865 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51860 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51861 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51863 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51864 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51862 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51860 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51865 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51861 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51864 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51862 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51863 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51860 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51861 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51865 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51864 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51863 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51862 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51860 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51861 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51859 - "GET /media-list?seed=1239060581959&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51859 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51865 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51863 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51861 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51864 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51862 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51860 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51865 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51863 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "OPTIONS /settings/reset-initialization HTTP/1.1" 200 OK
-完全清除数据库完成：
-  - 媒体文件: 28 条
-  - 媒体标签: 0 条
-  - 媒体来源: 1 条
-  - 扫描任务: 1 条
-  - 媒体根目录设置: 1 条
-  - 自动扫描设置: 1 条
-总计删除 32 条记录
-INFO:     172.29.45.74:51989 - "POST /settings/reset-initialization HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "GET /filesystem/list?path=%2FUsers%2Fwang%2FDocuments HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "GET /filesystem/list?path=%2FUsers%2Fwang%2FDocuments%2Fmytikt HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "GET /filesystem/list?path=%2FUsers%2Fwang%2FDocuments%2Fmytikt%2Fsample_media HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "OPTIONS /setup/source HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "POST /setup/source HTTP/1.1" 201 Created
-INFO:     172.29.45.74:51989 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "OPTIONS /media-root HTTP/1.1" 200 OK
-正在填充初始数据...
-  - 添加默认设置: 'auto_scan_enabled' = '1'
-✅ 初始数据填充完毕。
-[media-root] 首批导入 27 个媒体文件。
-[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/sample_media
-INFO:     172.29.45.74:51990 - "POST /media-root HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51989 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "GET /media-list?seed=2576432260326&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52065 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52067 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52063 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52065 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52068 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52063 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52064 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52068 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52066 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52067 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52063 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52064 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52065 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52066 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52067 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52063 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52064 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52065 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52066 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52068 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:51990 - "GET /media-list?seed=2576432260326&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52066 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52067 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52063 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52068 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52066 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52065 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52064 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "OPTIONS /settings/reset-initialization HTTP/1.1" 200 OK
-完全清除数据库完成：
-  - 媒体文件: 27 条
-  - 媒体标签: 0 条
-  - 媒体来源: 1 条
-  - 扫描任务: 1 条
-  - 媒体根目录设置: 1 条
-  - 自动扫描设置: 1 条
-总计删除 31 条记录
-INFO:     172.29.45.74:52851 - "POST /settings/reset-initialization HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "GET /filesystem/common-folders HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "OPTIONS /network/discover HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52852 - "POST /network/discover HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52852 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52852 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52852 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52851 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:52852 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53162 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53162 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53162 - "OPTIONS /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53163 - "POST /network/browse HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53163 - "OPTIONS /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53162 - "POST /setup/source/validate HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53162 - "OPTIONS /setup/source HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53163 - "POST /setup/source HTTP/1.1" 201 Created
-INFO:     172.29.45.74:53163 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-[auto-scan] 远程路径扫描新增 28 个文件: smb://wang@172.29.45.74/WANG/Documents/mytikt/nas-test/share
-INFO:     172.29.45.74:53213 - "OPTIONS /media-root HTTP/1.1" 200 OK
-正在填充初始数据...
-  - 添加默认设置: 'auto_scan_enabled' = '1'
-✅ 初始数据填充完毕。
-[media-root] 首批导入 28 个媒体文件。
-[auto-scan] 远程路径使用定期扫描: smb://wang@172.29.45.74/Wang/Desktop/share
-[auto-scan] 手动触发远程路径扫描: smb://wang@172.29.45.74/Wang/Desktop/share
-[auto-scan] 手动触发远程路径扫描: smb://wang@172.29.45.74/Wang/Desktop/share
-INFO:     172.29.45.74:53213 - "POST /media-root HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53213 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53214 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53222 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53222 - "GET /media-list?seed=2687659559030&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/53/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/37/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/42/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/31/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/47/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/52/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/36/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/41/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/46/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/30/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53222 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53222 - "GET /media-list?seed=2687659559030&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/51/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/40/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/56/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/35/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/45/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/34/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/55/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/50/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/39/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/44/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53222 - "GET /media-list?seed=2687659559030&offset=40&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/33/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/38/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53228 - "GET /media/54/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53227 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53229 - "GET /media/43/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53231 - "GET /media/48/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53232 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53230 - "GET /media/49/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53571 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53574 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53571 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53573 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53574 - "GET /media-list?seed=2794282274005&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/30/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/46/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/47/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53578 - "GET /media/45/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53578 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/31/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/33/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/49/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/48/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/34/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53574 - "GET /media-list?seed=2794282274005&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/35/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/37/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/50/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/51/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53578 - "GET /media/36/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53578 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/52/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/38/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/53/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/39/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/54/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53574 - "GET /media-list?seed=2794282274005&offset=40&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/56/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/40/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/55/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53580 - "GET /media/42/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53578 - "GET /media/41/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53576 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53577 - "GET /media/43/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53579 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53575 - "GET /media/44/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53916 - "GET /init-status HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53916 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53918 - "GET /media-sources?include_inactive=false HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53919 - "GET /settings/auto-scan HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53921 - "GET /media-list?seed=4864358600385&offset=0&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/19/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/21/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/15/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/13/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/40/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/42/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/11/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/38/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/36/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/9/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/34/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/7/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/55/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/32/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/53/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/30/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/51/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/28/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/49/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53921 - "GET /media-list?seed=4864358600385&offset=20&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/24/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/3/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/22/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/5/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/1/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/20/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/26/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/18/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/47/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/16/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/14/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/45/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/43/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/12/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/41/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/39/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/37/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/35/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/56/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/33/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53921 - "GET /media-list?seed=4864358600385&offset=40&limit=20&order=seeded HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/10/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/8/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/6/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/27/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/54/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/4/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/52/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/50/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/25/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/2/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53926 - "GET /media/23/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53923 - "GET /media/29/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53925 - "GET /media/48/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53924 - "GET /media/44/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53928 - "GET /media/46/thumbnail HTTP/1.1" 200 OK
-INFO:     172.29.45.74:53927 - "GET /media/31/thumbnail HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62855 - "POST /search/clip HTTP/1.1" 200 OK
+No sentence-transformers model found with name sentence-transformers/siglip-base-patch16-224. Creating a new one with mean pooling.
+INFO:     172.29.45.74:63166 - "POST /search/clip HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
+    response.raise_for_status()
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 479, in cached_files
+    hf_hub_download(
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
+    raise head_call_error
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
+    r = _request_wrapper(
+        ^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
+    response = _request_wrapper(
+               ^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
+    hf_raise_for_status(response)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-691c3917-252c3e0f013c0d5a45e7350e;2be9c0f9-edde-4260-8523-7b0d175748a8)
+
+Repository Not Found for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Invalid username or password.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 124, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 110, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 390, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/api/clip_routes.py", line 53, in clip_search
+    payload = clip_service.search(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 297, in search
+    model = _get_model(resolved_model)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 61, in _get_model
+    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 299, in __init__
+    modules = self._load_auto_model(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 1324, in _load_auto_model
+    transformer_model = Transformer(
+                        ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/models/Transformer.py", line 53, in __init__
+    config = AutoConfig.from_pretrained(model_name_or_path, **config_args, cache_dir=cache_dir)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 1332, in from_pretrained
+    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 662, in get_config_dict
+    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 721, in _get_config_dict
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 322, in cached_file
+    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 511, in cached_files
+    raise OSError(
+OSError: sentence-transformers/siglip-base-patch16-224 is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
+If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
+No sentence-transformers model found with name sentence-transformers/siglip-base-patch16-224. Creating a new one with mean pooling.
+INFO:     172.29.45.74:63204 - "POST /search/clip HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
+    response.raise_for_status()
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 479, in cached_files
+    hf_hub_download(
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
+    raise head_call_error
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
+    r = _request_wrapper(
+        ^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
+    response = _request_wrapper(
+               ^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
+    hf_raise_for_status(response)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-691c3920-1e19e39158e6f8524687d3f8;b5665ffb-54a8-4447-9009-471a2c99e08a)
+
+Repository Not Found for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Invalid username or password.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 124, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 110, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 390, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/api/clip_routes.py", line 53, in clip_search
+    payload = clip_service.search(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 297, in search
+    model = _get_model(resolved_model)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 61, in _get_model
+    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 299, in __init__
+    modules = self._load_auto_model(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 1324, in _load_auto_model
+    transformer_model = Transformer(
+                        ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/models/Transformer.py", line 53, in __init__
+    config = AutoConfig.from_pretrained(model_name_or_path, **config_args, cache_dir=cache_dir)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 1332, in from_pretrained
+    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 662, in get_config_dict
+    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 721, in _get_config_dict
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 322, in cached_file
+    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 511, in cached_files
+    raise OSError(
+OSError: sentence-transformers/siglip-base-patch16-224 is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
+If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
+INFO:     172.29.45.74:63377 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+No sentence-transformers model found with name sentence-transformers/siglip-base-patch16-224. Creating a new one with mean pooling.
+INFO:     172.29.45.74:63377 - "POST /search/clip HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
+    response.raise_for_status()
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 479, in cached_files
+    hf_hub_download(
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
+    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
+    raise head_call_error
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
+    metadata = get_hf_file_metadata(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
+    r = _request_wrapper(
+        ^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
+    response = _request_wrapper(
+               ^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
+    hf_raise_for_status(response)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-691c3947-0d91edd77e5817e83aebac65;cdbaea97-18f9-4d46-a72f-6db88336edfd)
+
+Repository Not Found for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Invalid username or password.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 124, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 110, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 390, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 976, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/api/clip_routes.py", line 53, in clip_search
+    payload = clip_service.search(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 297, in search
+    model = _get_model(resolved_model)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 61, in _get_model
+    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 299, in __init__
+    modules = self._load_auto_model(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 1324, in _load_auto_model
+    transformer_model = Transformer(
+                        ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/models/Transformer.py", line 53, in __init__
+    config = AutoConfig.from_pretrained(model_name_or_path, **config_args, cache_dir=cache_dir)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 1332, in from_pretrained
+    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 662, in get_config_dict
+    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 721, in _get_config_dict
+    resolved_config_file = cached_file(
+                           ^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 322, in cached_file
+    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 511, in cached_files
+    raise OSError(
+OSError: sentence-transformers/siglip-base-patch16-224 is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
+If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
 INFO:     Shutting down
 INFO:     Waiting for application shutdown.
 INFO:     Application shutdown complete.
-INFO:     Finished server process [25651]
+INFO:     Finished server process [71054]
+/Users/wang/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

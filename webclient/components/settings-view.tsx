@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import QRCode from "qrcode"
-import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe, RotateCcw, Sun, Moon, Monitor } from "lucide-react"
+import { Settings, RefreshCw, Smartphone, Copy, Check, Wifi, HardDrive, Palette, Shield, Globe, RotateCcw, Sun, Moon, Monitor, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTheme } from "next-themes"
@@ -465,6 +465,29 @@ export function SettingsView() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 智能搜索（实验） */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                <CardTitle>智能搜索 (Beta)</CardTitle>
+              </div>
+              <CardDescription>
+                文本搜图 / 图搜图，调用 CLIP/SigLIP 向量检索。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  需要先在后端运行 /clip/rebuild 生成向量索引。
+                </p>
+                <Button asChild variant="default">
+                  <a href="/smart-search" target="_blank" rel="noreferrer">打开测试页</a>
+                </Button>
               </div>
             </CardContent>
           </Card>

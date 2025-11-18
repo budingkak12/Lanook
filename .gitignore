@@ -25,6 +25,7 @@ media_app.db
 thumbnails/
 media_snapshots/
 artifacts/
+faiss_vectors/
 
 # uv caches
 .uv_cache/

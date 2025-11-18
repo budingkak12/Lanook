@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, LargeBinary, String, Text, UniqueConstraint
 
 # 复用现有 Base/engine
 from app.db.base import Base
@@ -74,3 +74,16 @@ class MediaCacheState(Base):
     hot_score = Column(Integer, nullable=False, default=0, server_default="0")
     last_accessed_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ClipEmbedding(Base):
+    __tablename__ = "clip_embeddings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    media_id = Column(Integer, ForeignKey("media.id"), nullable=False, index=True)
+    model = Column(String, nullable=False, index=True)
+    vector = Column(LargeBinary, nullable=False)
+    dim = Column(Integer, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("media_id", "model", name="uq_clip_media_model"),)
