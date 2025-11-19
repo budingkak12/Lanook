@@ -233,9 +233,16 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     # 把噪声单独作为小簇，避免漏掉人脸
     next_label = (max(clusters.keys()) + 1) if clusters else 0
+    noise_label_map: dict[int, int] = {}
     for idx in noise_indices:
         clusters[next_label] = [idx]
+        noise_label_map[idx] = next_label
         next_label += 1
+
+    if noise_label_map:
+        for idx, label in enumerate(label_list):
+            if label < 0:
+                label_list[idx] = noise_label_map.get(idx, label)
 
     ordered = sorted(clusters.items(), key=lambda item: (-len(item[1]), item[0]))
     label_to_new_index = {label: new_idx for new_idx, (label, _) in enumerate(ordered)}

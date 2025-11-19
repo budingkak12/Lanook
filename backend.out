@@ -56,20 +56,140 @@
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("startup")
-INFO:     Started server process [21189]
+INFO:     Started server process [27194]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/insightface/utils/transform.py:68: FutureWarning: `rcond` parameter will change to the default of machine precision times ``max(M, N)`` where M and N are the input matrix dimensions.
+To use the future default and silence this warning we advise to pass `rcond=None`, to keep using the old, explicitly pass `rcond=-1`.
+  P = np.linalg.lstsq(X_homo, Y)[0].T # Affine matrix. 3 x 4
+/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sklearn/utils/deprecation.py:132: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
+/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sklearn/utils/deprecation.py:132: FutureWarning: 'force_all_finite' was renamed to 'ensure_all_finite' in 1.6 and will be removed in 1.8.
+  warnings.warn(
 [startup] 正在清理端口 8000...
 [startup] 端口 8000 没有被占用
 [startup] 端口清理完成
 [boot] Media App API 即将启动: http://172.18.0.1:8000  (本机: http://localhost:8000)
 [startup] 前端静态资源已托管: /Users/wang/Documents/mytikt/webclient/out
 [startup] Skip DB init (set MEDIA_APP_INIT_ON_STARTUP=1 to enable).
-[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/测试图片
+[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/测试图片2
 [auto-scan] 已启动 1 个目录实时监控任务。
 [startup] 资产处理流水线已启动。
 [boot] Media App API 即将启动: http://172.18.0.1:8000  (本机: http://localhost:8000)
 [startup] 前端自动打开: 已禁用 (修改 main.py 中的 AUTO_OPEN_BROWSER 变量)
 [startup] 提示: 将 AUTO_OPEN_BROWSER 改为 True 可启用自动打开前端
-INFO:     127.0.0.1:55336 - "GET /media/1/tags HTTP/1.1" 200 OK
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+Applied providers: ['CPUExecutionProvider'], with options: {'CPUExecutionProvider': {}}
+set det-size: (640, 640)
+INFO:     127.0.0.1:59003 - "POST /face-clusters/rebuild HTTP/1.1" 200 OK
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+INFO:     127.0.0.1:52973 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:56226 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:56228 - "POST /search/clip HTTP/1.1" 503 Service Unavailable
+INFO:     172.29.45.74:57052 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57054 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57056 - "GET /media/76/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57062 - "GET /media/147/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57058 - "GET /media/52/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57063 - "GET /media/40/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57064 - "GET /media/152/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57061 - "GET /media/50/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57065 - "GET /media/69/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57066 - "GET /media/167/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57069 - "GET /media/163/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57068 - "GET /media/200/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57067 - "GET /media/35/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57070 - "GET /media/171/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57079 - "GET /media/152/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57080 - "GET /media/52/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57081 - "GET /media/40/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57082 - "GET /media/50/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57078 - "GET /media/147/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57075 - "GET /media/76/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57085 - "GET /media/35/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57087 - "GET /media/167/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57090 - "GET /media/171/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57089 - "GET /media/163/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57086 - "GET /media/69/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57088 - "GET /media/200/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57851 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57853 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57865 - "GET /media/104/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57871 - "GET /media/52/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57870 - "GET /media/76/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57869 - "GET /media/140/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57872 - "GET /media/39/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57866 - "GET /media/103/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57873 - "GET /media/121/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57874 - "GET /media/167/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57878 - "GET /media/143/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57875 - "GET /media/111/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57876 - "GET /media/168/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57877 - "GET /media/17/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57886 - "GET /media/39/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57890 - "GET /media/168/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57889 - "GET /media/140/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57887 - "GET /media/121/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57885 - "GET /media/103/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57888 - "GET /media/104/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57893 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57894 - "GET /media/111/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:57895 - "GET /media/143/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59028 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59030 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59035 - "GET /media/147/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59037 - "GET /media/147/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59852 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59854 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59866 - "GET /media/17/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:59868 - "GET /media/17/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:64599 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:64601 - "POST /search/clip HTTP/1.1" 503 Service Unavailable
+INFO:     172.29.45.74:65316 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65318 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65323 - "GET /media/76/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65324 - "GET /media/52/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65326 - "GET /media/50/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65328 - "GET /media/147/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65325 - "GET /media/40/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65327 - "GET /media/152/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65331 - "GET /media/69/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65330 - "GET /media/35/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65329 - "GET /media/167/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65333 - "GET /media/163/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65332 - "GET /media/200/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65334 - "GET /media/171/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65338 - "GET /media/52/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65339 - "GET /media/50/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65340 - "GET /media/76/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65343 - "GET /media/147/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65344 - "GET /media/40/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65348 - "GET /media/69/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65349 - "GET /media/167/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65346 - "GET /media/152/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65352 - "GET /media/171/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65350 - "GET /media/200/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65351 - "GET /media/163/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:65347 - "GET /media/35/thumbnail HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51641 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51643 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51651 - "GET /media/50/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51653 - "GET /media/40/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51650 - "GET /media/52/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51654 - "GET /media/152/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51655 - "GET /media/147/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51652 - "GET /media/76/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51660 - "GET /media/163/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51661 - "GET /media/171/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51659 - "GET /media/200/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51658 - "GET /media/69/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51663 - "GET /media/167/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:51656 - "GET /media/35/tags HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55304 - "GET /media/52/tags HTTP/1.1" 200 OK
+INFO:     172.29.45.74:61933 - "OPTIONS /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:61935 - "POST /search/clip HTTP/1.1" 200 OK
+INFO:     172.29.45.74:61936 - "GET /media/76/tags HTTP/1.1" 200 OK
