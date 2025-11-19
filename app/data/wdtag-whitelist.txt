@@ -1,0 +1,44 @@
+# 白名单标签（英文，逐行一个）。
+# 来源：wd-vit/swinv2-tagger-v3 常用标签 + 示例。
+# 如需扩展，可以追加；留空行会被忽略。
+girl
+man
+woman
+smile
+solo
+1girl
+1boy
+outdoor
+indoor
+night
+day
+flower
+tree
+sky
+cloud
+water
+beach
+sunset
+portrait
+long_hair
+short_hair
+face
+close_up
+animal
+cat
+dog
+bird
+food
+drink
+glass
+phone
+bag
+desk
+book
+street
+city
+car
+snow
+rain
+mountain
+lake

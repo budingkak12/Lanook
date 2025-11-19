@@ -1,456 +1,75 @@
 /Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fs/__init__.py:4: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
   __import__("pkg_resources").declare_namespace(__name__)  # type: ignore
-INFO:     Started server process [71054]
+/Users/wang/Documents/mytikt/main.py:69: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/Users/wang/Documents/mytikt/main.py:97: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/Users/wang/Documents/mytikt/main.py:117: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/Users/wang/Documents/mytikt/main.py:144: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/Users/wang/Documents/mytikt/main.py:156: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+/Users/wang/Documents/mytikt/main.py:165: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+/Users/wang/Documents/mytikt/main.py:174: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("shutdown")
+/Users/wang/Documents/mytikt/main.py:182: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [21189]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+[startup] 正在清理端口 8000...
+[startup] 端口 8000 没有被占用
+[startup] 端口清理完成
+[boot] Media App API 即将启动: http://172.18.0.1:8000  (本机: http://localhost:8000)
 [startup] 前端静态资源已托管: /Users/wang/Documents/mytikt/webclient/out
 [startup] Skip DB init (set MEDIA_APP_INIT_ON_STARTUP=1 to enable).
-[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/sample_media
-[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/media_snapshots
-[auto-scan] 已启动 2 个目录实时监控任务。
+[auto-scan] 开始监控目录: /Users/wang/Documents/mytikt/测试图片
+[auto-scan] 已启动 1 个目录实时监控任务。
 [startup] 资产处理流水线已启动。
-[boot] Media App API 即将启动: http://172.29.45.74:8000  (本机: http://localhost:8000)
+[boot] Media App API 即将启动: http://172.18.0.1:8000  (本机: http://localhost:8000)
 [startup] 前端自动打开: 已禁用 (修改 main.py 中的 AUTO_OPEN_BROWSER 变量)
 [startup] 提示: 将 AUTO_OPEN_BROWSER 改为 True 可启用自动打开前端
-INFO:     127.0.0.1:62855 - "POST /search/clip HTTP/1.1" 200 OK
-No sentence-transformers model found with name sentence-transformers/siglip-base-patch16-224. Creating a new one with mean pooling.
-INFO:     172.29.45.74:63166 - "POST /search/clip HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
-    response.raise_for_status()
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 479, in cached_files
-    hf_hub_download(
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
-    return _hf_hub_download_to_cache_dir(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
-    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
-    raise head_call_error
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
-    metadata = get_hf_file_metadata(
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
-    r = _request_wrapper(
-        ^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
-    response = _request_wrapper(
-               ^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
-    hf_raise_for_status(response)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
-    raise _format(RepositoryNotFoundError, message, response) from e
-huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-691c3917-252c3e0f013c0d5a45e7350e;2be9c0f9-edde-4260-8523-7b0d175748a8)
-
-Repository Not Found for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json.
-Please make sure you specified the correct `repo_id` and `repo_type`.
-If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
-Invalid username or password.
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
-    await self.simple_response(scope, receive, send, request_headers=headers)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 124, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 110, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 390, in app
-    raw_response = await run_endpoint_function(
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 976, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/api/clip_routes.py", line 53, in clip_search
-    payload = clip_service.search(
-              ^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 297, in search
-    model = _get_model(resolved_model)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 61, in _get_model
-    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 299, in __init__
-    modules = self._load_auto_model(
-              ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 1324, in _load_auto_model
-    transformer_model = Transformer(
-                        ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/models/Transformer.py", line 53, in __init__
-    config = AutoConfig.from_pretrained(model_name_or_path, **config_args, cache_dir=cache_dir)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 1332, in from_pretrained
-    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
-                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 662, in get_config_dict
-    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 721, in _get_config_dict
-    resolved_config_file = cached_file(
-                           ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 322, in cached_file
-    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 511, in cached_files
-    raise OSError(
-OSError: sentence-transformers/siglip-base-patch16-224 is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
-If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
-No sentence-transformers model found with name sentence-transformers/siglip-base-patch16-224. Creating a new one with mean pooling.
-INFO:     172.29.45.74:63204 - "POST /search/clip HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
-    response.raise_for_status()
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 479, in cached_files
-    hf_hub_download(
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
-    return _hf_hub_download_to_cache_dir(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
-    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
-    raise head_call_error
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
-    metadata = get_hf_file_metadata(
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
-    r = _request_wrapper(
-        ^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
-    response = _request_wrapper(
-               ^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
-    hf_raise_for_status(response)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
-    raise _format(RepositoryNotFoundError, message, response) from e
-huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-691c3920-1e19e39158e6f8524687d3f8;b5665ffb-54a8-4447-9009-471a2c99e08a)
-
-Repository Not Found for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json.
-Please make sure you specified the correct `repo_id` and `repo_type`.
-If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
-Invalid username or password.
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
-    await self.simple_response(scope, receive, send, request_headers=headers)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 124, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 110, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 390, in app
-    raw_response = await run_endpoint_function(
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 976, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/api/clip_routes.py", line 53, in clip_search
-    payload = clip_service.search(
-              ^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 297, in search
-    model = _get_model(resolved_model)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 61, in _get_model
-    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 299, in __init__
-    modules = self._load_auto_model(
-              ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 1324, in _load_auto_model
-    transformer_model = Transformer(
-                        ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/models/Transformer.py", line 53, in __init__
-    config = AutoConfig.from_pretrained(model_name_or_path, **config_args, cache_dir=cache_dir)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 1332, in from_pretrained
-    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
-                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 662, in get_config_dict
-    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 721, in _get_config_dict
-    resolved_config_file = cached_file(
-                           ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 322, in cached_file
-    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 511, in cached_files
-    raise OSError(
-OSError: sentence-transformers/siglip-base-patch16-224 is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
-If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
-INFO:     172.29.45.74:63377 - "OPTIONS /search/clip HTTP/1.1" 200 OK
-No sentence-transformers model found with name sentence-transformers/siglip-base-patch16-224. Creating a new one with mean pooling.
-INFO:     172.29.45.74:63377 - "POST /search/clip HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 402, in hf_raise_for_status
-    response.raise_for_status()
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/requests/models.py", line 1026, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 401 Client Error: Unauthorized for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 479, in cached_files
-    hf_hub_download(
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1007, in hf_hub_download
-    return _hf_hub_download_to_cache_dir(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1114, in _hf_hub_download_to_cache_dir
-    _raise_on_head_call_error(head_call_error, force_download, local_files_only)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1655, in _raise_on_head_call_error
-    raise head_call_error
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1543, in _get_metadata_or_catch_error
-    metadata = get_hf_file_metadata(
-               ^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1460, in get_hf_file_metadata
-    r = _request_wrapper(
-        ^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 283, in _request_wrapper
-    response = _request_wrapper(
-               ^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 307, in _request_wrapper
-    hf_raise_for_status(response)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 452, in hf_raise_for_status
-    raise _format(RepositoryNotFoundError, message, response) from e
-huggingface_hub.errors.RepositoryNotFoundError: 401 Client Error. (Request ID: Root=1-691c3947-0d91edd77e5817e83aebac65;cdbaea97-18f9-4d46-a72f-6db88336edfd)
-
-Repository Not Found for url: https://huggingface.co/sentence-transformers/siglip-base-patch16-224/resolve/main/config.json.
-Please make sure you specified the correct `repo_id` and `repo_type`.
-If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
-Invalid username or password.
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 409, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1134, in __call__
-    await super().__call__(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/applications.py", line 113, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 93, in __call__
-    await self.simple_response(scope, receive, send, request_headers=headers)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 144, in simple_response
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 716, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 736, in app
-    await route.handle(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/routing.py", line 290, in handle
-    await self.app(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 124, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 110, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 390, in app
-    raw_response = await run_endpoint_function(
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 291, in run_endpoint_function
-    return await run_in_threadpool(dependant.call, **values)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 38, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 56, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2485, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 976, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/api/clip_routes.py", line 53, in clip_search
-    payload = clip_service.search(
-              ^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 297, in search
-    model = _get_model(resolved_model)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/app/services/clip_service.py", line 61, in _get_model
-    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 299, in __init__
-    modules = self._load_auto_model(
-              ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/SentenceTransformer.py", line 1324, in _load_auto_model
-    transformer_model = Transformer(
-                        ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/sentence_transformers/models/Transformer.py", line 53, in __init__
-    config = AutoConfig.from_pretrained(model_name_or_path, **config_args, cache_dir=cache_dir)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/models/auto/configuration_auto.py", line 1332, in from_pretrained
-    config_dict, unused_kwargs = PretrainedConfig.get_config_dict(pretrained_model_name_or_path, **kwargs)
-                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 662, in get_config_dict
-    config_dict, kwargs = cls._get_config_dict(pretrained_model_name_or_path, **kwargs)
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/configuration_utils.py", line 721, in _get_config_dict
-    resolved_config_file = cached_file(
-                           ^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 322, in cached_file
-    file = cached_files(path_or_repo_id=path_or_repo_id, filenames=[filename], **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/wang/Documents/mytikt/.venv/lib/python3.12/site-packages/transformers/utils/hub.py", line 511, in cached_files
-    raise OSError(
-OSError: sentence-transformers/siglip-base-patch16-224 is not a local folder and is not a valid model identifier listed on 'https://huggingface.co/models'
-If this is a private repository, make sure to pass a token having permission to this repo either by logging in with `hf auth login` or by passing `token=<your_token>`
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [71054]
-/Users/wang/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '
+INFO:     127.0.0.1:55336 - "GET /media/1/tags HTTP/1.1" 200 OK

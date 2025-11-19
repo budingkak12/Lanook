@@ -35,6 +35,9 @@ class MediaTag(Base):
     media_id = Column(Integer, ForeignKey("media.id"), nullable=False)
     tag_name = Column(String, ForeignKey("tag_definitions.name"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    source_model = Column(String, nullable=True)
+    confidence = Column(Float, nullable=True)
+    weight = Column(Float, nullable=True)
 
     media = relationship("Media", back_populates="tags")
 

@@ -329,7 +329,7 @@ def add_tag(db: Session, *, media_id: int, tag: str) -> None:
     )
     if existing:
         raise TagAlreadyExistsError("tag already exists for media")
-    db.add(MediaTag(media_id=media_id, tag_name=tag))
+    db.add(MediaTag(media_id=media_id, tag_name=tag, source_model="manual", confidence=1.0))
     media_cache.sync_tag_snapshot(db, [media_id])
     try:
         db.commit()

@@ -27,6 +27,18 @@ class TagAlreadyExistsError(ServiceError):
     default_status = 409
 
 
+class TagRebuildError(ServiceError):
+    default_status = 500
+
+
+class TagModelNotReadyError(TagRebuildError):
+    default_status = 503
+
+
+class TagWhitelistError(ServiceError):
+    default_status = 400
+
+
 class SeedRequiredError(ServiceError):
     default_status = 400
 

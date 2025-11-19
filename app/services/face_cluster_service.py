@@ -8,7 +8,9 @@ from typing import Iterable, List, Sequence
 import cv2
 import numpy as np
 import hdbscan
+import onnxruntime as ort
 from insightface.app import FaceAnalysis
+from insightface.model_zoo import model_zoo
 from sqlalchemy.orm import Session
 
 from app.db import Media
@@ -18,20 +20,83 @@ from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingErro
 
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 _face_app: FaceAnalysis | None = None
+_face_model_descriptor: str | None = None
 
 PIPELINE_VERSION = "face-v3"
 _FACE_MODEL_NAME = os.environ.get("FACE_CLUSTER_MODEL", "buffalo_l")
+_FACE_MODEL_DIR = Path(os.environ.get("FACE_CLUSTER_MODEL_DIR", "models/insightface/buffalo_l")).expanduser()
+_FACE_MODEL_ROOT = os.environ.get("FACE_CLUSTER_MODEL_ROOT", "~/.insightface")
+_FACE_MODEL_PROVIDERS = os.environ.get("FACE_CLUSTER_ORT_PROVIDERS", "CPUExecutionProvider")
 _MIN_DET_SCORE = 0.6
 _MIN_FACE_SIZE = 48  # pixels
 
 
 def _get_face_app() -> FaceAnalysis:
-    global _face_app
+    global _face_app, _face_model_descriptor
     if _face_app is None:
-        face_app = FaceAnalysis(name=_FACE_MODEL_NAME, providers=["CPUExecutionProvider"])
+        providers = _parse_providers(_FACE_MODEL_PROVIDERS)
+        if _FACE_MODEL_DIR.exists():
+            face_app = _load_local_face_app(_FACE_MODEL_DIR, providers)
+            _face_model_descriptor = str(_FACE_MODEL_DIR.resolve())
+        else:
+            face_app = FaceAnalysis(
+                name=_FACE_MODEL_NAME,
+                root=_FACE_MODEL_ROOT,
+                providers=providers,
+            )
+            _face_model_descriptor = str(Path(face_app.model_dir).expanduser().resolve())
         face_app.prepare(ctx_id=-1, det_size=(640, 640))
         _face_app = face_app
     return _face_app
+
+
+def _parse_providers(raw: str | None) -> list[str]:
+    if not raw:
+        return ["CPUExecutionProvider"]
+    providers = [item.strip() for item in raw.split(",") if item.strip()]
+    return providers or ["CPUExecutionProvider"]
+
+
+def _load_local_face_app(model_dir: Path, providers: Sequence[str]) -> FaceAnalysis:
+    if not model_dir.is_dir():
+        raise FaceProcessingError(f"本地 ONNX 模型目录不存在: {model_dir}")
+    onnx_files = sorted(model_dir.glob("*.onnx"))
+    if not onnx_files:
+        raise FaceProcessingError(f"目录中未找到 ONNX 模型: {model_dir}")
+
+    ort.set_default_logger_severity(3)
+    face_app = FaceAnalysis.__new__(FaceAnalysis)
+    face_app.models = {}
+    face_app.model_dir = str(model_dir)
+
+    for onnx_file in onnx_files:
+        try:
+            model = model_zoo.get_model(str(onnx_file), providers=providers)
+        except Exception as exc:  # pragma: no cover - 防止环境差异导致崩溃
+            raise FaceProcessingError(f"加载人脸模型失败: {onnx_file}") from exc
+        if model is None:
+            continue
+        taskname = getattr(model, "taskname", None)
+        if taskname is None:
+            continue
+        if taskname in face_app.models:
+            continue
+        face_app.models[taskname] = model
+
+    if "detection" not in face_app.models:
+        raise FaceProcessingError(f"本地模型缺少人脸检测子模型: {model_dir}")
+
+    face_app.det_model = face_app.models["detection"]
+    return face_app
+
+
+def _current_pipeline_signature() -> str:
+    descriptor = _face_model_descriptor
+    if descriptor:
+        return f"{PIPELINE_VERSION}:{descriptor}"
+    if _FACE_MODEL_DIR.exists():
+        return f"{PIPELINE_VERSION}:{_FACE_MODEL_DIR}"
+    return f"{PIPELINE_VERSION}:{_FACE_MODEL_NAME}"
 
 
 def _normalize(vec: np.ndarray) -> np.ndarray:
@@ -135,7 +200,7 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     if not detected:
         db.commit()
-        return media_count, 0, 0, root, f"{PIPELINE_VERSION}:{_FACE_MODEL_NAME}"
+        return media_count, 0, 0, root, _current_pipeline_signature()
 
     embeddings = np.stack([_normalize(face.embedding.astype(np.float32)) for face in detected], axis=0)
     if embeddings.shape[0] >= 2:
@@ -219,7 +284,7 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     db.commit()
 
-    return media_count, len(detected), len(cluster_objs), root, f"{PIPELINE_VERSION}:{_FACE_MODEL_NAME}"
+    return media_count, len(detected), len(cluster_objs), root, _current_pipeline_signature()
 
 
 def list_clusters(db: Session) -> list[FaceCluster]:

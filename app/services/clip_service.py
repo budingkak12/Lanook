@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -8,9 +9,13 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 import faiss
 import numpy as np
+import onnxruntime as ort
 from PIL import Image
+from tqdm.auto import tqdm
 from sentence_transformers import SentenceTransformer
 from sqlalchemy.orm import Session
+
+from transformers import SiglipProcessor
 
 from app.db import ClipEmbedding, MEDIA_ROOT_KEY, Media, get_setting
 from app.services.exceptions import MediaNotFoundError, ServiceError
@@ -31,19 +36,31 @@ class ClipSearchResult:
 
 
 _MODEL_ALIASES = {
-    "siglip": "sentence-transformers/siglip-base-patch16-224",
-    "siglip-base": "sentence-transformers/siglip-base-patch16-224",
-    "siglip-base-patch16-224": "sentence-transformers/siglip-base-patch16-224",
+    # 默认走本地 SigLIP ONNX；如需回退可通过环境变量覆盖
+    "siglip": "models/siglip-onnx",
+    "siglip-base": "models/siglip-onnx",
+    "siglip-base-patch16-224": "models/siglip-onnx",
+    "siglip-onnx": "models/siglip-onnx",
     "clip": "clip-ViT-B-32",
     "vit-b-32": "clip-ViT-B-32",
     "vit-l-14": "clip-ViT-L-14",
 }
 
+_SIGLIP_TEXT_ONNX = "siglip_text_encoder.onnx"
+_SIGLIP_VISION_ONNX = "siglip_vision_encoder.onnx"
+
 _DEFAULT_MODEL = os.environ.get("CLIP_MODEL", "siglip")
 _DEFAULT_DEVICE = os.environ.get("CLIP_DEVICE", "cpu")
 _FAISS_DIR = Path(os.environ.get("CLIP_FAISS_DIR", "faiss_vectors"))
 
-_model_cache: dict[str, SentenceTransformer] = {}
+# macOS/CPU 环境下限制 OMP 线程，避免 sentence-transformers/timm 初始化崩溃。
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
+_encoder_cache: dict[str, "BaseClipEncoder"] = {}
+
+# tqdm 的 monitor 线程在 macOS Python 3.12 上退出时偶发崩溃，这里关闭监控线程。
+tqdm.monitor_interval = 0
 
 
 def _resolve_model_name(name: str | None) -> str:
@@ -53,14 +70,24 @@ def _resolve_model_name(name: str | None) -> str:
     return _MODEL_ALIASES.get(lowered, name.strip())
 
 
-def _get_model(model_name: str) -> SentenceTransformer:
+def _is_onnx_model(path_str: str) -> bool:
+    path = Path(path_str)
+    if path.is_dir():
+        return (path / _SIGLIP_TEXT_ONNX).exists() and (path / _SIGLIP_VISION_ONNX).exists()
+    return path.suffix.lower() == ".onnx"
+
+
+def _get_encoder(model_name: str) -> "BaseClipEncoder":
     resolved = _resolve_model_name(model_name)
-    cached = _model_cache.get(resolved)
+    cached = _encoder_cache.get(resolved)
     if cached:
         return cached
-    model = SentenceTransformer(resolved, device=_DEFAULT_DEVICE)
-    _model_cache[resolved] = model
-    return model
+    if _is_onnx_model(resolved):
+        encoder = SiglipOrtEncoder(resolved)
+    else:
+        encoder = SentenceTransformerEncoder(resolved)
+    _encoder_cache[resolved] = encoder
+    return encoder
 
 
 def _normalize(vec: np.ndarray) -> np.ndarray:
@@ -73,6 +100,134 @@ def _normalize(vec: np.ndarray) -> np.ndarray:
     return vec
 
 
+class BaseClipEncoder:
+    def encode_images(self, images: List[Image.Image], batch_size: int = 8) -> np.ndarray:  # pragma: no cover - interface
+        raise NotImplementedError
+
+    def encode_texts(self, texts: List[str], batch_size: int = 8) -> np.ndarray:  # pragma: no cover - interface
+        raise NotImplementedError
+
+
+class SentenceTransformerEncoder(BaseClipEncoder):
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
+        self.model = SentenceTransformer(model_name, device=_DEFAULT_DEVICE)
+
+    def encode_images(self, images: List[Image.Image], batch_size: int = 8) -> np.ndarray:
+        return self.model.encode(
+            images,
+            batch_size=batch_size,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+
+    def encode_texts(self, texts: List[str], batch_size: int = 8) -> np.ndarray:
+        emb = self.model.encode(
+            texts,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+            batch_size=batch_size,
+            show_progress_bar=False,
+        )
+        return np.asarray(emb, dtype=np.float32)
+
+
+class SiglipOrtEncoder(BaseClipEncoder):
+    TEXT_ONNX = _SIGLIP_TEXT_ONNX
+    VISION_ONNX = _SIGLIP_VISION_ONNX
+
+    def __init__(self, model_path: str) -> None:
+        self.base_path = Path(model_path)
+        if self.base_path.is_file():
+            self.model_dir = self.base_path.parent
+        else:
+            self.model_dir = self.base_path
+
+        self.text_model_path = self._resolve_file(self.TEXT_ONNX)
+        self.vision_model_path = self._resolve_file(self.VISION_ONNX)
+        if not self.text_model_path.exists() or not self.vision_model_path.exists():
+            raise ClipSearchError(f"SigLIP ONNX 模型缺失，请检查目录 {self.model_dir}")
+
+        providers_env = os.environ.get("CLIP_ORT_PROVIDERS", "CPUExecutionProvider")
+        providers = [p.strip() for p in providers_env.split(",") if p.strip()]
+        session_options = ort.SessionOptions()
+        intra = os.environ.get("ORT_INTRA_OP_THREADS")
+        inter = os.environ.get("ORT_INTER_OP_THREADS")
+        if intra:
+            session_options.intra_op_num_threads = int(intra)
+        if inter:
+            session_options.inter_op_num_threads = int(inter)
+
+        self.processor = SiglipProcessor.from_pretrained(str(self.model_dir))
+        self.text_session = ort.InferenceSession(
+            str(self.text_model_path),
+            sess_options=session_options,
+            providers=providers,
+        )
+        self.vision_session = ort.InferenceSession(
+            str(self.vision_model_path),
+            sess_options=session_options,
+            providers=providers,
+        )
+        self.text_dim = self._infer_output_dim(self.text_session)
+        self.image_dim = self._infer_output_dim(self.vision_session)
+
+    def _resolve_file(self, filename: str) -> Path:
+        if self.base_path.is_file() and self.base_path.name == filename:
+            return self.base_path
+        return self.model_dir / filename
+
+    def encode_texts(self, texts: List[str], batch_size: int = 8) -> np.ndarray:
+        outputs: list[np.ndarray] = []
+        for start in range(0, len(texts), batch_size):
+            batch = texts[start : start + batch_size]
+            encoded = self.processor(
+                text=batch,
+                padding="max_length",
+                truncation=True,
+                return_attention_mask=True,
+                return_tensors="np",
+            )
+            ids = encoded["input_ids"].astype(np.int64)
+            mask = encoded["attention_mask"].astype(np.int64)
+            for i in range(ids.shape[0]):
+                inputs = {
+                    "input_ids": ids[i : i + 1],
+                    "attention_mask": mask[i : i + 1],
+                }
+                outputs.append(self.text_session.run(None, inputs)[0])
+        dim = self.text_dim or self.image_dim or 768
+        result = np.concatenate(outputs, axis=0) if outputs else np.zeros((0, dim), dtype=np.float32)
+        _normalize(result)
+        return result
+
+    def encode_images(self, images: List[Image.Image], batch_size: int = 8) -> np.ndarray:
+        outputs: list[np.ndarray] = []
+        for start in range(0, len(images), batch_size):
+            batch = images[start : start + batch_size]
+            encoded = self.processor(images=batch, return_tensors="np")
+            pixels = encoded["pixel_values"].astype(np.float32)
+            for i in range(pixels.shape[0]):
+                inputs = {"pixel_values": pixels[i : i + 1]}
+                outputs.append(self.vision_session.run(None, inputs)[0])
+        dim = self.image_dim or self.text_dim or 768
+        result = np.concatenate(outputs, axis=0) if outputs else np.zeros((0, dim), dtype=np.float32)
+        _normalize(result)
+        return result
+
+    @staticmethod
+    def _infer_output_dim(session: ort.InferenceSession) -> int:
+        outputs = session.get_outputs()
+        if not outputs:
+            return 0
+        shape = outputs[0].shape
+        if not shape:
+            return 0
+        dim = shape[-1]
+        return int(dim) if isinstance(dim, int) else 0
+
+
 def _load_image(path: Path) -> Optional[Image.Image]:
     try:
         with Image.open(path) as img:
@@ -82,7 +237,7 @@ def _load_image(path: Path) -> Optional[Image.Image]:
 
 
 def _index_path(model_name: str) -> Path:
-    safe_name = model_name.replace("/", "_")
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", model_name)
     return _FAISS_DIR / f"{safe_name}.faiss"
 
 
@@ -105,14 +260,12 @@ def _iter_media(db: Session, media_ids: Optional[Sequence[int]]) -> Iterable[Med
     return query.order_by(Media.id.asc()).all()
 
 
-def _encode_images(model: SentenceTransformer, images: List[Image.Image], batch_size: int) -> np.ndarray:
-    return model.encode(images, batch_size=batch_size, convert_to_numpy=True, normalize_embeddings=True)
+def _encode_images(encoder: BaseClipEncoder, images: List[Image.Image], batch_size: int) -> np.ndarray:
+    return encoder.encode_images(images, batch_size=batch_size)
 
 
-def _encode_text(model: SentenceTransformer, text: str) -> np.ndarray:
-    emb = model.encode([text], convert_to_numpy=True, normalize_embeddings=True)
-    if isinstance(emb, list):
-        emb = np.array(emb, dtype=np.float32)
+def _encode_text(encoder: BaseClipEncoder, text: str) -> np.ndarray:
+    emb = encoder.encode_texts([text])
     return emb[0] if emb.ndim > 1 else emb
 
 
@@ -139,7 +292,7 @@ def rebuild_embeddings(
     limit: Optional[int] = None,
 ) -> dict:
     resolved_model = _resolve_model_name(model_name)
-    model = _get_model(resolved_model)
+    encoder = _get_encoder(resolved_model)
     _ensure_base_dir(base_path)  # 仅校验目录，实际读取走 DB 里的绝对路径
 
     medias: List[Media] = list(_iter_media(db, media_ids))
@@ -168,7 +321,7 @@ def rebuild_embeddings(
             alive.append(media)
         if not images:
             continue
-        vectors = _encode_images(model, images, batch_size)
+        vectors = _encode_images(encoder, images, batch_size)
         for media, vec in zip(alive, vectors):
             vec = _normalize(np.asarray(vec, dtype=np.float32))
             row = ClipEmbedding(
@@ -289,12 +442,12 @@ def search(
     model_name: str | None = None,
 ) -> dict:
     resolved_model = _resolve_model_name(model_name)
-    model = _get_model(resolved_model)
+    encoder = _get_encoder(resolved_model)
     vector: Optional[np.ndarray] = None
     mode = "text" if query_text else "image"
 
     if query_text:
-        vector = _encode_text(model, query_text)
+        vector = _encode_text(encoder, query_text)
     elif image_id is not None:
         emb = (
             db.query(ClipEmbedding)
@@ -310,7 +463,7 @@ def search(
             img = _load_image(Path(media.absolute_path))
             if img is None:
                 raise MediaNotFoundError("找不到图像文件或文件不可读")
-            vector = _encode_images(model, [img], batch_size=1)[0]
+            vector = _encode_images(encoder, [img], batch_size=1)[0]
     else:
         raise ClipSearchError("query_text 或 image_id 至少提供一个")
 

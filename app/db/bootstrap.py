@@ -185,6 +185,33 @@ def _ensure_schema_upgrades() -> None:
             except Exception:
                 pass
 
+    if "media_tags" in table_names:
+        columns = {col["name"] for col in inspector.get_columns("media_tags")}
+        if "source_model" not in columns:
+            try:
+                _alter("ALTER TABLE media_tags ADD COLUMN source_model TEXT")
+            except Exception:
+                pass
+        if "confidence" not in columns:
+            try:
+                _alter("ALTER TABLE media_tags ADD COLUMN confidence REAL")
+            except Exception:
+                pass
+        try:
+            _alter(
+                "UPDATE media_tags SET source_model = COALESCE(source_model, 'manual') "
+                "WHERE tag_name IN ('like','favorite') AND (source_model IS NULL OR source_model = '')"
+            )
+        except Exception:
+            pass
+        try:
+            _alter(
+                "UPDATE media_tags SET confidence = COALESCE(confidence, 1.0) "
+                "WHERE tag_name IN ('like','favorite') AND confidence IS NULL"
+            )
+        except Exception:
+            pass
+
     _backfill_media_sources()
     repair_media_sources_metadata()
 

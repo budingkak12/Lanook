@@ -160,6 +160,20 @@ export async function getAllTags(): Promise<TagItem[]> {
   return fetchingAllTags
 }
 
+export type MediaTag = {
+  name: string
+  displayName?: string | null
+  sourceModel?: string | null
+  confidence?: number | null
+}
+
+export async function getMediaTags(mediaId: number): Promise<MediaTag[]> {
+  const response = await apiFetch(`/media/${mediaId}/tags`)
+  const ensured = await ensureOk(response)
+  const data = (await ensured.json()) as { mediaId: number; tags?: MediaTag[] }
+  return data.tags ?? []
+}
+
 export function friendlyDeleteError(reasons: (string | undefined | null)[]): string | null {
   const normalized = reasons
     .filter((reason): reason is string => typeof reason === "string" && reason.trim().length > 0)
