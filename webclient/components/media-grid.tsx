@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react"
-import type { MediaItem } from "@/app/page"
+import type { MediaItem } from "@/app/(main)/types"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Trash2, X, RefreshCw } from "lucide-react"

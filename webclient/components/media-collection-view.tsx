@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react"
 
-import type { MediaItem } from "@/app/page"
+import type { MediaItem } from "@/app/(main)/types"
 import { MediaViewer } from "@/components/media-viewer"
 import type { MediaGridHandle } from "@/components/media-grid"
 
@@ -327,4 +327,3 @@ export function MediaCollectionView({
     </div>
   )
 }
-

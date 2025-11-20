@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import type { MediaItem } from "@/app/page"
+import type { MediaItem } from "@/app/(main)/types"
 import { X, Heart, Star, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
