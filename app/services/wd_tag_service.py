@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
+import cv2
 import numpy as np
 import onnxruntime as ort
 import torch
@@ -36,8 +37,9 @@ _DEFAULT_MODEL = os.environ.get("WD_TAG_MODEL") or (
 )
 _DEFAULT_DEVICE = os.environ.get("WD_TAG_DEVICE", "cpu")
 _DEFAULT_WHITELIST = os.environ.get("WD_TAG_WHITELIST", "app/data/wdtag-whitelist.txt")
+_WHITELIST_ENABLED = os.environ.get("WD_TAG_WHITELIST_ENABLED", "1").strip().lower() not in {"0", "false", "off"}
 _MIN_CONFIDENCE = float(os.environ.get("WD_TAG_MIN_CONF", "0.35"))
-_MAX_TAGS = int(os.environ.get("WD_TAG_MAX_TAGS", "24"))
+_MAX_TAGS = int(os.environ.get("WD_TAG_MAX_TAGS", "0"))
 _WD_TAG_ONNX_FILENAME = os.environ.get("WD_TAG_ONNX_FILE", "model.onnx")
 _WD_TAG_ORT_PROVIDERS = os.environ.get("WD_TAG_ORT_PROVIDERS", "CPUExecutionProvider")
 
@@ -54,6 +56,15 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 class _TagPrediction:
     name: str
     confidence: float
+
+
+@dataclass
+class _TagLists:
+    """与 scripts/wd_tag_test_images.py 中 TagLists 对齐，用于拆分 rating/general/character 段。"""
+
+    rating: List[str]
+    general: List[str]
+    character: List[str]
 
 
 def _compute_weight(confidence: float) -> float:
@@ -111,8 +122,16 @@ class _OnnxTagModel:
             pixels = pixels.astype(np.float32)
         if self._expects_nhwc and pixels.ndim == 4:
             pixels = np.transpose(pixels, (0, 2, 3, 1))
-        logits = self.session.run([self.output_name], {self.input_name: pixels})[0]
-        probs = 1.0 / (1.0 + np.exp(-logits))
+        outputs = self.session.run([self.output_name], {self.input_name: pixels})[0]
+        if not isinstance(outputs, np.ndarray):
+            outputs = np.asarray(outputs, dtype=np.float32)
+        if outputs.dtype != np.float32:
+            outputs = outputs.astype(np.float32)
+        # 当 ONNX 导出的是 Sigmoid 后的概率值（范围 0-1）时不要重复做 sigmoid。
+        if outputs.size > 0 and float(np.min(outputs)) >= 0.0 and float(np.max(outputs)) <= 1.0:
+            probs = outputs
+        else:
+            probs = 1.0 / (1.0 + np.exp(-outputs))
         return _build_predictions_from_array(probs, self.config.id2label)
 
 
@@ -223,20 +242,29 @@ def _get_processor(model_name: str) -> AutoImageProcessor:
 
 
 def _get_model(model_name: str) -> AutoModelForImageClassification:
+    """
+    优先使用本地 ONNX 模型（与 wd_tag_test_images.py 一致），仅在不存在 ONNX 文件时回退到 HF 权重。
+    若缓存中已有 HF 模型，而本地出现了 ONNX，则会用 ONNX 覆盖缓存，避免混用两种推理路径。
+    """
+    onnx_path = _resolve_onnx_path(model_name)
+    if onnx_path:
+        cached = _model_cache.get(model_name)
+        if isinstance(cached, _OnnxTagModel) and getattr(cached, "onnx_path", None) == onnx_path:
+            return cached
+        model = _load_onnx_model(model_name, onnx_path)
+        _model_cache[model_name] = model
+        return model
+
     cached = _model_cache.get(model_name)
     if cached:
         return cached
-    onnx_path = _resolve_onnx_path(model_name)
-    if onnx_path:
-        model = _load_onnx_model(model_name, onnx_path)
-    else:
-        try:
-            model = AutoModelForImageClassification.from_pretrained(model_name, trust_remote_code=True)
-        except OSError as exc:
-            raise TagModelNotReadyError(
-                "无法加载 wd-vit-tagger-v3，请检查模型名或网络权限。"
-            ) from exc
-        _inject_tag_mapping(model, model_name)
+    try:
+        model = AutoModelForImageClassification.from_pretrained(model_name, trust_remote_code=True)
+    except OSError as exc:
+        raise TagModelNotReadyError(
+            "无法加载 wd-vit-tagger-v3，请检查模型名或网络权限。"
+        ) from exc
+    _inject_tag_mapping(model, model_name)
     _model_cache[model_name] = model
     return model
 
@@ -282,6 +310,85 @@ def _load_tag_list(model_name: str) -> List[str]:
             except Exception:
                 continue
     return []
+
+
+def _load_tag_lists(model_name: str) -> _TagLists:
+    """
+    仿照 scripts/wd_tag_test_images.py 中 _load_tag_lists：
+    按 category 拆分 rating/general/character 段，保证与脚本行为一致。
+    """
+    path = Path(model_name).expanduser()
+    candidates: list[Path] = []
+    if path.exists():
+        if path.is_dir():
+            candidates.append(path / "selected_tags.csv")
+        elif path.is_file():
+            candidates.append(path.parent / "selected_tags.csv")
+    if not candidates or not candidates[0].exists():
+        raise TagModelNotReadyError(f"缺少 selected_tags.csv，无法加载标签定义: {model_name}")
+    csv_path = candidates[0]
+    rating: List[str] = []
+    general: List[str] = []
+    character: List[str] = []
+    with csv_path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = (row.get("name") or "").strip()
+            if not name:
+                continue
+            category = row.get("category")
+            if category == "9":  # rating
+                rating.append(name)
+            elif category == "0":  # general
+                general.append(name)
+            elif category == "4":  # character
+                character.append(name)
+    if not rating or not general:
+        raise TagModelNotReadyError(f"标签文件格式异常: {csv_path}")
+    return _TagLists(rating=rating, general=general, character=character)
+
+
+def _select_tags_from_probs(
+    probs: np.ndarray,
+    tags: _TagLists,
+    *,
+    general_threshold: float,
+    character_threshold: float,
+    max_tags: int,
+) -> List[_TagPrediction]:
+    """
+    按 scripts/wd_tag_test_images._select_tags 的策略，从概率向量中选出 rating/general/character。
+    - rating 段不过滤；
+    - general 段使用 general_threshold，并按得分排序后最多保留 max_tags 个；
+    - character 段使用 character_threshold；
+    返回顺序：rating + general(降序) + character(降序)。
+    """
+    rating_len = len(tags.rating)
+    general_len = len(tags.general)
+
+    rating_probs = probs[:rating_len]
+    general_probs = probs[rating_len : rating_len + general_len]
+    character_probs = probs[rating_len + general_len :]
+
+    rating_pairs = list(zip(tags.rating, rating_probs))
+    general_pairs = [
+        (name, float(value))
+        for name, value in zip(tags.general, general_probs)
+        if float(value) >= general_threshold
+    ]
+    character_pairs = [
+        (name, float(value))
+        for name, value in zip(tags.character, character_probs)
+        if float(value) >= character_threshold
+    ]
+
+    general_pairs.sort(key=lambda item: item[1], reverse=True)
+    character_pairs.sort(key=lambda item: item[1], reverse=True)
+    if max_tags > 0:
+        general_pairs = general_pairs[:max_tags]
+
+    merged: List[Tuple[str, float]] = rating_pairs + general_pairs + character_pairs
+    return [_TagPrediction(name=name, confidence=float(score)) for name, score in merged]
 
 
 def _resolve_base_dir(base_path: Optional[str]) -> Optional[Path]:
@@ -345,6 +452,48 @@ def _load_image(path: Path) -> Optional[Image.Image]:
         return None
 
 
+def _preprocess_image_for_wd(image: Image.Image, *, image_size: int = 448) -> np.ndarray:
+    """
+    完全仿照 scripts/wd_tag_test_images._preprocess_image：
+    - RGB -> BGR
+    - 等比居中 padding 成正方形（空白填充 255）
+    - resize 到 image_size（放大用 LANCZOS4，缩小用 AREA）
+    - 转 float32，但不做额外归一化
+    """
+    array = np.array(image)[:, :, ::-1]  # RGB -> BGR
+    h, w = array.shape[:2]
+    size = max(h, w)
+    pad_x = size - w
+    pad_y = size - h
+    pad_left = pad_x // 2
+    pad_right = pad_x - pad_left
+    pad_top = pad_y // 2
+    pad_bottom = pad_y - pad_top
+    array = np.pad(
+        array,
+        ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+        mode="constant",
+        constant_values=255,
+    )
+    interp = cv2.INTER_AREA if size > image_size else cv2.INTER_LANCZOS4
+    array = cv2.resize(array, (image_size, image_size), interpolation=interp)
+    array = array.astype(np.float32)
+    return array
+
+
+def _build_batch_for_wd(arrays: List[np.ndarray], expects_nhwc: bool) -> np.ndarray:
+    """
+    仿照 scripts/wd_tag_test_images._build_batch：
+    - 打包为 (N,H,W,3) 或 (N,3,H,W)
+    """
+    if not arrays:
+        return np.empty((0, 3, 448, 448), dtype=np.float32)
+    stacked = np.stack(arrays, axis=0)
+    if expects_nhwc:
+        return stacked
+    return np.transpose(stacked, (0, 3, 1, 2))
+
+
 def _predict_batch(
     model: AutoModelForImageClassification | _OnnxTagModel,
     processor: AutoImageProcessor,
@@ -352,7 +501,22 @@ def _predict_batch(
     images: List[Image.Image],
 ) -> List[List[_TagPrediction]]:
     if isinstance(model, _OnnxTagModel):
-        return model.predict(processor, images)
+        # 对于 WD 的 ONNX 模型，使用与 wd_tag_test_images.py 相同的预处理路径。
+        if not images:
+            return []
+        arrays: List[np.ndarray] = []
+        for img in images:
+            arrays.append(_preprocess_image_for_wd(img))
+        batch = _build_batch_for_wd(arrays, model._expects_nhwc)
+        outputs = model.session.run([model.output_name], {model.input_name: batch})[0]
+        if not isinstance(outputs, np.ndarray):
+            outputs = np.asarray(outputs, dtype=np.float32)
+        if outputs.dtype != np.float32:
+            outputs = outputs.astype(np.float32)
+        # ONNX 已输出概率（0-1），不要再次 sigmoid。
+        if outputs.size > 0 and float(np.min(outputs)) < 0.0 or float(np.max(outputs)) > 1.0:
+            outputs = 1.0 / (1.0 + np.exp(-outputs))
+        return _build_predictions_from_array(outputs, model.config.id2label)
     inputs = processor(images=images, return_tensors="pt")
     inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
     with torch.no_grad():
@@ -419,6 +583,8 @@ def rebuild_tags(
     whitelist_path: Optional[str] = None,
     min_confidence: Optional[float] = None,
     max_tags_per_media: Optional[int] = None,
+    whitelist_enabled: Optional[bool] = None,
+    character_min_confidence: Optional[float] = None,
 ) -> dict:
     started = time.time()
     base_dir = _resolve_base_dir(base_path)
@@ -429,11 +595,15 @@ def rebuild_tags(
     model.to(device)
     model.eval()
 
-    whitelist_path_resolved, whitelist = _load_whitelist(whitelist_path)
+    # WD 标签重建不再使用白名单，仅保留数值阈值（行为与脚本一致）。
+    whitelist_active = False
+    whitelist_path_resolved: Optional[Path] = None
+    whitelist: Optional[Set[str]] = None
     min_conf = float(min_confidence if min_confidence is not None else _MIN_CONFIDENCE)
+    char_conf = float(character_min_confidence if character_min_confidence is not None else 0.6)
     max_tags = int(max_tags_per_media if max_tags_per_media is not None else _MAX_TAGS)
     if max_tags <= 0:
-        max_tags = _MAX_TAGS
+        max_tags = 0
 
     targets, target_stats = _collect_media(db, base_dir=base_dir, media_ids=media_ids, limit=limit)
     if not targets:
@@ -450,6 +620,10 @@ def rebuild_tags(
     write_rows = 0
     decode_failed = 0
 
+    tag_lists: Optional[_TagLists] = None
+    if isinstance(model, _OnnxTagModel):
+        tag_lists = _load_tag_lists(resolved_model)
+
     for start in range(0, len(targets), batch_size):
         chunk = targets[start : start + batch_size]
         images: List[Image.Image] = []
@@ -463,14 +637,38 @@ def rebuild_tags(
             alive.append(media)
         if not images:
             continue
-        predictions = _predict_batch(model, processor, device, images)
-        for media, preds in zip(alive, predictions):
+
+        if isinstance(model, _OnnxTagModel) and tag_lists is not None:
+            # ONNX 路径：完全按 wd_tag_test_images.py 的方式选标签。
+            arrays: List[np.ndarray] = []
+            for img in images:
+                arrays.append(_preprocess_image_for_wd(img))
+            batch = _build_batch_for_wd(arrays, model._expects_nhwc)
+            outputs = model.session.run([model.output_name], {model.input_name: batch})[0]
+            if not isinstance(outputs, np.ndarray):
+                outputs = np.asarray(outputs, dtype=np.float32)
+            if outputs.dtype != np.float32:
+                outputs = outputs.astype(np.float32)
+            per_media_preds: List[List[_TagPrediction]] = []
+            for row in outputs:
+                per_media_preds.append(
+                    _select_tags_from_probs(
+                        row,
+                        tag_lists,
+                        general_threshold=min_conf,
+                        character_threshold=char_conf,
+                        max_tags=max_tags,
+                    )
+                )
+        else:
+            # 回退到通用 HF 路径。
+            per_media_preds = _predict_batch(model, processor, device, images)
+
+        for media, preds in zip(alive, per_media_preds):
             processed += 1
-            filtered = [p for p in preds if (p.name in whitelist and p.confidence >= min_conf)]
+            filtered = [p for p in preds if p.confidence is not None]
             if not filtered:
                 continue
-            if max_tags:
-                filtered = filtered[:max_tags]
             _ensure_tag_definitions(db, {p.name for p in filtered})
             existing_names = _existing_tag_names(db, media.id)
             for item in filtered:
@@ -510,11 +708,11 @@ def rebuild_tags(
         "skipped_media": decode_failed + target_stats["missing"],
         "total_tag_rows": total_tags,
         "unique_tags": unique_tags,
-        "whitelist_size": len(whitelist),
+        "whitelist_size": len(whitelist) if whitelist_active and whitelist is not None else -1,
         "deleted_old_rows": int(deleted_rows),
         "eligible_media": len(targets),
         "base_path": str(base_dir) if base_dir else None,
-        "whitelist_path": str(whitelist_path_resolved),
+        "whitelist_path": str(whitelist_path_resolved) if whitelist_path_resolved else None,
         "min_confidence": min_conf,
         "max_tags_per_media": max_tags,
         "duration_seconds": duration,

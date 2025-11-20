@@ -4,6 +4,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -373,6 +374,17 @@ def list_tags(db: Session) -> List[str]:
 # -------- 标签译文支持 --------
 _TAG_TRANSLATION_CACHE: Dict[str, str] | None = None
 _TAG_TRANSLATION_MTIME: float | None = None
+_TRANSLATION_NORMALIZE_PATTERN = re.compile(r"[()\s-]+")
+
+
+def _normalize_tag_key(tag: str) -> str:
+    """Normalize CSV keys (spaces/brackets/dashes) to WD 的下划线形式。"""
+    normalized = tag.strip().lower()
+    if not normalized:
+        return ""
+    normalized = _TRANSLATION_NORMALIZE_PATTERN.sub("_", normalized)
+    normalized = re.sub(r"_+", "_", normalized)
+    return normalized.strip("_")
 
 
 def _load_tag_translations() -> Dict[str, str]:
@@ -407,6 +419,9 @@ def _load_tag_translations() -> Dict[str, str]:
             en, zh = [p.strip() for p in line.split(",", 1)]
             if en and zh:
                 result[en] = zh
+                normalized = _normalize_tag_key(en)
+                if normalized and normalized not in result:
+                    result[normalized] = zh
         _TAG_TRANSLATION_CACHE = result
         _TAG_TRANSLATION_MTIME = mtime
         return result
@@ -419,7 +434,13 @@ def _load_tag_translations() -> Dict[str, str]:
 def list_tags_with_translation(db: Session) -> List[Dict[str, str | None]]:
     translations = _load_tag_translations()
     tags = list_tags(db)
-    return [{"name": name, "display_name": translations.get(name)} for name in tags]
+    enriched: List[Dict[str, str | None]] = []
+    for name in tags:
+        display = translations.get(name)
+        if display is None:
+            display = translations.get(_normalize_tag_key(name))
+        enriched.append({"name": name, "display_name": display})
+    return enriched
 
 
 # ---------------------------------------------------------------------------

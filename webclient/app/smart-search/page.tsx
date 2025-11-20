@@ -41,7 +41,7 @@ export default function SmartSearchPage() {
   const [queryText, setQueryText] = useState("夕阳 海边")
   const [imageId, setImageId] = useState("")
   const [topK, setTopK] = useState(12)
-  const [model, setModel] = useState("clip-ViT-B-32")
+  const [model, setModel] = useState("clip")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [respMeta, setRespMeta] = useState<{ model: string; used: boolean; mode: string } | null>(null)

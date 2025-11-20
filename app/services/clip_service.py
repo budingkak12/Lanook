@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -10,12 +11,20 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 import faiss
 import numpy as np
 import onnxruntime as ort
+import torch
 from PIL import Image
 from tqdm.auto import tqdm
 from sentence_transformers import SentenceTransformer
 from sqlalchemy.orm import Session
 
-from transformers import SiglipProcessor
+from transformers import (
+    CLIPModel,
+    CLIPProcessor,
+    ChineseCLIPModel,
+    ChineseCLIPProcessor,
+    SiglipProcessor,
+)
+from transformers.models.chinese_clip.modeling_chinese_clip import ChineseCLIPTextPooler
 
 from app.db import ClipEmbedding, MEDIA_ROOT_KEY, Media, get_setting
 from app.services.exceptions import MediaNotFoundError, ServiceError
@@ -41,7 +50,10 @@ _MODEL_ALIASES = {
     "siglip-base": "models/siglip-onnx",
     "siglip-base-patch16-224": "models/siglip-onnx",
     "siglip-onnx": "models/siglip-onnx",
-    "clip": "clip-ViT-B-32",
+    "clip": "models/chinese-clip-vit-base-patch16",
+    "clip-zh": "models/chinese-clip-vit-base-patch16",
+    "chinese-clip": "models/chinese-clip-vit-base-patch16",
+    "clip-vit-b-32": "clip-ViT-B-32",
     "vit-b-32": "clip-ViT-B-32",
     "vit-l-14": "clip-ViT-L-14",
 }
@@ -77,6 +89,26 @@ def _is_onnx_model(path_str: str) -> bool:
     return path.suffix.lower() == ".onnx"
 
 
+def _is_transformers_clip_model(path_str: str) -> bool:
+    path = Path(path_str)
+    if not path.is_dir():
+        return False
+    has_config = (path / "config.json").exists()
+    has_weights = any((path / candidate).exists() for candidate in ("pytorch_model.bin", "model.safetensors"))
+    return has_config and has_weights
+
+
+def _detect_model_type(path_str: str) -> Optional[str]:
+    path = Path(path_str) / "config.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+        return data.get("model_type")
+    except Exception:
+        return None
+
+
 def _get_encoder(model_name: str) -> "BaseClipEncoder":
     resolved = _resolve_model_name(model_name)
     cached = _encoder_cache.get(resolved)
@@ -84,10 +116,23 @@ def _get_encoder(model_name: str) -> "BaseClipEncoder":
         return cached
     if _is_onnx_model(resolved):
         encoder = SiglipOrtEncoder(resolved)
+    elif _is_transformers_clip_model(resolved):
+        encoder = TransformersClipEncoder(resolved)
     else:
         encoder = SentenceTransformerEncoder(resolved)
     _encoder_cache[resolved] = encoder
     return encoder
+
+
+def _resolve_torch_device() -> torch.device:
+    requested = (_DEFAULT_DEVICE or "cpu").strip().lower()
+    if requested.startswith("cuda") and torch.cuda.is_available():
+        return torch.device(requested)
+    if requested in {"cuda", "cuda:0"} and torch.cuda.is_available():
+        return torch.device("cuda")
+    if requested.startswith("mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 
 def _normalize(vec: np.ndarray) -> np.ndarray:
@@ -226,6 +271,52 @@ class SiglipOrtEncoder(BaseClipEncoder):
             return 0
         dim = shape[-1]
         return int(dim) if isinstance(dim, int) else 0
+
+
+class TransformersClipEncoder(BaseClipEncoder):
+    def __init__(self, model_path: str) -> None:
+        self.model_path = Path(model_path)
+        self.device = _resolve_torch_device()
+        model_type = _detect_model_type(model_path)
+        if model_type == "chinese_clip":
+            self.processor = ChineseCLIPProcessor.from_pretrained(str(self.model_path))
+            self.model = ChineseCLIPModel.from_pretrained(str(self.model_path))
+            if getattr(self.model.text_model, "pooler", None) is None:
+                self.model.text_model.pooler = ChineseCLIPTextPooler(self.model.text_model.config)
+        else:
+            self.processor = CLIPProcessor.from_pretrained(str(self.model_path))
+            self.model = CLIPModel.from_pretrained(str(self.model_path))
+        self.model.to(self.device)
+        self.model.eval()
+        self.output_dim = int(getattr(self.model.config, "projection_dim", 512))
+
+    def encode_images(self, images: List[Image.Image], batch_size: int = 8) -> np.ndarray:
+        outputs: list[np.ndarray] = []
+        for start in range(0, len(images), batch_size):
+            batch = images[start : start + batch_size]
+            encoded = self.processor(images=batch, return_tensors="pt")
+            pixel_values = encoded["pixel_values"].to(self.device)
+            with torch.no_grad():
+                feats = self.model.get_image_features(pixel_values=pixel_values)
+            outputs.append(feats.detach().cpu().numpy())
+        result = np.concatenate(outputs, axis=0) if outputs else np.zeros((0, self.output_dim), dtype=np.float32)
+        result = result.astype(np.float32)
+        _normalize(result)
+        return result
+
+    def encode_texts(self, texts: List[str], batch_size: int = 8) -> np.ndarray:
+        outputs: list[np.ndarray] = []
+        for start in range(0, len(texts), batch_size):
+            batch = texts[start : start + batch_size]
+            encoded = self.processor(text=batch, padding=True, truncation=True, return_tensors="pt")
+            encoded = {k: v.to(self.device) for k, v in encoded.items()}
+            with torch.no_grad():
+                feats = self.model.get_text_features(**encoded)
+            outputs.append(feats.detach().cpu().numpy())
+        result = np.concatenate(outputs, axis=0) if outputs else np.zeros((0, self.output_dim), dtype=np.float32)
+        result = result.astype(np.float32)
+        _normalize(result)
+        return result
 
 
 def _load_image(path: Path) -> Optional[Image.Image]:

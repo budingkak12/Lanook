@@ -19,12 +19,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", dest="batch_size", type=int, default=6, help="一次送入模型的图片数")
     parser.add_argument("--limit", dest="limit", type=int, default=None, help="限制处理的媒体数量")
     parser.add_argument("--min-conf", dest="min_conf", type=float, default=None, help="置信度阈值，默认0.35")
-    parser.add_argument("--max-tags", dest="max_tags", type=int, default=None, help="每张保留的标签数，默认24")
+    parser.add_argument("--max-tags", dest="max_tags", type=int, default=None, help="general 段每张保留的标签数，默认24")
     parser.add_argument(
         "--whitelist",
         dest="whitelist",
         default=None,
         help="白名单文件路径，默认 app/data/wdtag-whitelist.txt",
+    )
+    parser.add_argument(
+        "--disable-whitelist",
+        dest="disable_whitelist",
+        action="store_true",
+        help="禁用白名单过滤（默认启用）。",
+    )
+    parser.add_argument(
+        "--char-conf",
+        dest="char_conf",
+        type=float,
+        default=None,
+        help="character 标签阈值，默认 0.6（仅 ONNX 模型时生效）",
     )
     return parser.parse_args()
 
@@ -43,6 +56,8 @@ def main() -> None:
             whitelist_path=args.whitelist,
             min_confidence=args.min_conf,
             max_tags_per_media=args.max_tags,
+            character_min_confidence=args.char_conf,
+            whitelist_enabled=not args.disable_whitelist,
         )
         print(
             "完成标签重建: 模型={model}, 处理={processed_media}, 成功打标={tagged_media}, "
