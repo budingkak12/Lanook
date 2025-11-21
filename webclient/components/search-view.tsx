@@ -176,9 +176,9 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-2 py-2 space-y-2">
-
-          <div className="space-y-3">
+        <div className="mx-auto max-w-6xl px-2 py-3 space-y-3">
+          <div className="grid md:grid-cols-[2fr_1fr] gap-3 md:gap-4 items-start">
+            <div className="space-y-3">
             {/* 文字搜索框 */}
             <div className={fieldShellClass}>
               <div className="flex items-center gap-2 min-h-[36px]">
@@ -380,10 +380,169 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
               <Button size="sm" onClick={() => handleSearch()} className="flex-1 h-9 text-sm">
                 搜索
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setIsFilterOpen((v) => !v)} className="h-9 px-4">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsFilterOpen((v) => !v)}
+                className="h-9 px-4 md:hidden"
+              >
                 <Filter className="w-3 h-3 mr-1" />
                 {isFilterOpen ? "收起" : "筛选"}
               </Button>
+            </div>
+          </div>
+
+            {/* 右侧筛选面板（PC 常显） */}
+            <div className="hidden md:block">
+              <div className="rounded-xl border border-border bg-card shadow-sm p-3 space-y-4">
+                <div className="space-y-2 relative">
+                  <div className="text-sm font-medium text-foreground">包含任意标签</div>
+                  <div className={fieldShellClass}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {includeAnyTags.map((tag, idx) => (
+                        <span
+                          key={`${tag}-inc-${idx}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-sm"
+                        >
+                          <span className="max-w-[150px] truncate" title={tag}>#{tag}</span>
+                          <button className="p-1 hover:bg-blue-100 rounded-full" onClick={() => handleRemoveIncludeTag(idx)}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <Input
+                        value={includeAnyInput}
+                        onChange={(e) => setIncludeAnyInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Backspace" && includeAnyInput === "" && includeAnyTags.length > 0) {
+                            handleRemoveIncludeTag(includeAnyTags.length - 1)
+                          }
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            const resolved = resolveInputToName(includeAnyInput, allTags)
+                            handleAddIncludeTag(resolved ?? includeAnyInput)
+                          }
+                        }}
+                        placeholder="输入或选择标签（含其中任意一个即可）"
+                        className="h-10 w-full rounded-xl border border-border bg-card/80 dark:bg-card/70 px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary"
+                        autoComplete="off"
+                      />
+                    </div>
+                    {includeAnySuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-border bg-popover shadow-lg overflow-hidden max-h-56 overflow-y-auto z-20">
+                        {includeAnySuggestions.map((s) => (
+                          <button
+                            key={s.name}
+                            type="button"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"
+                            onClick={() => handleAddIncludeTag(s.name)}
+                          >
+                            <span className="text-xs text-muted-foreground">#</span>
+                            <div className="min-w-0 flex-1">
+                              {s.displayName && <div className="text-sm font-medium text-foreground truncate">{s.displayName}</div>}
+                              <div className="text-xs text-muted-foreground truncate">{s.name}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 relative">
+                  <div className="text-sm font-medium text-foreground">不看（排除标签）</div>
+                  <div className={fieldShellClass}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {excludeTags.map((tag, idx) => (
+                        <span
+                          key={`${tag}-exc-${idx}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-slate-200 text-slate-800 px-3 py-1 text-sm"
+                        >
+                          <span className="max-w-[150px] truncate" title={tag}>#{tag}</span>
+                          <button className="p-1 hover:bg-slate-300 rounded-full" onClick={() => handleRemoveExcludeTag(idx)}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <Input
+                        value={excludeInput}
+                        onChange={(e) => setExcludeInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Backspace" && excludeInput === "" && excludeTags.length > 0) {
+                            handleRemoveExcludeTag(excludeTags.length - 1)
+                          }
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            const resolved = resolveInputToName(excludeInput, allTags)
+                            handleAddExcludeTag(resolved ?? excludeInput)
+                          }
+                        }}
+                        placeholder="不看：输入或选择要排除的标签"
+                        className="h-10 w-full rounded-xl border border-border bg-card/80 dark:bg-card/70 px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary"
+                        autoComplete="off"
+                      />
+                    </div>
+                    {excludeSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-2 rounded-xl border border-border bg-popover shadow-lg overflow-hidden max-h-56 overflow-y-auto z-20">
+                        {excludeSuggestions.map((s) => (
+                          <button
+                            key={s.name}
+                            type="button"
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"
+                            onClick={() => handleAddExcludeTag(s.name)}
+                          >
+                            <span className="text-xs text-muted-foreground">#</span>
+                            <div className="min-w-0 flex-1">
+                              {s.displayName && <div className="text-sm font-medium text-foreground truncate">{s.displayName}</div>}
+                              <div className="text-xs text-muted-foreground truncate">{s.name}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setIncludeAnyTags([])
+                      setExcludeTags([])
+                      setIncludeAnyInput("")
+                      setExcludeInput("")
+                    }}
+                  >
+                    重置
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIncludeAnyTags([])
+                        setExcludeTags([])
+                        setIncludeAnyInput("")
+                        setExcludeInput("")
+                      }}
+                    >
+                      清空
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        const mergedTags = Array.from(new Set([...selectedTags, ...includeAnyTags]))
+                        setSelectedTags(mergedTags)
+                        handleSearch({
+                          tags: mergedTags,
+                          text: textInput,
+                          exclude: excludeTags,
+                        })
+                      }}
+                    >
+                      应用筛选
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -417,8 +576,9 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto">
+        {/* 移动端：点击“筛选”按钮后显示的面板 */}
         {isFilterOpen && (
-          <div className="mx-auto max-w-5xl px-2 mt-2">
+          <div className="mx-auto max-w-5xl px-2 mt-2 md:hidden">
             <div className="rounded-xl border border-border bg-card shadow-sm p-3 space-y-4">
               <div className="space-y-2 relative">
                 <div className="text-sm font-medium text-foreground">包含任意标签</div>
