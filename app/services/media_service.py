@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Dict
 
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Query, Session
 
@@ -46,6 +46,7 @@ from app.services.exceptions import (
 from app.services.fs_providers import is_smb_url, iter_bytes, stat_url
 from app.services.thumbnails_service import build_thumb_headers, get_or_generate_thumbnail
 from app.services.asset_handlers.placeholder import placeholder_generator
+from app.services import clip_service
 
 
 @dataclass
@@ -260,6 +261,119 @@ def _rows_to_media_items(rows) -> List[MediaItem]:
     return items
 
 
+# -----------------------------------------------
+# 文本检索（WD 标签匹配 + Chinese-CLIP）
+# -----------------------------------------------
+
+_CLIP_SCORE_THRESHOLD = 0.25
+
+
+def _tokenize_query(text_val: str) -> List[str]:
+    parts = re.split(r"[\\s,，。；;、]+", text_val or "")
+    tokens = [p.strip() for p in parts if p and p.strip()]
+    return tokens
+
+
+def _search_media_by_tags(db: Session, tokens: List[str]) -> Dict[int, float]:
+    if not tokens:
+        return {}
+    tag_names: set[str] = set()
+    for token in tokens:
+        rows = (
+            db.query(TagDefinition.name)
+            .filter(TagDefinition.name.ilike(f"%{token}%"))
+            .limit(100)
+            .all()
+        )
+        for (name,) in rows:
+            tag_names.add(name)
+    if not tag_names:
+        return {}
+    rows = (
+        db.query(MediaTag.media_id, func.max(MediaTag.confidence))
+        .filter(MediaTag.tag_name.in_(tag_names))
+        .group_by(MediaTag.media_id)
+        .all()
+    )
+    scores: Dict[int, float] = {}
+    for mid, conf in rows:
+        base = float(conf or 0.6)
+        # 给 WD 标签匹配一个中等分值，便于与 CLIP 分融合
+        score = max(_CLIP_SCORE_THRESHOLD, min(1.0, base))
+        scores[int(mid)] = max(scores.get(int(mid), 0.0), score)
+    return scores
+
+
+def _search_media_by_text(
+    db: Session,
+    *,
+    query_text: str,
+    tag: Optional[str],
+    offset: int,
+    limit: int,
+) -> PageResponse:
+    tokens = _tokenize_query(query_text)
+
+    clip_top_k = max(limit + offset + 50, 100)
+    clip_payload = clip_service.search(
+        db,
+        query_text=query_text,
+        image_id=None,
+        top_k=clip_top_k,
+        model_name="chinese-clip",
+    )
+
+    clip_scores: Dict[int, float] = {}
+    for item in clip_payload.get("items", []):
+        score = float(item.get("score") or 0.0)
+        if score < _CLIP_SCORE_THRESHOLD:
+            continue
+        clip_scores[int(item["mediaId"])] = score
+
+    tag_scores = _search_media_by_tags(db, tokens)
+
+    combined: Dict[int, float] = {}
+    for mid, sc in clip_scores.items():
+        combined[mid] = max(combined.get(mid, 0.0), sc)
+    for mid, sc in tag_scores.items():
+        combined[mid] = max(combined.get(mid, 0.0), sc)
+
+    if tag:
+        tag_def = db.query(TagDefinition).filter(TagDefinition.name == tag).first()
+        if not tag_def:
+            raise InvalidTagError("invalid tag")
+        allowed_ids = {
+            mid
+            for (mid,) in db.query(MediaTag.media_id)
+            .filter(MediaTag.tag_name == tag, MediaTag.media_id.in_(combined.keys()))
+            .all()
+        }
+        combined = {mid: sc for mid, sc in combined.items() if mid in allowed_ids}
+
+    if not combined:
+        return PageResponse(items=[], offset=offset, hasMore=False)
+
+    sorted_ids = sorted(combined.items(), key=lambda kv: (-kv[1], kv[0]))
+    page_slice = sorted_ids[offset : offset + limit + 1]
+    has_more = len(page_slice) > limit
+    page_ids = [mid for mid, _ in page_slice[:limit]]
+
+    media_rows = (
+        _filter_active_media(db.query(Media).filter(Media.id.in_(page_ids)))
+        .all()
+    )
+    media_map = {m.id: m for m in media_rows}
+    items: List[MediaItem] = []
+    for mid in page_ids:
+        media = media_map.get(mid)
+        if not media:
+            continue
+        items.append(_to_media_item(db, media, include_thumb=True))
+
+    _record_cache_hits(db, [item.id for item in items])
+    return PageResponse(items=items, offset=offset, hasMore=has_more)
+
+
 # ---------------------------------------------------------------------------
 # 媒体列表与标签
 # ---------------------------------------------------------------------------
@@ -269,10 +383,15 @@ def get_media_page(
     *,
     seed: Optional[str],
     tag: Optional[str],
+    query_text: Optional[str],
     offset: int,
     limit: int,
     order: str,
 ) -> PageResponse:
+    # 文本检索模式：支持 WD 标签匹配 + Chinese-CLIP，允许与标签组合过滤
+    if query_text:
+        return _search_media_by_text(db, query_text=query_text, tag=tag, offset=offset, limit=limit)
+
     if tag:
         tag_def = db.query(TagDefinition).filter(TagDefinition.name == tag).first()
         if not tag_def:

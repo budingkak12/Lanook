@@ -23,9 +23,13 @@ import { apiFetch, batchDeleteMedia, friendlyDeleteError, resolveApiUrl } from "
 type MediaGridProps = {
   sessionId?: string | null
   /**
-   * 当提供 tag 时走标签搜索模式，不要求 sessionId。
+   * 当提供 tag 时走标签搜索模式。
    */
   tag?: string | null
+  /**
+   * 当提供 queryText 时走文本检索（可与 tag 组合），不要求 sessionId。
+   */
+  queryText?: string | null
   onMediaClick: (media: MediaItem) => void
   onItemsChange?: (items: MediaItem[]) => void
 }
@@ -61,7 +65,7 @@ export type MediaGridHandle = {
 }
 
 export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function MediaGrid(
-  { sessionId = null, tag = null, onMediaClick, onItemsChange },
+  { sessionId = null, tag = null, queryText = null, onMediaClick, onItemsChange },
   ref,
 ) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -107,10 +111,13 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
   const fetchMedia = useCallback(
     async (offset: number, mode: "replace" | "append" = "replace", currentSessionId?: string) => {
       const trimmedTag = tag?.trim() ?? ""
+      const trimmedQuery = queryText?.trim() ?? ""
       const isTagMode = trimmedTag.length > 0
+      const isQueryMode = trimmedQuery.length > 0
       const effectiveSessionId = currentSessionId || sessionId
 
-      if (!isTagMode && !effectiveSessionId) {
+      // 无标签、无文本时才需要 seed；有文本则允许无 sessionId
+      if (!isTagMode && !isQueryMode && !effectiveSessionId) {
         setMediaItems([])
         setHasMore(false)
         setError("尚未获取会话，请稍候重试。")
@@ -143,7 +150,12 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
           offset: String(offset),
           limit: String(PAGE_SIZE),
         })
-        if (isTagMode) {
+        if (isQueryMode) {
+          params.set("query_text", trimmedQuery)
+          if (isTagMode) {
+            params.set("tag", trimmedTag)
+          }
+        } else if (isTagMode) {
           params.set("tag", trimmedTag)
         } else {
           params.set("seed", effectiveSessionId!)
@@ -152,7 +164,16 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
         const response = await apiFetch(`/media-list?${params.toString()}`, { signal: controller.signal })
         if (!response.ok) {
-          throw new Error(`获取媒体列表失败：${response.status}`)
+          let message = `获取媒体列表失败：${response.status}`
+          try {
+            const data = await response.json()
+            if (typeof data?.detail === "string") {
+              message = data.detail
+            }
+          } catch {
+            // ignore
+          }
+          throw new Error(message)
         }
         const data = (await response.json()) as MediaListResponse
         const nextItems = normalizeItems(data.items)
@@ -188,18 +209,19 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       }
       return 0
     },
-    [normalizeItems, sessionId, tag, toast],
+    [normalizeItems, sessionId, tag, queryText, toast],
   )
 
   useEffect(() => {
     const trimmedTag = tag?.trim() ?? ""
+    const trimmedQuery = queryText?.trim() ?? ""
     setMediaItems([])
-    setHasMore(trimmedTag.length > 0 || !!sessionId)
+    setHasMore(trimmedTag.length > 0 || trimmedQuery.length > 0 || !!sessionId)
     resetSelection()
     setError(null)
     abortRef.current?.abort()
 
-    if (!sessionId && trimmedTag.length === 0) {
+    if (!sessionId && trimmedTag.length === 0 && trimmedQuery.length === 0) {
       return
     }
 
@@ -213,7 +235,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       abortRef.current?.abort()
       fetchingRef.current = false
     }
-  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag])
+  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag, queryText])
 
   useEffect(() => {
     if (typeof window === "undefined") {

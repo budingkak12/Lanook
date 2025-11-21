@@ -35,13 +35,22 @@ def _raise_service_error(exc: ServiceError):
 def get_media_list(
     seed: str | None = Query(None, description="会话随机种子（当未指定 tag 时必填）"),
     tag: str | None = Query(None, description="标签名，指定时返回该标签的列表"),
+    query_text: str | None = Query(None, description="文本查询，支持词匹配标签 + CLIP 检索"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=200),
     order: str = Query("seeded", regex="^(seeded|recent)$"),
     db: Session = Depends(get_db),
 ):
     try:
-        return media_service.get_media_page(db, seed=seed, tag=tag, offset=offset, limit=limit, order=order)
+        return media_service.get_media_page(
+            db,
+            seed=seed,
+            tag=tag,
+            query_text=query_text,
+            offset=offset,
+            limit=limit,
+            order=order,
+        )
     except ServiceError as exc:
         _raise_service_error(exc)
 

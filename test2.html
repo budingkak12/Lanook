@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级混合搜索 UI</title>
+    <style>
+        /* --- 核心变量 --- */
+        :root {
+            --primary: #007AFF;      /* iOS Blue */
+            --danger: #FF3B30;       /* iOS Red (排除) */
+            --bg-body: #eef1f5;
+            --bg-app: #ffffff;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --border: #e5e5ea;
+            --radius-l: 16px;
+            --radius-s: 8px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+        body {
+            background-color: #333; /* 深色背景突出模拟器 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding-top: 20px;
+            transition: 0.3s;
+        }
+
+        /* --- 模拟器容器 --- */
+        #app-container {
+            background-color: var(--bg-app);
+            width: 100%;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden; /* 防止滚动穿透 */
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* 手机模式 (iPhone SE) */
+        body.mobile-mode #app-container {
+            width: 375px;
+            height: 667px;
+            min-height: 667px;
+            border-radius: 40px;
+            border: 10px solid #1f1f1f;
+        }
+
+        /* 内容滚动区 */
+        .scroll-view {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 40px;
+        }
+
+        /* --- 顶部搜索区 (Sticky) --- */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+        }
+
+        /* 搜索框容器 */
+        .search-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            background: #F2F2F7;
+            border-radius: 12px;
+            padding: 8px 10px;
+            min-height: 44px;
+            transition: 0.2s;
+        }
+        .search-wrapper:focus-within {
+            background: #fff;
+            box-shadow: 0 0 0 2px rgba(0,122,255,0.3);
+        }
+
+        /* 标签 Pill 样式 */
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            font-size: 13px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            user-select: none;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        
+        /* 状态：包含 (默认) */
+        .tag-pill.include {
+            background-color: #E0F0FF;
+            color: var(--primary);
+        }
+        
+        /* 状态：排除 (NOT) */
+        .tag-pill.exclude {
+            background-color: #FFF0F0;
+            color: var(--danger);
+            text-decoration: line-through; /* 可选：增加删除线增强视觉 */
+        }
+        .tag-pill.exclude::before {
+            content: "NOT";
+            font-size: 9px;
+            margin-right: 4px;
+            border: 1px solid var(--danger);
+            padding: 0 2px;
+            border-radius: 3px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .tag-remove {
+            margin-left: 6px;
+            opacity: 0.5;
+            padding: 2px;
+            font-size: 14px;
+        }
+        .tag-remove:hover { opacity: 1; }
+
+        /* 输入框 */
+        #main-input {
+            flex: 1;
+            min-width: 60px;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            padding: 2px 0;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        /* 清空按钮 */
+        .clear-icon {
+            color: #C7C7CC;
+            background: #8E8E93;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            cursor: pointer;
+            visibility: hidden; /* JS控制显示 */
+        }
+        .search-wrapper.has-content .clear-icon { visibility: visible; }
+
+        /* --- 控制栏 (逻辑开关 + 设置) --- */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        /* iOS 分段控制器 (Segmented Control) */
+        .segment-control {
+            background: #F2F2F7;
+            padding: 2px;
+            border-radius: 8px;
+            display: flex;
+            font-size: 13px;
+        }
+        .segment-opt {
+            padding: 4px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .segment-opt.active {
+            background: #fff;
+            color: var(--text-main);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .settings-btn {
+            font-size: 13px;
+            color: var(--primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* --- 高级过滤折叠面板 --- */
+        .filter-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #F9F9F9;
+            border-bottom: 1px solid var(--border);
+        }
+        .filter-panel.open { max-height: 100px; }
+        
+        .filter-content {
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--primary); /* 修改滑块颜色 */
+            margin-top: 8px;
+        }
+
+        /* --- 联想下拉 --- */
+        #autocomplete {
+            position: absolute;
+            top: 100%;
+            left: 0; 
+            right: 0;
+            background: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 0 0 12px 12px;
+            z-index: 200;
+            display: none;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        .suggestion {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .suggestion:active { background: #f2f2f7; }
+        .suggestion b { color: var(--primary); margin-right: 4px; }
+
+        /* --- 结果区域 --- */
+        .results-container {
+            padding: 16px;
+        }
+        .logic-display {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f2f2f7;
+            border-radius: 6px;
+            line-height: 1.4;
+        }
+        .logic-display b { color: var(--text-main); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        @media (min-width: 600px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+        }
+
+        .card {
+            background: #eee;
+            aspect-ratio: 3/4;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        .card-tag {
+            position: absolute;
+            bottom: 4px; right: 4px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .conf-badge {
+            position: absolute;
+            top: 4px; left: 4px;
+            background: rgba(0,122,255,0.8);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        /* --- 调试按钮 --- */
+        #debug-btn {
+            position: fixed;
+            bottom: 20px; right: 20px;
+            background: black; color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 999;
+        }
+
+    </style>
+</head>
+<body class="mobile-mode"> <button id="debug-btn" onclick="toggleDevice()">切换设备 (PC / iPhone)</button>
+
+    <div id="app-container">
+        <div class="scroll-view">
+            
+            <header class="sticky-header">
+                <div class="search-wrapper" id="search-wrapper">
+                    <input type="text" id="main-input" placeholder="搜图..." autocomplete="off">
+                    <div class="clear-icon" onclick="clearAll()">✕</div>
+                    
+                    <div id="autocomplete"></div>
+                </div>
+
+                <div class="controls-bar">
+                    <div class="segment-control">
+                        <div class="segment-opt active" onclick="setMode('AND', this)">满足全部</div>
+                        <div class="segment-opt" onclick="setMode('OR', this)">满足任一</div>
+                    </div>
+                    
+                    <button class="settings-btn" onclick="toggleFilter()">
+                        <span>置信度</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <div class="filter-panel" id="filter-panel">
+                <div class="filter-content">
+                    <div class="slider-row">
+                        <span>AI 识别置信度门槛</span>
+                        <span id="conf-display">60%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="60" id="conf-slider" oninput="updateConf(this.value)">
+                </div>
+            </div>
+
+            <main class="results-container">
+                <div class="logic-display" id="logic-text">
+                    当前: 暂无条件
+                </div>
+
+                <div class="grid" id="grid">
+                    </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // --- 数据结构 ---
+        let tags = []; // 存储对象: { text: 'cat', mode: 'include'|'exclude' }
+        let logicMode = 'AND'; // 'AND' | 'OR'
+        let minConfidence = 60;
+        
+        const systemTags = ['cat', 'car', 'cartoon', 'dog', 'dance', 'apple', 'art', 'beach', 'blue', '风景', '人像', '美食'];
+
+        // DOM 元素
+        const inputEl = document.getElementById('main-input');
+        const wrapperEl = document.getElementById('search-wrapper');
+        const autoEl = document.getElementById('autocomplete');
+        const logicTextEl = document.getElementById('logic-text');
+        const gridEl = document.getElementById('grid');
+
+        // --- 初始化 ---
+        renderGrid(); // 渲染一些初始空状态或随机图
+
+        // --- 事件监听 ---
+        inputEl.addEventListener('input', (e) => {
+            const val = e.target.value.trim().toLowerCase();
+            checkClearBtn();
+            if(val) {
+                const matches = systemTags.filter(t => t.includes(val) && !tags.find(x => x.text === t));
+                showSuggestions(matches);
+            } else {
+                hideSuggestions();
+            }
+            updateLogicText(); // 实时更新文本搜索预览
+        });
+
+        // 键盘删除标签
+        inputEl.addEventListener('keydown', (e) => {
+            if(e.key === 'Backspace' && inputEl.value === '' && tags.length > 0) {
+                tags.pop(); // 移除最后一个
+                renderTags();
+                updateLogicText();
+                renderGrid(); // 刷新结果
+            } else if (e.key === 'Enter') {
+                hideSuggestions();
+                inputEl.blur();
+                renderGrid();
+            }
+        });
+
+        // 点击外部关闭
+        document.addEventListener('click', (e) => {
+            if(!wrapperEl.contains(e.target)) hideSuggestions();
+        });
+        
+        // 点击容器聚焦
+        wrapperEl.addEventListener('click', (e) => {
+            if(e.target === wrapperEl) inputEl.focus();
+        });
+
+        // --- 核心逻辑函数 ---
+
+        function addTag(text) {
+            // 默认添加为 Include 模式
+            tags.push({ text: text, mode: 'include' });
+            inputEl.value = '';
+            hideSuggestions();
+            renderTags();
+            updateLogicText();
+            renderGrid();
+            inputEl.focus();
+        }
+
+        function toggleTagMode(index) {
+            // 切换 Include <-> Exclude
+            const tag = tags[index];
+            tag.mode = tag.mode === 'include' ? 'exclude' : 'include';
+            renderTags();
+            updateLogicText();
+            renderGrid();
+        }
+
+        function removeTag(index, event) {
+            event.stopPropagation(); // 防止触发 toggle
+            tags.splice(index, 1);
+            renderTags();
+            updateLogicText();
+            renderGrid();
+        }
+
+        function renderTags() {
+            // 清除旧标签
+            const pills = wrapperEl.querySelectorAll('.tag-pill');
+            pills.forEach(p => p.remove());
+
+            // 插入新标签
+            tags.forEach((tag, index) => {
+                const span = document.createElement('span');
+                span.className = `tag-pill ${tag.mode}`;
+                // 点击标签主体切换模式
+                span.onclick = () => toggleTagMode(index);
+                span.innerHTML = `
+                    ${tag.text}
+                    <span class="tag-remove" onclick="removeTag(${index}, event)">✕</span>
+                `;
+                wrapperEl.insertBefore(span, inputEl);
+            });
+            checkClearBtn();
+        }
+
+        function setMode(mode, btn) {
+            logicMode = mode;
+            // 更新 UI
+            document.querySelectorAll('.segment-opt').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            updateLogicText();
+            renderGrid();
+        }
+
+        function updateConf(val) {
+            minConfidence = val;
+            document.getElementById('conf-display').textContent = val + '%';
+            renderGrid(); // 实时刷新结果
+        }
+
+        function toggleFilter() {
+            document.getElementById('filter-panel').classList.toggle('open');
+        }
+
+        function showSuggestions(list) {
+            autoEl.innerHTML = '';
+            if(!list.length) { hideSuggestions(); return; }
+            
+            autoEl.style.display = 'block';
+            list.forEach(t => {
+                const div = document.createElement('div');
+                div.className = 'suggestion';
+                div.innerHTML = `<b>#</b> ${t}`;
+                div.onclick = () => addTag(t);
+                autoEl.appendChild(div);
+            });
+        }
+
+        function hideSuggestions() {
+            autoEl.style.display = 'none';
+        }
+
+        function clearAll() {
+            tags = [];
+            inputEl.value = '';
+            renderTags();
+            updateLogicText();
+            renderGrid();
+        }
+
+        function checkClearBtn() {
+            if(tags.length > 0 || inputEl.value) {
+                wrapperEl.classList.add('has-content');
+            } else {
+                wrapperEl.classList.remove('has-content');
+            }
+        }
+
+        // --- 逻辑可视化 (核心体验) ---
+        function updateLogicText() {
+            const textVal = inputEl.value.trim();
+            
+            const includes = tags.filter(t => t.mode === 'include').map(t => `[${t.text}]`);
+            const excludes = tags.filter(t => t.mode === 'exclude').map(t => `[${t.text}]`);
+            
+            let logicStr = '';
+            
+            // 构造 Include 部分
+            if (includes.length > 0) {
+                const joiner = logicMode === 'AND' ? ' 且 ' : ' 或 ';
+                logicStr += `<span style="color:#007AFF">包含: ${includes.join(joiner)}</span>`;
+            }
+
+            // 文本搜索视作 AND 关系加入
+            if (textVal) {
+                logicStr += (logicStr ? ' + ' : '') + `文本: "${textVal}"`;
+            }
+
+            // 构造 Exclude 部分
+            if (excludes.length > 0) {
+                logicStr += (logicStr ? ' | ' : '') + `<span style="color:#FF3B30">排除: ${excludes.join(', ')}</span>`;
+            }
+
+            if(!logicStr) logicStr = '等待输入...';
+            
+            logicTextEl.innerHTML = `逻辑: ${logicStr} (置信度 > ${minConfidence}%)`;
+        }
+
+        // --- 模拟图片渲染 ---
+        function renderGrid() {
+            gridEl.innerHTML = '';
+            // 模拟 6 张图，根据当前 tag 假装变一变
+            const count = 6; 
+            for(let i=0; i<count; i++) {
+                const conf = Math.floor(Math.random() * 40) + 60; // 60-100 random
+                // 如果当前设置置信度很高，我们就把显示的置信度标高一点，假装匹配上了
+                const displayConf = conf < minConfidence ? minConfidence + 5 : conf;
+
+                // 排除逻辑视觉模拟：如果有排除标签，我们假装减少了结果（这里不真做过滤算法，只做UI展示）
+                const isHidden = tags.some(t => t.mode === 'exclude') && i % 2 === 0; 
+                if (isHidden) continue;
+
+                const div = document.createElement('div');
+                div.className = 'card';
+                const color = Math.floor(Math.random()*16777215).toString(16);
+                div.innerHTML = `
+                    <img src="https://placehold.co/300x400/${color}/white?text=IMG_${i}" loading="lazy">
+                    <div class="conf-badge">AI: ${displayConf}%</div>
+                    <div class="card-tag">#cat</div>
+                `;
+                gridEl.appendChild(div);
+            }
+            
+            if(gridEl.innerHTML === '') {
+                gridEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:20px">没有找到匹配图片 (被排除逻辑过滤)</div>';
+            }
+        }
+
+        // --- 设备切换 ---
+        let isMobile = true;
+        function toggleDevice() {
+            isMobile = !isMobile;
+            document.body.className = isMobile ? 'mobile-mode' : '';
+        }
+    </script>
+</body>
+</html>
