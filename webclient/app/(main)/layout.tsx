@@ -38,6 +38,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState<boolean | null>(null)
   const [isCheckingInit, setIsCheckingInit] = useState(true)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
 
   const clearForceInitFromUrl = () => {
     if (typeof window === "undefined") return
@@ -129,6 +131,16 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     [pathname, router],
   )
 
+  // 跟踪桌面断点，避免移动端受折叠逻辑影响
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const mq = window.matchMedia("(min-width: 1024px)")
+    const update = () => setIsDesktop(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+
   if (isCheckingInit) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -168,13 +180,20 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             onViewChange={handleViewChange}
             isSidebarOpen={isSidebarOpen}
             onSidebarClose={() => setIsSidebarOpen(false)}
+            collapsed={isSidebarCollapsed}
+            onCollapsedChange={setIsSidebarCollapsed}
           />
         </div>
 
         <main
-          className="flex-1 lg:ml-44 ml-0 lg:relative"
+          className="flex-1 ml-0 lg:relative"
           onClick={() => setIsSidebarOpen(false)}
-          style={{ height: "100dvh", overflowY: "auto" }}
+          style={{
+            height: "100dvh",
+            overflowY: "auto",
+            marginLeft: isDesktop ? (isSidebarCollapsed ? "48px" : "11rem") : "0px",
+            transition: "margin-left 200ms ease",
+          }}
           id="main-content"
         >
           <div className="w-full h-full flex flex-col overflow-hidden">{children}</div>
