@@ -40,6 +40,9 @@ const resolveInputToName = (input: string, options: TagOption[]): string | null 
 }
 
 export function SearchView({ onMediaClick }: SearchViewProps) {
+  const fieldShellClass =
+    "px-2 py-2 relative"
+
   const [textInput, setTextInput] = useState("")
   const [tagInput, setTagInput] = useState("")
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -177,7 +180,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
 
           <div className="space-y-3">
             {/* 文字搜索框 */}
-            <div className="rounded-xl border border-border bg-card shadow-sm px-2 py-2 transition ring-1 ring-transparent focus-within:ring-primary">
+            <div className={fieldShellClass}>
               <div className="flex items-center gap-2 min-h-[36px]">
                 <div className="flex-1">
                   <Input
@@ -190,7 +193,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
                       }
                     }}
                     placeholder="输入文字搜索..."
-                    className="h-8 border-0 shadow-none focus-visible:ring-0 px-0 text-sm"
+                    className="h-10 w-full rounded-xl border border-border bg-card/80 dark:bg-card/70 px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary"
                     autoComplete="off"
                   />
                 </div>
@@ -207,7 +210,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
             </div>
 
             {/* 标签搜索框 */}
-            <div className="rounded-xl border border-border bg-card shadow-sm px-2 py-2 transition ring-1 ring-transparent focus-within:ring-primary relative">
+            <div className={fieldShellClass}>
               <div className="flex flex-wrap items-center gap-2 min-h-[36px]">
                 {selectedTags.map((tag, idx) => {
                   const opt = allTags.find((t) => t.name === tag)
@@ -305,7 +308,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
                       }
                     }}
                     placeholder="输入标签..."
-                    className="h-8 border-0 shadow-none focus-visible:ring-0 px-0 text-sm"
+                    className="h-10 w-full rounded-xl border border-border bg-card/80 dark:bg-card/70 px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary"
                     autoComplete="off"
                   />
                   {tagInput && (
@@ -417,10 +420,9 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
         {isFilterOpen && (
           <div className="mx-auto max-w-5xl px-2 mt-2">
             <div className="rounded-xl border border-border bg-card shadow-sm p-3 space-y-4">
-      
               <div className="space-y-2 relative">
                 <div className="text-sm font-medium text-foreground">包含任意标签</div>
-                <div className="rounded-xl border border-border bg-secondary px-3 py-2 relative">
+                <div className={fieldShellClass}>
                   <div className="flex flex-wrap items-center gap-2">
                     {includeAnyTags.map((tag, idx) => (
                       <span
@@ -447,7 +449,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
                         }
                       }}
                       placeholder="输入或选择标签（含其中任意一个即可）"
-                      className="bg-background border-0 shadow-none focus-visible:ring-0 px-2 py-1 text-sm"
+                      className="h-10 w-full rounded-xl border border-border bg-card/80 dark:bg-card/70 px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary"
                       autoComplete="off"
                     />
                   </div>
@@ -474,7 +476,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
 
               <div className="space-y-2 relative">
                 <div className="text-sm font-medium text-foreground">不看（排除标签）</div>
-                <div className="rounded-xl border border-border bg-secondary px-3 py-2 relative">
+                <div className={fieldShellClass}>
                   <div className="flex flex-wrap items-center gap-2">
                     {excludeTags.map((tag, idx) => (
                       <span
@@ -501,7 +503,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
                         }
                       }}
                       placeholder="不看：输入或选择要排除的标签"
-                      className="bg-background border-0 shadow-none focus-visible:ring-0 px-2 py-1 text-sm"
+                      className="h-10 w-full rounded-xl border border-border bg-card/80 dark:bg-card/70 px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary"
                       autoComplete="off"
                     />
                   </div>
@@ -551,7 +553,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
                       setSelectedTags(mergedTags)
                       handleSearch({
                         tags: mergedTags,
-                        text: inputValue,
+                        text: textInput,
                         exclude: excludeTags,
                       })
                       setIsFilterOpen(false)
