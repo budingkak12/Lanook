@@ -26,20 +26,21 @@ export function StepNavigation({ steps, currentStep, onStepClick, collapsed = fa
             key={step.id}
             onClick={() => onStepClick(step.id)}
             className={cn(
-              "w-full flex items-center gap-2 px-2 pr-1 py-2 rounded-xl text-left transition-all duration-300 ease-in-out justify-start",
+              "flex items-center gap-2 rounded-xl text-left transition-colors duration-150 justify-start",
               isActive && "bg-primary text-primary-foreground shadow-lg",
               !isActive && "bg-card/30 backdrop-blur-sm hover:bg-card/50 shadow-sm hover:shadow-md",
+              !collapsed && "w-full px-3 py-2",
               collapsed && "w-10 h-10 justify-center px-0 rounded-full"
             )}
           >
             {step.icon && <span className={cn(
-              "w-4 h-4 flex items-center justify-center transition-colors duration-300",
+              "w-4 h-4 flex items-center justify-center",
               isActive && "text-primary-foreground",
               !isActive && "text-muted-foreground"
             )}>{step.icon}</span>}
             <span
               className={cn(
-                "text-sm leading-relaxed transition-colors duration-300",
+                "text-sm leading-relaxed",
                 isActive && "font-medium text-primary-foreground",
                 !isActive && "text-muted-foreground",
                 collapsed && "sr-only"
