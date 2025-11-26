@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
 
-    private val sessionRepository = SessionRepository(NetworkModule.api)
+    private val sessionRepository = SessionRepository()
     private val thumbnailRepository = ThumbnailRepository(NetworkModule.api, sessionRepository)
     private val mediaRepository = MediaRepository(NetworkModule.api)
     private val tagRepository = TagRepository(NetworkModule.api)
