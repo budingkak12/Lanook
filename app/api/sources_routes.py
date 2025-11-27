@@ -39,6 +39,8 @@ from app.services.sources_service import (
 )
 from app.services.fs_providers import get_provider_by_name, list_provider_capabilities
 from app.services.auto_scan_service import ensure_auto_scan_service
+from app.services.asset_warmup import warmup_assets_for_source
+from app.services.clip_warmup import warmup_missing_clip_embeddings
 from app.db import create_database_and_tables
 
 
@@ -384,6 +386,10 @@ def create_media_source(
             try:
                 if background is not None:
                     start_scan_job(src.id, src.root_path, background)
+                    # 新来源建好并启动扫描后，在后台为该来源预热缩略图/元数据任务。
+                    background.add_task(warmup_assets_for_source, src.id)
+                    # 同时触发一次 CLIP/SigLIP 向量的增量构建（仅补缺）。
+                    background.add_task(warmup_missing_clip_embeddings)
             except Exception:
                 pass
         return _to_media_source_model(src)
@@ -481,6 +487,8 @@ def create_media_source(
             try:
                 if background is not None:
                     start_scan_job(src.id, src.root_path, background)
+                    background.add_task(warmup_assets_for_source, src.id)
+                    background.add_task(warmup_missing_clip_embeddings)
             except Exception:
                 pass
         return _to_media_source_model(src)

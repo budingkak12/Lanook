@@ -15,6 +15,7 @@ import torch
 from PIL import Image
 from tqdm.auto import tqdm
 from sentence_transformers import SentenceTransformer
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from transformers import (
@@ -27,6 +28,7 @@ from transformers import (
 from transformers.models.chinese_clip.modeling_chinese_clip import ChineseCLIPTextPooler
 
 from app.db import ClipEmbedding, MEDIA_ROOT_KEY, Media, get_setting
+from app.db.models_extra import MediaSource
 from app.services.exceptions import MediaNotFoundError, ServiceError
 
 
@@ -445,6 +447,138 @@ def rebuild_embeddings(
         "total_embeddings": len(all_rows),
         "index_path": str(index_path),
         "dim": dim,
+    }
+
+
+def build_missing_embeddings(
+    db: Session,
+    *,
+    base_path: str | None = None,
+    model_name: str | None = None,
+    batch_size: int = 8,
+    limit: Optional[int] = None,
+    only_active_sources: bool = True,
+) -> dict:
+    """为缺少向量的媒体增量构建 CLIP/SigLIP 向量并重建索引。
+
+    - 仅为当前模型下尚无向量记录的 image 媒体生成向量；
+    - 不会删除已有的 ClipEmbedding 行；
+    - 最终仍会基于该模型的所有向量重建一次索引文件。
+    """
+    resolved_model = _resolve_model_name(model_name)
+    encoder = _get_encoder(resolved_model)
+
+    # base_path 仅用于本地目录的存在性校验；为空时跳过。
+    if base_path:
+        _ensure_base_dir(base_path)
+
+    # 查询当前模型下尚未创建向量的媒体
+    subq = (
+        db.query(ClipEmbedding.media_id)
+        .filter(ClipEmbedding.model == resolved_model)
+        .subquery()
+    )
+    query = (
+        db.query(Media)
+        .filter(Media.media_type == "image")
+        .outerjoin(subq, Media.id == subq.c.media_id)
+        .filter(subq.c.media_id.is_(None))
+    )
+
+    # 仅针对“活动媒体路径”下的媒体进行增量构建（默认行为）：
+    # - 若尚未使用媒体源表，则保持 legacy 行为：全库缺失媒体；
+    # - 若存在媒体源记录，则仅包含：
+    #   * source_id 为空的媒体（历史数据），或
+    #   * 绑定到 active 且未删除的 MediaSource 的媒体。
+    if only_active_sources:
+        has_any_source = (db.query(func.count(MediaSource.id)).scalar() or 0) > 0
+        if has_any_source:
+            query = (
+                query.outerjoin(MediaSource, Media.source_id == MediaSource.id)
+                .filter(
+                    (Media.source_id.is_(None))
+                    |
+                    (
+                        (Media.source_id.isnot(None))
+                        & (MediaSource.id.isnot(None))
+                        & (MediaSource.deleted_at.is_(None))
+                        & (MediaSource.status.is_(None) | (MediaSource.status == "active"))
+                    )
+                )
+            )
+
+    query = query.order_by(Media.id.asc())
+
+    total_missing = query.count()
+    if total_missing == 0:
+        # 虽然没有新向量需要生成，但为了与 rebuild_embeddings 行为保持一致，
+        # 仍然返回当前索引的统计信息。
+        existing_rows = db.query(ClipEmbedding).filter(ClipEmbedding.model == resolved_model).all()
+        return {
+            "model": resolved_model,
+            "processed": 0,
+            "skipped": 0,
+            "total_embeddings": len(existing_rows),
+            "index_path": str(_index_path(resolved_model)),
+            "dim": existing_rows[0].dim if existing_rows else 0,
+            "missing_before": 0,
+        }
+
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+
+    medias: List[Media] = query.all()
+
+    processed = 0
+    skipped = 0
+
+    for start in range(0, len(medias), batch_size):
+        batch = medias[start : start + batch_size]
+        images: list[Image.Image] = []
+        alive: list[Media] = []
+        for media in batch:
+            path = Path(media.absolute_path)
+            img = _load_image(path)
+            if img is None:
+                skipped += 1
+                continue
+            images.append(img)
+            alive.append(media)
+        if not images:
+            continue
+        vectors = _encode_images(encoder, images, batch_size)
+        for media, vec in zip(alive, vectors):
+            vec = _normalize(np.asarray(vec, dtype=np.float32))
+            row = ClipEmbedding(
+                media_id=media.id,
+                model=resolved_model,
+                vector=vec.tobytes(),
+                dim=int(vec.shape[0]),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(row)
+            processed += 1
+
+    db.commit()
+
+    # 重新加载当前模型的全部向量并重建索引
+    all_rows = db.query(ClipEmbedding).filter(ClipEmbedding.model == resolved_model).all()
+    if not all_rows:
+        raise ClipIndexNotReady("向量表为空，请确认媒体是否已导入。")
+    dim = all_rows[0].dim
+    vectors = np.stack([np.frombuffer(row.vector, dtype=np.float32) for row in all_rows])
+    ids = np.array([row.media_id for row in all_rows], dtype=np.int64)
+    _normalize(vectors)
+    index_path = _save_index(vectors, ids, resolved_model)
+
+    return {
+        "model": resolved_model,
+        "processed": processed,
+        "skipped": skipped,
+        "total_embeddings": len(all_rows),
+        "index_path": str(index_path),
+        "dim": dim,
+        "missing_before": total_missing,
     }
 
 

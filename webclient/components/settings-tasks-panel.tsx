@@ -112,6 +112,17 @@ export function SettingsTasksPanel() {
 
   useEffect(() => {
     void loadAll()
+
+    if (typeof window === "undefined") {
+      return
+    }
+    const handler = () => {
+      void loadAll()
+    }
+    window.addEventListener("media-sources-changed", handler)
+    return () => {
+      window.removeEventListener("media-sources-changed", handler)
+    }
   }, [])
 
   return (
