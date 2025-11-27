@@ -31,7 +31,6 @@ class ScanTaskStatusResponse(BaseModel):
 class ArtifactTypeModel(str, Enum):
     THUMBNAIL = "thumbnail"
     METADATA = "metadata"
-    PLACEHOLDER = "placeholder"
     TRANSCODE = "transcode"
 
 

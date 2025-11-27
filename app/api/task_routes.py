@@ -126,10 +126,10 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
             failed_count=bucket.get(AssetArtifactStatus.FAILED.value, 0),
         )
 
+    # 仅展示对用户有实际意义的资产类型进度：缩略图 / 元数据 / 转码
     items = [
         _build_item(ArtifactType.THUMBNAIL, ArtifactTypeModel.THUMBNAIL),
         _build_item(ArtifactType.METADATA, ArtifactTypeModel.METADATA),
-        _build_item(ArtifactType.PLACEHOLDER, ArtifactTypeModel.PLACEHOLDER),
         _build_item(ArtifactType.TRANSCODE, ArtifactTypeModel.TRANSCODE),
     ]
 

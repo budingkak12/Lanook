@@ -39,8 +39,6 @@ function artifactLabel(item: ArtifactProgressItem): string {
       return "缩略图"
     case "metadata":
       return "元数据"
-    case "placeholder":
-      return "占位图"
     case "transcode":
       return "转码"
     default:
@@ -54,8 +52,6 @@ function artifactIcon(type: ArtifactProgressItem["artifact_type"]) {
       return <ImageIcon className="w-4 h-4" />
     case "metadata":
       return <Sparkles className="w-4 h-4" />
-    case "placeholder":
-      return <Activity className="w-4 h-4" />
     case "transcode":
       return <VideoIcon className="w-4 h-4" />
     default:
@@ -182,7 +178,7 @@ export function SettingsTasksPanel() {
         </CardContent>
       </Card>
 
-      {/* 资产流水线进度：缩略图 / 元数据 / 占位图 / 转码 */}
+      {/* 资产流水线进度：缩略图 / 元数据 / 转码 */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">

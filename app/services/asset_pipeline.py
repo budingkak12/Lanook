@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 from app.db import Media, SessionLocal, create_database_and_tables
 from app.db.models_extra import AssetArtifact
 from app.services.asset_handlers.metadata import metadata_cache_lookup, metadata_generator
-from app.services.asset_handlers.placeholder import placeholder_cache_lookup, placeholder_generator
 from app.services.asset_handlers.transcode import transcode_cache_lookup, transcode_generator
 from app.services.asset_models import ArtifactPayload
 from app.services.thumbnails_service import get_or_generate_thumbnail, resolve_cached_thumbnail
@@ -180,14 +179,6 @@ class AssetPipeline:
                 cache_lookup=resolve_cached_thumbnail,
                 generator=get_or_generate_thumbnail,
                 priority=int(os.environ.get("MEDIAAPP_THUMBNAIL_PRIORITY", "80")),
-            )
-        )
-        self.register_handler(
-            ArtifactHandler(
-                artifact_type=ArtifactType.PLACEHOLDER,
-                cache_lookup=placeholder_cache_lookup,
-                generator=placeholder_generator,
-                priority=int(os.environ.get("MEDIAAPP_PLACEHOLDER_PRIORITY", "40")),
             )
         )
         self.register_handler(

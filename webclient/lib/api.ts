@@ -276,7 +276,6 @@ export async function getScanTaskStatus(forceRefresh = false): Promise<ScanTaskS
 export type ArtifactType =
   | "thumbnail"
   | "metadata"
-  | "placeholder"
   | "transcode"
 
 export type ArtifactProgressItem = {

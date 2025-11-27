@@ -25,7 +25,6 @@ from app.services.asset_pipeline import (
     AssetArtifactStatus,
     get_cached_artifact,
     request_metadata_artifact,
-    request_placeholder_artifact,
 )
 from app.services.deletion_service import batch_delete as svc_batch_delete
 from app.services.deletion_service import delete_media_record_and_files
@@ -45,7 +44,6 @@ from app.services.exceptions import (
 )
 from app.services.fs_providers import is_smb_url, iter_bytes, stat_url
 from app.services.thumbnails_service import build_thumb_headers, get_or_generate_thumbnail
-from app.services.asset_handlers.placeholder import placeholder_generator
 from app.services import clip_service
 
 
@@ -625,34 +623,10 @@ def get_thumbnail_payload(db: Session, *, media_id: int) -> ThumbnailPayload:
         _safe_cache_commit(db)
         return ThumbnailPayload(path=str(generated.path), media_type=media_type, headers=headers)
 
-    placeholder_path = _ensure_placeholder_thumbnail(db, media)
-    if placeholder_path and placeholder_path.exists():
-        headers = build_thumb_headers(str(placeholder_path))
-        media_type = headers.get("Content-Type", "image/jpeg")
-        media_cache.mark_thumbnail_state(db, media.id, "placeholder")
-        _safe_cache_commit(db)
-        return ThumbnailPayload(path=str(placeholder_path), media_type=media_type, headers=headers)
-
     media_cache.mark_thumbnail_state(db, media.id, "missing")
     _safe_cache_commit(db)
-    raise ThumbnailUnavailableError(result.detail or "thumbnail not available")
-
-
-def _ensure_placeholder_thumbnail(db: Session, media: Media) -> Optional[Path]:
-    cached = get_cached_artifact(db, media.id, ArtifactType.PLACEHOLDER)
-    if cached and cached.path and cached.path.exists():
-        return cached.path
-    result = request_placeholder_artifact(media, db, wait_timeout=2.0)
-    if result.status == AssetArtifactStatus.READY and result.path and result.path.exists():
-        return result.path
-    # 队列超时/失败时，直接同步生成占位缩略图，避免返回 404
-    try:
-        payload = placeholder_generator(media)
-        if payload and payload.path and payload.path.exists():
-            return payload.path
-    except Exception:
-        pass
-    return None
+    # 生成失败时直接返回异常，不再生成占位图
+    raise ThumbnailUnavailableError("thumbnail not available")
 
 
 def get_media_metadata(db: Session, *, media_id: int, wait_timeout: Optional[float] = None) -> MediaMetadata:
