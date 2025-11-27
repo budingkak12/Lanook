@@ -46,6 +46,8 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(url, init)
 }
 
+// ===== 通用 JSON 工具 =====
+
 export type BulkDeleteResult = {
   deleted: number[]
   failed: { id: number; reason?: string | null }[]
@@ -85,6 +87,12 @@ async function ensureOk(response: Response): Promise<Response> {
     }
   }
   throw new Error(message)
+}
+
+async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const resp = await apiFetch(path, init)
+  const ensured = await ensureOk(resp)
+  return (await ensured.json()) as T
 }
 
 export async function batchDeleteMedia(ids: number[], deleteFile = true): Promise<BulkDeleteResult> {
@@ -243,6 +251,70 @@ export async function getOSInfo(): Promise<OSInfo | null> {
     }
   })()
   return fetchingOSInfo
+}
+
+// ===== 任务与进度 =====
+
+export type ScanTaskState = "no_media_root" | "ready" | "error"
+
+export type ScanTaskStatus = {
+  state: ScanTaskState
+  media_root_path: string | null
+  scanned_count: number
+  total_discovered: number | null
+  remaining_count: number | null
+  preview_batch_size: number
+  message?: string | null
+  generated_at: string
+}
+
+export async function getScanTaskStatus(forceRefresh = false): Promise<ScanTaskStatus> {
+  const query = forceRefresh ? "?force_refresh=true" : ""
+  return getJson<ScanTaskStatus>(`/tasks/scan-progress${query}`)
+}
+
+export type ArtifactType =
+  | "thumbnail"
+  | "metadata"
+  | "placeholder"
+  | "transcode"
+
+export type ArtifactProgressItem = {
+  artifact_type: ArtifactType
+  total_media: number
+  ready_count: number
+  queued_count: number
+  processing_count: number
+  failed_count: number
+}
+
+export type AssetPipelineStatus = {
+  started: boolean
+  worker_count: number
+  queue_size: number
+  items: ArtifactProgressItem[]
+  message?: string | null
+}
+
+export async function getAssetPipelineStatus(): Promise<AssetPipelineStatus> {
+  return getJson<AssetPipelineStatus>("/tasks/asset-pipeline")
+}
+
+export type ClipModelCoverage = {
+  model: string
+  media_with_embedding: number
+  last_updated_at: string | null
+}
+
+export type ClipIndexStatus = {
+  total_media: number
+  total_media_with_embeddings: number
+  coverage_ratio: number
+  models: ClipModelCoverage[]
+}
+
+export async function getClipIndexStatus(): Promise<ClipIndexStatus> {
+  return getJson<ClipIndexStatus>("/tasks/clip-index")
 }
 
 // 缓存与去重：避免 React StrictMode 下开发环境重复触发 useEffect 产生的双请求

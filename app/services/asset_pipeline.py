@@ -60,6 +60,15 @@ class AssetArtifactResult:
     extra: Optional[Dict[str, Any]] = None
 
 
+@dataclass
+class PipelineRuntimeStatus:
+    """轻量级运行时快照，供 API 聚合使用。"""
+
+    started: bool
+    worker_count: int
+    queue_size: int
+
+
 class _JobSignal:
     def __init__(self) -> None:
         self.event = threading.Event()
@@ -143,6 +152,19 @@ class AssetPipeline:
             worker.join(timeout=2)
         self._workers.clear()
         self._started = False
+
+    # ------------------------------------------------------------------
+    # Introspection
+    # ------------------------------------------------------------------
+
+    def get_runtime_status(self) -> PipelineRuntimeStatus:
+        """返回当前流水线运行时状态快照（线程数/队列长度等）。"""
+        # PriorityQueue.qsize() 在多线程下不是精确值，但用于展示大致队列长度足够。
+        return PipelineRuntimeStatus(
+            started=self._started,
+            worker_count=len(self._workers),
+            queue_size=self._queue.qsize(),
+        )
 
     # ------------------------------------------------------------------
     # Registration
@@ -397,6 +419,17 @@ def ensure_pipeline_started() -> AssetPipeline:
         else:
             _PIPELINE_INSTANCE.start()
         return _PIPELINE_INSTANCE
+
+
+def get_pipeline_runtime_status() -> PipelineRuntimeStatus:
+    """获取当前流水线的运行时状态。
+
+    若流水线尚未创建，则返回一个“未启动”的默认快照，不会隐式启动。
+    """
+    with _PIPELINE_LOCK:
+        if _PIPELINE_INSTANCE is None:
+            return PipelineRuntimeStatus(started=False, worker_count=0, queue_size=0)
+        return _PIPELINE_INSTANCE.get_runtime_status()
 
 
 def shutdown_pipeline() -> None:

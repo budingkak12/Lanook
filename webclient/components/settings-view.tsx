@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useTranslation } from "react-i18next"
 import { SettingsMediaManagement } from "@/components/settings-media-management"
 import { SettingsFileScan } from "@/components/settings-file-scan"
+import { SettingsTasksPanel } from "@/components/settings-tasks-panel"
 
 interface ConnectionInfo { ip: string; port: number; display_url: string }
 
@@ -407,16 +408,25 @@ export function SettingsView() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <HardDrive className="w-5 h-5" />
-                <CardTitle>存储管理</CardTitle>
+                <CardTitle>存储与任务</CardTitle>
               </div>
               <CardDescription>
-                管理媒体库设置和路径配置
+                管理媒体库设置、路径配置与后台任务进度
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* 文件扫描设置 */}
                 <SettingsFileScan />
+
+                {/* 任务进度总览（索引 / 资产流水线 / 向量索引） */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Settings className="w-4 h-4" />
+                    <h4 className="text-sm font-medium">任务与进度</h4>
+                  </div>
+                  <SettingsTasksPanel />
+                </div>
 
                 {/* 媒体路径管理 */}
                 <div className="border-t pt-4">
