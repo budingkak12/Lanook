@@ -87,17 +87,23 @@ export function SettingsView() {
   const resetInitialization = async () => {
     setIsResetting(true)
     try {
-      const response = await apiFetch("/settings/reset-initialization", {
+      // 改为调用后端的“硬重置”接口：删除并重建 SQLite DB 文件，
+      // 这样初始化后的统计数据、任务进度都会从一个全新的数据库开始。
+      const response = await apiFetch("/settings/db-reset", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify({
+          confirm: true,
+          drop_existing: true
+        })
       })
 
       if (response.ok) {
         toast({
           title: "重置成功",
-          description: "所有数据库信息已完全清除，即将重新进入初始化页面"
+          description: "数据库已删除并重建，即将重新进入初始化页面"
         })
 
         // 等待2秒后跳转到初始化页面
