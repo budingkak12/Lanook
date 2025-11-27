@@ -277,6 +277,7 @@ export type ArtifactType =
   | "thumbnail"
   | "metadata"
   | "transcode"
+  | "vector" // 前端虚拟类型：Web 向量处理进度
 
 export type ArtifactProgressItem = {
   artifact_type: ArtifactType

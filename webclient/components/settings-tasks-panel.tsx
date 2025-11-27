@@ -35,6 +35,8 @@ function formatDateTime(value: string | null | undefined): string {
 
 function artifactLabel(item: ArtifactProgressItem): string {
   switch (item.artifact_type) {
+    case "vector":
+      return "Web 向量处理"
     case "thumbnail":
       return "缩略图"
     case "metadata":
@@ -48,6 +50,8 @@ function artifactLabel(item: ArtifactProgressItem): string {
 
 function artifactIcon(type: ArtifactProgressItem["artifact_type"]) {
   switch (type) {
+    case "vector":
+      return <Sparkles className="w-4 h-4" />
     case "thumbnail":
       return <ImageIcon className="w-4 h-4" />
     case "metadata":
@@ -65,6 +69,17 @@ export function SettingsTasksPanel() {
   const [assetStatus, setAssetStatus] = useState<AssetPipelineStatus | null>(null)
   const [clipStatus, setClipStatus] = useState<ClipIndexStatus | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const buildVectorArtifactItem = (clip: ClipIndexStatus): ArtifactProgressItem => {
+    return {
+      artifact_type: "vector",
+      total_media: clip.total_media,
+      ready_count: clip.total_media_with_embeddings,
+      queued_count: 0,
+      processing_count: 0,
+      failed_count: 0,
+    }
+  }
 
   const loadAll = async () => {
     setLoading(true)
@@ -186,14 +201,20 @@ export function SettingsTasksPanel() {
             <CardTitle>资产处理进度</CardTitle>
           </div>
           <CardDescription>
-            包括缩略图、元数据、转码等后台任务的整体完成度。
+            包括缩略图、Web 向量处理等后台任务的整体完成度。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {assetStatus ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {assetStatus.items.map((item) => (
+                {(() => {
+                  const baseItems =
+                    assetStatus?.items.filter((item) => item.artifact_type === "thumbnail") ?? []
+                  const vectorItem = clipStatus ? buildVectorArtifactItem(clipStatus) : null
+                  const itemsForRender = vectorItem ? [...baseItems, vectorItem] : baseItems
+                  return itemsForRender
+                })().map((item) => (
                   <div
                     key={item.artifact_type}
                     className="border rounded-md p-2.5 flex flex-col gap-1.5"
@@ -242,66 +263,6 @@ export function SettingsTasksPanel() {
         </CardContent>
       </Card>
 
-      {/* 向量索引覆盖率：CLIP / SigLIP */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5" />
-            <CardTitle>向量索引进度（CLIP / SigLIP）</CardTitle>
-          </div>
-          <CardDescription>
-            文本搜图 / 图搜图依赖的向量索引覆盖情况。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          {clipStatus ? (
-            <>
-              <div className="flex flex-wrap gap-3">
-                <div className="space-y-0.5">
-                  <div className="text-xs text-muted-foreground">已构建向量的媒体</div>
-                  <div className="font-medium">
-                    {clipStatus.total_media_with_embeddings} / {clipStatus.total_media}{" "}
-                    <span className="text-xs text-muted-foreground ml-1">
-                      {formatPercent(
-                        clipStatus.total_media_with_embeddings,
-                        clipStatus.total_media,
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {clipStatus.models.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {clipStatus.models.map((m) => (
-                    <div
-                      key={m.model}
-                      className="border rounded-md p-2.5 space-y-1.5 text-xs"
-                    >
-                      <div className="font-medium break-all">{m.model}</div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">
-                          覆盖 {m.media_with_embedding} 个媒体
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          最近更新 {formatDateTime(m.last_updated_at)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-xs text-muted-foreground">
-                  当前数据库中尚未检测到任何向量索引记录，请先在后端运行一次 /clip/rebuild。
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-xs text-muted-foreground">
-              {loading ? "正在获取向量索引状态..." : "暂无向量索引统计数据。"}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   )
 }
