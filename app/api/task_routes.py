@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Query
 from sqlalchemy import func
 
-from app.db import ClipEmbedding, Media, SessionLocal
+from app.db import ClipEmbedding, FaceEmbedding, Media, MediaTag, SessionLocal
 from app.db.models_extra import AssetArtifact, MediaSource
 from app.schemas.tasks import (
     ArtifactProgressItem,
@@ -11,6 +11,8 @@ from app.schemas.tasks import (
     AssetPipelineStatusResponse,
     ClipIndexStatusResponse,
     ClipModelCoverage,
+    FaceProgressResponse,
+    FaceProgressStateModel,
     ScanTaskStateModel,
     ScanTaskStatusResponse,
 )
@@ -20,6 +22,7 @@ from app.services.asset_pipeline import (
     get_pipeline_runtime_status,
 )
 from app.services.task_progress import ScanTaskState, compute_scan_task_progress
+from app.services.face_cluster_progress import get_face_progress
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -36,6 +39,31 @@ def get_scan_progress(force_refresh: bool = Query(False, description="是否强�
         preview_batch_size=progress.preview_batch_size,
         message=progress.message,
         generated_at=progress.generated_at,
+    )
+
+
+@router.get("/face-progress", response_model=FaceProgressResponse)
+def get_face_progress_status() -> FaceProgressResponse:
+    """人脸处理/聚类的进度快照（内存态），不影响现有一次性落库流程。"""
+    snapshot = get_face_progress().snapshot()
+    # state 映射为 schema 枚举
+    state_map = {
+        "idle": FaceProgressStateModel.IDLE,
+        "running": FaceProgressStateModel.RUNNING,
+        "clustering": FaceProgressStateModel.CLUSTERING,
+        "done": FaceProgressStateModel.DONE,
+        "error": FaceProgressStateModel.ERROR,
+    }
+    state = state_map.get(snapshot.state.value, FaceProgressStateModel.IDLE)
+    return FaceProgressResponse(
+        state=state,
+        total_files=snapshot.total_files,
+        processed_files=snapshot.processed_files,
+        eta_ms=snapshot.eta_ms,
+        started_at=snapshot.started_at,
+        updated_at=snapshot.updated_at,
+        message=snapshot.message,
+        base_paths=snapshot.base_paths,
     )
 
 
@@ -60,8 +88,13 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
         ) > 0
 
         if has_any_source and not has_active_source:
+            # 已经启用媒体路径管理，但当前没有任何 active 路径：
+            # 视为“空库”，所有统计归零。
             total_media = 0
             rows: list[tuple[str, str, int]] = []
+            vector_ready_count = 0
+            tagged_ready_count = 0
+            faces_ready_count = 0
         else:
             # 仅统计“仍属于活动媒体路径”的媒体。
             active_media_query = session.query(Media)
@@ -83,6 +116,30 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
                 )
 
             total_media = active_media_query.with_entities(func.count(Media.id)).scalar() or 0
+
+            # 在“活动媒体”子集范围内，统计向量 / 标签 / 人脸覆盖情况。
+            active_media_ids_subq = active_media_query.with_entities(Media.id).subquery()
+
+            vector_ready_count = (
+                session.query(func.count(func.distinct(ClipEmbedding.media_id)))
+                .filter(ClipEmbedding.media_id.in_(active_media_ids_subq))
+                .scalar()
+                or 0
+            )
+
+            tagged_ready_count = (
+                session.query(func.count(func.distinct(MediaTag.media_id)))
+                .filter(MediaTag.media_id.in_(active_media_ids_subq))
+                .scalar()
+                or 0
+            )
+
+            faces_ready_count = (
+                session.query(func.count(func.distinct(FaceEmbedding.media_id)))
+                .filter(FaceEmbedding.media_id.in_(active_media_ids_subq))
+                .scalar()
+                or 0
+            )
 
             # 统计 asset_artifacts 按类型、状态的数量（限定在活动媒体范围内）
             artifact_query = (
@@ -126,12 +183,47 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
             failed_count=bucket.get(AssetArtifactStatus.FAILED.value, 0),
         )
 
-    # 仅展示对用户有实际意义的资产类型进度：缩略图 / 元数据 / 转码
-    items = [
-        _build_item(ArtifactType.THUMBNAIL, ArtifactTypeModel.THUMBNAIL),
-        _build_item(ArtifactType.METADATA, ArtifactTypeModel.METADATA),
-        _build_item(ArtifactType.TRANSCODE, ArtifactTypeModel.TRANSCODE),
-    ]
+    # 资产处理进度：四个核心能力的小块
+    items: list[ArtifactProgressItem] = []
+
+    # 1. 缩略图：沿用 asset_artifacts 统计。
+    items.append(_build_item(ArtifactType.THUMBNAIL, ArtifactTypeModel.THUMBNAIL))
+
+    # 2. 向量索引：至少具有一种模型向量的媒体数量。
+    items.append(
+        ArtifactProgressItem(
+            artifact_type=ArtifactTypeModel.VECTOR,
+            total_media=total_media,
+            ready_count=vector_ready_count,
+            queued_count=max(total_media - vector_ready_count, 0),
+            processing_count=0,
+            failed_count=0,
+        )
+    )
+
+    # 3. 标签：至少拥有一条标签记录的媒体数量。
+    items.append(
+        ArtifactProgressItem(
+            artifact_type=ArtifactTypeModel.TAGS,
+            total_media=total_media,
+            ready_count=tagged_ready_count,
+            queued_count=max(total_media - tagged_ready_count, 0),
+            processing_count=0,
+            failed_count=0,
+        )
+    )
+
+    # 4. 人脸：至少写入一条人脸 embedding 的媒体数量。
+    items.append(
+        ArtifactProgressItem(
+            artifact_type=ArtifactTypeModel.FACES,
+            total_media=total_media,
+            ready_count=faces_ready_count,
+            queued_count=max(total_media - faces_ready_count, 0),
+            processing_count=0,
+            failed_count=0,
+        )
+    )
 
     message = None
     if not runtime.started:

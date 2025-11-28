@@ -12,6 +12,7 @@ from app.schemas.face import (
     RebuildFacesResponse,
 )
 from app.services import face_cluster_service
+from app.services.face_cluster_progress import get_face_progress
 from app.services.exceptions import ServiceError
 
 router = APIRouter(prefix="/face-clusters", tags=["faces"])
@@ -37,6 +38,7 @@ def rebuild_face_clusters(req: RebuildFacesRequest, db: Session = Depends(get_db
             db,
             base_path=req.base_path,
             similarity_threshold=req.similarity_threshold,
+            progress=get_face_progress(),
         )
     except ServiceError as exc:
         _raise_service_error(exc)

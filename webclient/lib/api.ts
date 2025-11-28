@@ -277,7 +277,9 @@ export type ArtifactType =
   | "thumbnail"
   | "metadata"
   | "transcode"
-  | "vector" // 前端虚拟类型：Web 向量处理进度
+  | "vector"
+  | "tags"
+  | "faces"
 
 export type ArtifactProgressItem = {
   artifact_type: ArtifactType
@@ -563,11 +565,7 @@ export async function getMediaSources(includeInactive = false, options?: GetMedi
   return fetchingMediaSources[key] as Promise<MediaSource[]>
 }
 
-// ===== 扫描相关 API =====
-
-export interface ScanStartResponse {
-  jobId: string
-}
+// ===== 扫描任务状态 API（保留仅供内部调试）=====
 
 export interface ScanStatusResponse {
   state: 'running' | 'completed' | 'failed'
@@ -577,15 +575,7 @@ export interface ScanStatusResponse {
   finishedAt: string | null
 }
 
-// 开始扫描媒体源
-export async function startScan(sourceId: number): Promise<string> {
-  const response = await apiFetch(`/scan/start?source_id=${sourceId}`, { method: "POST" })
-  const data = await ensureOk(response)
-  const result = await data.json() as ScanStartResponse
-  return result.jobId
-}
-
-// 获取扫描状态
+// 获取后台导入/索引任务的状态（当前前端未使用，仅调试/脚本可选调用）
 export async function getScanStatus(jobId: string): Promise<ScanStatusResponse | null> {
   const response = await apiFetch(`/scan/status?job_id=${jobId}`)
   if (!response.ok) return null

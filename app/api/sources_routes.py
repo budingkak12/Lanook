@@ -17,7 +17,6 @@ from app.schemas.sources import (
     MediaSourceModel,
     SourceProviderCapabilityModel,
     ScanStrategy,
-    ScanStartResponse,
     ScanStatusResponse,
     ScanState,
     SourceCreateRequest,
@@ -39,8 +38,10 @@ from app.services.sources_service import (
 )
 from app.services.fs_providers import get_provider_by_name, list_provider_capabilities
 from app.services.auto_scan_service import ensure_auto_scan_service
-from app.services.asset_warmup import warmup_assets_for_source
+from app.services.asset_warmup import warmup_assets_for_source, is_thumbnail_warmup_enabled
 from app.services.clip_warmup import warmup_missing_clip_embeddings
+from app.services.face_warmup import warmup_rebuild_face_clusters
+from app.services.tag_warmup import warmup_rebuild_tags_for_active_media
 from app.db import create_database_and_tables
 
 
@@ -190,7 +191,7 @@ def _discover_shares_via_smbclient(host: str, *, username: str | None, password:
 
 
 def _bootstrap_source_scan(root_path: str, *, limit: int = 50) -> None:
-    """新增来源后，立即首批导入最多 limit 条，随后后台继续全量扫描。"""
+    """新增媒体来源后，立即首批导入最多 limit 条，随后由自动扫描服务持续增量导入/索引。"""
     try:
         create_database_and_tables(echo=False)
         with SessionLocal() as session:
@@ -317,7 +318,8 @@ def create_media_source(
     background: BackgroundTasks = None,
     db: Session = Depends(get_db),
 ):
-    # 控制是否立即扫描（默认 True 以兼容旧调用）
+    # 控制是否在创建来源后立即启动“后台导入 + 资产/AI 流水线”。
+    # 前端不需要显式提供该字段，默认 True 仅为兼容早期脚本调用。
     scan_now = True if payload.scan is None else bool(payload.scan)
     if payload.scanIntervalSeconds is not None and payload.scanIntervalSeconds <= 0:
         raise HTTPException(status_code=422, detail="scanIntervalSeconds 必须为正整数")
@@ -352,7 +354,7 @@ def create_media_source(
         children = [r.root_path for r in rows if _is_parent(new_path, r.root_path)]
         if children:
             raise HTTPException(status_code=409, detail={"code": "overlap_children", "children": children})
-        # 幂等：相同 rootPath 已存在时返回 200，并跳过扫描
+        # 幂等：相同 rootPath 已存在时返回 200，并跳过重复的导入/处理。
         existing = db.query(_MediaSource).filter(_MediaSource.root_path == str(p)).first()
         if existing is not None:
             changed = False
@@ -386,10 +388,15 @@ def create_media_source(
             try:
                 if background is not None:
                     start_scan_job(src.id, src.root_path, background)
-                    # 新来源建好并启动扫描后，在后台为该来源预热缩略图/元数据任务。
-                    background.add_task(warmup_assets_for_source, src.id)
+                    # 新来源建好并启动扫描后，可选地为该来源预热缩略图/元数据任务。
+                    if is_thumbnail_warmup_enabled():
+                        background.add_task(warmup_assets_for_source, src.id)
                     # 同时触发一次 CLIP/SigLIP 向量的增量构建（仅补缺）。
                     background.add_task(warmup_missing_clip_embeddings)
+                    # 标签暖机：针对当前所有活动媒体重建标签，提升标签覆盖率。
+                    background.add_task(warmup_rebuild_tags_for_active_media)
+                    # 人脸暖机：基于当前所有本地媒体路径统一聚类，保证“总仓库”语义。
+                    background.add_task(warmup_rebuild_face_clusters)
             except Exception:
                 pass
         return _to_media_source_model(src)
@@ -451,7 +458,7 @@ def create_media_source(
                 children.append(r.root_path)
         if children:
             raise HTTPException(status_code=409, detail={"code": "overlap_children", "children": children})
-        # 幂等：相同 root_url 已存在时返回 200，并跳过扫描
+        # 幂等：相同 root_url 已存在时返回 200，并跳过重复的导入/处理。
         from app.db.models_extra import MediaSource as _MediaSource
         existing = db.query(_MediaSource).filter(_MediaSource.root_path == root_url.rstrip("/")).first()
         if existing is not None:
@@ -487,8 +494,11 @@ def create_media_source(
             try:
                 if background is not None:
                     start_scan_job(src.id, src.root_path, background)
-                    background.add_task(warmup_assets_for_source, src.id)
+                    if is_thumbnail_warmup_enabled():
+                        background.add_task(warmup_assets_for_source, src.id)
                     background.add_task(warmup_missing_clip_embeddings)
+                    background.add_task(warmup_rebuild_tags_for_active_media)
+                    background.add_task(warmup_rebuild_face_clusters)
             except Exception:
                 pass
         return _to_media_source_model(src)
@@ -562,38 +572,6 @@ def pause_media_source(source_id: int, request: Request, db: Session = Depends(g
     except Exception:
         pass
     return _to_media_source_model(src)
-
-
-@router.post("/scan/start", response_model=ScanStartResponse, status_code=202)
-def start_scan(source_id: int = Query(..., description="来源ID"), background: BackgroundTasks = None, db: Session = Depends(get_db)):
-    src = get_source(db, source_id)
-    if not src:
-        raise HTTPException(status_code=404, detail="source not found")
-    if src.status and src.status != "active":
-        raise HTTPException(status_code=409, detail="source inactive")
-    # 若为 SMB，将 host 规范化写回一次（兼容历史脏数据）
-    source_type_value = getattr(src, "source_type", None) or src.type
-    if source_type_value == 'smb' and isinstance(src.root_path, str) and src.root_path.startswith('smb://'):
-        try:
-            from app.services.fs_providers import parse_smb_url
-            p = parse_smb_url(src.root_path)
-            clean_host = _normalize_host_input(p.host)
-            if clean_host != p.host:
-                # 重建 root_path
-                base = f"smb://{clean_host}/{p.share}"
-                sub = (p.path or '').strip('/')
-                new_url = base + (f"/{sub}" if sub else '')
-                from app.db.models_extra import MediaSource as _MediaSource
-                row = db.query(_MediaSource).filter(_MediaSource.id == src.id).first()
-                if row and row.root_path != new_url:
-                    row.root_path = new_url
-                    db.commit()
-                    db.refresh(row)
-                    src = row
-        except Exception:
-            pass
-    job_id = start_scan_job(src.id, src.root_path, background)
-    return ScanStartResponse(jobId=job_id)
 
 
 @router.post("/network/discover")

@@ -112,10 +112,6 @@ class MediaSourceModel(BaseModel):
     failureCount: int = 0
 
 
-class ScanStartResponse(BaseModel):
-    jobId: str
-
-
 class ScanState(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"

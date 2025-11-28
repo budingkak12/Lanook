@@ -32,6 +32,9 @@ class ArtifactTypeModel(str, Enum):
     THUMBNAIL = "thumbnail"
     METADATA = "metadata"
     TRANSCODE = "transcode"
+    VECTOR = "vector"
+    TAGS = "tags"
+    FACES = "faces"
 
 
 class ArtifactProgressItem(BaseModel):
@@ -65,3 +68,22 @@ class ClipIndexStatusResponse(BaseModel):
     total_media_with_embeddings: int = Field(..., description="至少具有一种模型向量的媒体数量")
     coverage_ratio: float = Field(..., description="整体向量覆盖率（0-1）")
     models: list[ClipModelCoverage] = Field(..., description="按模型维度的覆盖情况")
+
+
+class FaceProgressStateModel(str, Enum):
+    IDLE = "idle"
+    RUNNING = "running"
+    CLUSTERING = "clustering"
+    DONE = "done"
+    ERROR = "error"
+
+
+class FaceProgressResponse(BaseModel):
+    state: FaceProgressStateModel = Field(..., description="人脸处理状态")
+    total_files: int = Field(..., description="预计需要处理的图片数量")
+    processed_files: int = Field(..., description="已处理图片数量（检测/提特征阶段）")
+    eta_ms: Optional[int] = Field(None, description="预计剩余耗时（毫秒），进入聚类阶段后为 null/0")
+    started_at: Optional[datetime] = Field(None, description="任务开始时间（UTC）")
+    updated_at: Optional[datetime] = Field(None, description="最近一次状态更新时间（UTC）")
+    message: Optional[str] = Field(None, description="状态说明或错误信息")
+    base_paths: list[str] = Field(default_factory=list, description="参与本轮处理的媒体路径列表")

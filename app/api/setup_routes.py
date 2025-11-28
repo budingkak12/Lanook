@@ -30,7 +30,9 @@ from app.services.sources_service import list_sources
 from app.services.auto_scan_service import ensure_auto_scan_service
 from app.services.scan_service import scan_source_once
 from app.services.clip_warmup import warmup_missing_clip_embeddings
-from app.services.asset_warmup import warmup_assets_for_source
+from app.services.asset_warmup import warmup_assets_for_source, is_thumbnail_warmup_enabled
+from app.services.tag_warmup import warmup_rebuild_tags_for_active_media
+from app.services.face_warmup import warmup_rebuild_face_clusters
 
 router = APIRouter(tags=["setup"])
 
@@ -140,7 +142,7 @@ def set_media_root(
     finally:
         db.close()
 
-    # 先同步导入一小批媒体，确保前端立即可见
+    # 先同步导入一小批媒体，确保前端立即可见（不阻塞后续的全库后台处理）
     initial_batch = 0
     try:
         from app.db import seed_initial_data, create_database_and_tables
@@ -159,14 +161,14 @@ def set_media_root(
         finally:
             task_db.close()
     except Exception as exc:
-        print(f"[media-root] 初始化首批扫描失败：{exc}")
+        print(f"[media-root] 初始化首批导入失败：{exc}")
 
-    # 注册后台持续扫描
+    # 注册后台持续导入/监控服务（自动发现新增/变更的媒体文件）
     service = ensure_auto_scan_service(request.app)
     service.register_path(str(validated_path))
     service.trigger_path(str(validated_path))
 
-    # 立即启动后台全量扫描任务 + 资产流水线预热 + 向量增量构建任务
+    # 立即启动后台导入/索引任务 + 资产流水线预热 + 向量/标签/人脸 暖机任务
     try:
         if background is not None:
             # 查找/创建该 root 的来源ID
@@ -178,12 +180,17 @@ def set_media_root(
                 if src:
                     from app.services.scan_service import start_scan_job
                     start_scan_job(src.id, src.root_path, background)
-                    # 媒体根路径设置成功后，为该来源预热缩略图/元数据等资产任务，
+                    # 媒体根路径设置成功后，可选地为该来源预热缩略图/元数据等资产任务，
                     # 以便在“设置 > 资产处理进度”中能立即看到非 0 的统计。
-                    background.add_task(warmup_assets_for_source, src.id)
+                    if is_thumbnail_warmup_enabled():
+                        background.add_task(warmup_assets_for_source, src.id)
                 # 同时启动一次 CLIP/SigLIP 向量的增量构建任务，仅为当前活动媒体路径下
                 # 缺少向量的媒体补齐 embedding。
                 background.add_task(warmup_missing_clip_embeddings)
+                # 标签暖机：对当前“活动媒体”做一轮标签重建，便于后续按标签检索。
+                background.add_task(warmup_rebuild_tags_for_active_media)
+                # 人脸暖机：基于当前媒体根目录跑一轮人脸聚类，写入 face_embeddings / face_clusters。
+                background.add_task(warmup_rebuild_face_clusters, str(validated_path))
             finally:
                 _db.close()
     except Exception:
@@ -196,9 +203,9 @@ def set_media_root(
         state=InitializationState.COMPLETED,
         media_root_path=str(validated_path),
         message=(
-            f"媒体库初始化完成，首批导入 {initial_batch} 个文件，后台持续扫描中。"
+            f"媒体库初始化完成，首批导入 {initial_batch} 个文件，后台持续导入/处理中。"
             if initial_batch
-            else "媒体库初始化完成，后台持续扫描中。"
+            else "媒体库初始化完成，后台持续导入/处理中。"
         ),
     )
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+import os
+
 from sqlalchemy.orm import Session
 
 from app.db import Media, SessionLocal
@@ -12,6 +14,17 @@ from app.services.asset_pipeline import (
     AssetPipeline,
     ensure_pipeline_started,
 )
+
+
+def is_thumbnail_warmup_enabled() -> bool:
+    """是否在初始化/新增媒体路径时自动预热缩略图等资产任务。
+
+    通过环境变量 `MEDIAAPP_ENABLE_THUMBNAIL_WARMUP` 控制：
+    - 未设置或为其他值：视为开启（默认行为）；
+    - 设为 0/false/off/no：关闭自动预热，由调用方按需触发。
+    """
+    raw = os.environ.get("MEDIAAPP_ENABLE_THUMBNAIL_WARMUP", "1")
+    return raw.strip().lower() not in {"0", "false", "off", "no"}
 
 
 def _warmup_for_source(

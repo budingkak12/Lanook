@@ -1,17 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Activity, Database, Gauge, ImageIcon, Sparkles, VideoIcon } from "lucide-react"
+import { Activity, Database, Gauge, ImageIcon, Sparkles, Users } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import {
   type ArtifactProgressItem,
   type AssetPipelineStatus,
-  type ClipIndexStatus,
   type ScanTaskStatus,
   getAssetPipelineStatus,
-  getClipIndexStatus,
   getScanTaskStatus,
 } from "@/lib/api"
 
@@ -36,13 +34,13 @@ function formatDateTime(value: string | null | undefined): string {
 function artifactLabel(item: ArtifactProgressItem): string {
   switch (item.artifact_type) {
     case "vector":
-      return "Web 向量处理"
+      return "以文/以图搜图"
+    case "tags":
+      return "标签筛选"
+    case "faces":
+      return "人脸聚类"
     case "thumbnail":
       return "缩略图"
-    case "metadata":
-      return "元数据"
-    case "transcode":
-      return "转码"
     default:
       return item.artifact_type
   }
@@ -52,12 +50,12 @@ function artifactIcon(type: ArtifactProgressItem["artifact_type"]) {
   switch (type) {
     case "vector":
       return <Sparkles className="w-4 h-4" />
+    case "tags":
+      return <Sparkles className="w-4 h-4" />
+    case "faces":
+      return <Users className="w-4 h-4" />
     case "thumbnail":
       return <ImageIcon className="w-4 h-4" />
-    case "metadata":
-      return <Sparkles className="w-4 h-4" />
-    case "transcode":
-      return <VideoIcon className="w-4 h-4" />
     default:
       return <Activity className="w-4 h-4" />
   }
@@ -67,27 +65,14 @@ export function SettingsTasksPanel() {
   const { toast } = useToast()
   const [scanStatus, setScanStatus] = useState<ScanTaskStatus | null>(null)
   const [assetStatus, setAssetStatus] = useState<AssetPipelineStatus | null>(null)
-  const [clipStatus, setClipStatus] = useState<ClipIndexStatus | null>(null)
   const [loading, setLoading] = useState(false)
-
-  const buildVectorArtifactItem = (clip: ClipIndexStatus): ArtifactProgressItem => {
-    return {
-      artifact_type: "vector",
-      total_media: clip.total_media,
-      ready_count: clip.total_media_with_embeddings,
-      queued_count: 0,
-      processing_count: 0,
-      failed_count: 0,
-    }
-  }
 
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [scan, asset, clip] = await Promise.allSettled([
+      const [scan, asset] = await Promise.allSettled([
         getScanTaskStatus(false),
         getAssetPipelineStatus(),
-        getClipIndexStatus(),
       ])
 
       if (scan.status === "fulfilled") {
@@ -108,14 +93,6 @@ export function SettingsTasksPanel() {
         })
       }
 
-      if (clip.status === "fulfilled") {
-        setClipStatus(clip.value)
-      } else {
-        toast({
-          title: "获取向量索引状态失败",
-          description: clip.reason instanceof Error ? clip.reason.message : "无法获取向量索引状态",
-        })
-      }
     } finally {
       setLoading(false)
     }
@@ -193,7 +170,7 @@ export function SettingsTasksPanel() {
         </CardContent>
       </Card>
 
-      {/* 资产流水线进度：缩略图 / 元数据 / 转码 */}
+      {/* 资产处理进度：缩略图 / 以文搜图 / 标签筛选 / 人脸聚类 */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -201,20 +178,18 @@ export function SettingsTasksPanel() {
             <CardTitle>资产处理进度</CardTitle>
           </div>
           <CardDescription>
-            包括缩略图、Web 向量处理等后台任务的整体完成度。
+            包括缩略图、以文搜图、标签筛选、人脸聚类等后台任务的整体完成度。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {assetStatus ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {(() => {
-                  const baseItems =
-                    assetStatus?.items.filter((item) => item.artifact_type === "thumbnail") ?? []
-                  const vectorItem = clipStatus ? buildVectorArtifactItem(clipStatus) : null
-                  const itemsForRender = vectorItem ? [...baseItems, vectorItem] : baseItems
-                  return itemsForRender
-                })().map((item) => (
+                {assetStatus.items
+                  .filter((item) =>
+                    ["thumbnail", "vector", "tags", "faces"].includes(item.artifact_type),
+                  )
+                  .map((item) => (
                   <div
                     key={item.artifact_type}
                     className="border rounded-md p-2.5 flex flex-col gap-1.5"

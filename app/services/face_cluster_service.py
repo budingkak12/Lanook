@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.db import Media
 from app.db.models import FaceCluster, FaceEmbedding
 from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingError
+from app.services.face_cluster_progress import FaceProgress
 
 
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
@@ -159,48 +160,67 @@ def _cluster_embeddings(faces: List[_DetectedFace], threshold: float):
     return [], []
 
 
-def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float) -> tuple[int, int, int, Path, str]:
-    root = _resolve_base_path(base_path)
-    face_app = _get_face_app()
+def _collect_faces_for_roots(
+    db: Session,
+    roots: Sequence[Path],
+    face_app: FaceAnalysis,
+    progress: FaceProgress | None = None,
+) -> tuple[list[_DetectedFace], int]:
+    """遍历多个根目录，收集所有待聚类的人脸特征。
 
-    db.query(FaceEmbedding).delete(synchronize_session=False)
-    db.query(FaceCluster).delete(synchronize_session=False)
-    db.commit()
-
+    - roots 内的目录视为“同一总仓库”的多条媒体路径；
+    - 返回 detected 列表和累计的 media_count（文件级计数）。
+    """
     detected: list[_DetectedFace] = []
     media_count = 0
-    for file_path in _iter_media_files(root):
-        image = _read_image(file_path)
-        if image is None:
-            continue
-        media = _ensure_media_record(db, file_path)
-        media_count += 1
-        faces = face_app.get(image)
-        for idx, face in enumerate(faces):
-            if face.embedding is None:
+    for root in roots:
+        for file_path in _iter_media_files(root):
+            image = _read_image(file_path)
+            if image is None:
+                if progress:
+                    progress.tick()
                 continue
-            bbox = face.bbox
-            left, top, right, bottom = map(float, bbox)
-            width = max(right - left, 1.0)
-            height = max(bottom - top, 1.0)
-            if width < _MIN_FACE_SIZE or height < _MIN_FACE_SIZE:
-                continue
-            if face.det_score is not None and face.det_score < _MIN_DET_SCORE:
-                continue
-            detected.append(
-                _DetectedFace(
-                    embedding=face.embedding.astype(np.float32),
-                    bbox=face.bbox,
-                    score=float(face.det_score) if face.det_score is not None else 0.0,
-                    media_id=media.id,
-                    media_filename=media.filename,
-                    face_index=idx,
+            media = _ensure_media_record(db, file_path)
+            media_count += 1
+            faces = face_app.get(image)
+            for idx, face in enumerate(faces):
+                if face.embedding is None:
+                    continue
+                bbox = face.bbox
+                left, top, right, bottom = map(float, bbox)
+                width = max(right - left, 1.0)
+                height = max(bottom - top, 1.0)
+                if width < _MIN_FACE_SIZE or height < _MIN_FACE_SIZE:
+                    continue
+                if face.det_score is not None and face.det_score < _MIN_DET_SCORE:
+                    continue
+                detected.append(
+                    _DetectedFace(
+                        embedding=face.embedding.astype(np.float32),
+                        bbox=face.bbox,
+                        score=float(face.det_score) if face.det_score is not None else 0.0,
+                        media_id=media.id,
+                        media_filename=media.filename,
+                        face_index=idx,
+                    )
                 )
-            )
+            if progress:
+                progress.tick()
+    return detected, media_count
 
+
+def _persist_clusters(
+    db: Session,
+    detected: list[_DetectedFace],
+    similarity_threshold: float,
+) -> tuple[int, int]:
+    """基于已收集的人脸 embedding 完成聚类并写入数据库。
+
+    返回 (face_count, cluster_count)。
+    """
     if not detected:
         db.commit()
-        return media_count, 0, 0, root, _current_pipeline_signature()
+        return 0, 0
 
     embeddings = np.stack([_normalize(face.embedding.astype(np.float32)) for face in detected], axis=0)
     if embeddings.shape[0] >= 2:
@@ -291,7 +311,60 @@ def rebuild_clusters(db: Session, *, base_path: str, similarity_threshold: float
 
     db.commit()
 
-    return media_count, len(detected), len(cluster_objs), root, _current_pipeline_signature()
+    return len(detected), len(cluster_objs)
+
+
+def rebuild_clusters(
+    db: Session, *, base_path: str, similarity_threshold: float, progress: FaceProgress | None = None
+) -> tuple[int, int, int, Path, str]:
+    """对单一媒体根目录执行人脸聚类重建。"""
+    root = _resolve_base_path(base_path)
+    face_app = _get_face_app()
+
+    db.query(FaceEmbedding).delete(synchronize_session=False)
+    db.query(FaceCluster).delete(synchronize_session=False)
+    db.commit()
+
+    detected, media_count = _collect_faces_for_roots(db, [root], face_app, progress=progress)
+    if progress:
+        progress.set_clustering()
+    face_count, cluster_count = _persist_clusters(db, detected, similarity_threshold)
+
+    return media_count, face_count, cluster_count, root, _current_pipeline_signature()
+
+
+def rebuild_clusters_for_paths(
+    db: Session,
+    *,
+    base_paths: Sequence[str],
+    similarity_threshold: float,
+    progress: FaceProgress | None = None,
+) -> tuple[int, int, int, list[Path], str]:
+    """对多个媒体路径视作“一个总仓库”统一执行聚类重建。
+
+    - base_paths 内每条路径会被解析为本地目录；
+    - FaceEmbedding / FaceCluster 表在执行前会被清空；
+    - 返回 (media_count, face_count, cluster_count, roots, pipeline_signature)。
+    """
+    if not base_paths:
+        raise FaceProcessingError("至少需要一个媒体根目录用于人脸聚类。")
+
+    roots: list[Path] = []
+    for raw in base_paths:
+        roots.append(_resolve_base_path(raw))
+
+    face_app = _get_face_app()
+
+    db.query(FaceEmbedding).delete(synchronize_session=False)
+    db.query(FaceCluster).delete(synchronize_session=False)
+    db.commit()
+
+    detected, media_count = _collect_faces_for_roots(db, roots, face_app, progress=progress)
+    if progress:
+        progress.set_clustering()
+    face_count, cluster_count = _persist_clusters(db, detected, similarity_threshold)
+
+    return media_count, face_count, cluster_count, roots, _current_pipeline_signature()
 
 
 def list_clusters(db: Session) -> list[FaceCluster]:

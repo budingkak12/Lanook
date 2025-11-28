@@ -4,7 +4,7 @@
 - 安卓前端：androidclient/
 - web前端 ：webclient，项目使用 yarn管理的项目，使用 yarn dev 启动前端
 - 程序总体架构：
-    各类远程存储smb 本机文件夹等等（源）
+[ 各类远程存储smb 本机文件夹等等（源） ]
         ↓
 [ Python 统一接入模块 ]
         ↓
