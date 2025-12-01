@@ -119,35 +119,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   }, [pauseAllVideos, onClose])
 
   // 键盘和触摸事件处理
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        handleClose()
-      } else if (e.key === "ArrowLeft") {
-        handlePrev()
-      } else if (e.key === "ArrowRight") {
-        handleNext()
-      }
-    }
-
-    
-    window.addEventListener("keydown", handleKeyDown)
-
-    // 为移动端添加背景点击关闭
-    const viewerElement = document.querySelector('.fixed.inset-0')
-    if (viewerElement) {
-      viewerElement.addEventListener('click', (e) => {
-        if (e.target === viewerElement) {
-          handleClose()
-        }
-      })
-    }
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [handleClose, handlePrev, handleNext])
-
   // 同步 Swiper 索引变化
   useEffect(() => {
     if (swiperRef.current && currentSlideIndex !== currentIndex) {
@@ -353,6 +324,43 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     }
   }
 
+  // PC 端键盘快捷键：左右切图，下键点赞，Esc 关闭；移动端不触发
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isMobile) return
+
+      if (e.key === "Escape") {
+        e.preventDefault()
+        handleClose()
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        handlePrev()
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault()
+        handleNext()
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault()
+        void toggleLike()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    // 为移动端添加背景点击关闭
+    const viewerElement = document.querySelector('.fixed.inset-0')
+    if (viewerElement) {
+      viewerElement.addEventListener('click', (e) => {
+        if (e.target === viewerElement) {
+          handleClose()
+        }
+      })
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [handleClose, handlePrev, handleNext, toggleLike, isMobile])
+
   const handleDelete = async () => {
     if (isDeleting) {
       return
@@ -487,7 +495,8 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           resistanceRatio={0.85}
           watchSlidesProgress={true}
           loop={false}
-          speed={300}
+          // 桌面端缩短切换动画，移动端保持原速度
+          speed={isMobile ? 300 : 140}
           touchEventsTarget='container'
           allowTouchMove={true}
           touchRatio={1}
