@@ -54,8 +54,7 @@ export function SettingsFileScan() {
       console.error("获取文件扫描状态失败:", error)
       toast({
         title: "获取状态失败",
-        description: "无法获取文件索引服务的当前状态",
-        variant: "destructive"
+        description: "无法获取文件索引服务的当前状态"
       })
     } finally {
       setIsLoading(false)
@@ -101,8 +100,7 @@ export function SettingsFileScan() {
       console.error("更新文件扫描设置失败:", error)
       toast({
         title: "更新失败",
-        description: error instanceof Error ? error.message : "设置更新失败，请重试",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "设置更新失败，请重试"
       })
     }
   }

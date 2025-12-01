@@ -33,6 +33,10 @@ function getApiBase(): string {
 }
 
 export function resolveApiUrl(path: string): string {
+  // 已经是绝对 URL 直接返回，避免重复前缀
+  if (/^https?:\/\//i.test(path)) {
+    return path
+  }
   const base = getApiBase()
   if (!path.startsWith("/")) {
     return base ? `${base}/${path}` : path
@@ -317,6 +321,53 @@ export type ClipIndexStatus = {
 
 export async function getClipIndexStatus(): Promise<ClipIndexStatus> {
   return getJson<ClipIndexStatus>("/tasks/clip-index")
+}
+
+// 人脸聚类
+export type FaceCluster = {
+  id: number
+  label: string
+  faceCount: number
+  representativeMediaId?: number | null
+  representativeFaceId?: number | null
+}
+
+export type FaceClusterListResponse = {
+  items: FaceCluster[]
+  offset: number
+  limit: number
+  total: number
+  hasMore: boolean
+}
+
+export type FaceClusterMediaItem = {
+  mediaId: number
+  filename: string
+  thumbnailUrl?: string | null
+}
+
+export type FaceClusterMediaResponse = {
+  cluster: FaceCluster
+  items: FaceClusterMediaItem[]
+  offset: number
+  limit: number
+  total: number
+  hasMore: boolean
+}
+
+export async function getFaceClusters(params?: { offset?: number; limit?: number }): Promise<FaceClusterListResponse> {
+  const offset = params?.offset ?? 0
+  const limit = params?.limit ?? 50
+  return getJson<FaceClusterListResponse>(`/face-clusters?offset=${offset}&limit=${limit}`)
+}
+
+export async function getFaceClusterItems(
+  clusterId: number,
+  params?: { offset?: number; limit?: number },
+): Promise<FaceClusterMediaResponse> {
+  const offset = params?.offset ?? 0
+  const limit = params?.limit ?? 100
+  return getJson<FaceClusterMediaResponse>(`/face-clusters/${clusterId}?offset=${offset}&limit=${limit}`)
 }
 
 // 缓存与去重：避免 React StrictMode 下开发环境重复触发 useEffect 产生的双请求

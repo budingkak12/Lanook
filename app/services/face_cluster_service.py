@@ -367,8 +367,11 @@ def rebuild_clusters_for_paths(
     return media_count, face_count, cluster_count, roots, _current_pipeline_signature()
 
 
-def list_clusters(db: Session) -> list[FaceCluster]:
-    return db.query(FaceCluster).order_by(FaceCluster.face_count.desc(), FaceCluster.id.asc()).all()
+def list_clusters(db: Session, offset: int = 0, limit: int = 50) -> tuple[list[FaceCluster], int]:
+    base_query = db.query(FaceCluster).order_by(FaceCluster.face_count.desc(), FaceCluster.id.asc())
+    total = base_query.count()
+    items = base_query.offset(max(offset, 0)).limit(max(limit, 1)).all()
+    return items, total
 
 
 def get_cluster_or_404(db: Session, cluster_id: int) -> FaceCluster:
@@ -378,12 +381,13 @@ def get_cluster_or_404(db: Session, cluster_id: int) -> FaceCluster:
     return cluster
 
 
-def list_cluster_media(db: Session, cluster_id: int) -> tuple[FaceCluster, List[FaceEmbedding]]:
+def list_cluster_media(db: Session, cluster_id: int, offset: int = 0, limit: int = 100) -> tuple[FaceCluster, List[FaceEmbedding], int]:
     cluster = get_cluster_or_404(db, cluster_id)
-    faces = (
+    base_query = (
         db.query(FaceEmbedding)
         .filter(FaceEmbedding.cluster_id == cluster.id)
         .order_by(FaceEmbedding.media_id.asc())
-        .all()
     )
-    return cluster, faces
+    total = base_query.count()
+    faces = base_query.offset(max(offset, 0)).limit(max(limit, 1)).all()
+    return cluster, faces, total

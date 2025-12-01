@@ -18,6 +18,14 @@ class FaceClusterModel(BaseModel):
     representativeFaceId: Optional[int] = None
 
 
+class FaceClusterListResponse(BaseModel):
+    items: List[FaceClusterModel]
+    offset: int
+    limit: int
+    total: int
+    hasMore: bool
+
+
 class RebuildFacesResponse(BaseModel):
     mediaCount: int
     faceCount: int
@@ -36,3 +44,7 @@ class ClusterMediaItem(BaseModel):
 class ClusterMediaResponse(BaseModel):
     cluster: FaceClusterModel
     items: List[ClusterMediaItem]
+    offset: int
+    limit: int
+    total: int
+    hasMore: bool

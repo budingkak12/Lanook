@@ -7,6 +7,7 @@ from app.db import SessionLocal
 from app.schemas.face import (
     ClusterMediaItem,
     ClusterMediaResponse,
+    FaceClusterListResponse,
     FaceClusterModel,
     RebuildFacesRequest,
     RebuildFacesResponse,
@@ -53,14 +54,18 @@ def rebuild_face_clusters(req: RebuildFacesRequest, db: Session = Depends(get_db
     )
 
 
-@router.get("", response_model=list[FaceClusterModel])
-def list_face_clusters(db: Session = Depends(get_db)):
+@router.get("", response_model=FaceClusterListResponse)
+def list_face_clusters(  # noqa: D417 - FastAPI query params
+    offset: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+):
     try:
-        clusters = face_cluster_service.list_clusters(db)
+        clusters, total = face_cluster_service.list_clusters(db, offset=offset, limit=limit)
     except ServiceError as exc:
         _raise_service_error(exc)
 
-    return [
+    payload = [
         FaceClusterModel(
             id=cluster.id,
             label=cluster.label,
@@ -71,11 +76,25 @@ def list_face_clusters(db: Session = Depends(get_db)):
         for cluster in clusters
     ]
 
+    has_more = offset + len(payload) < total
+    return {
+        "items": payload,
+        "offset": offset,
+        "limit": limit,
+        "total": total,
+        "hasMore": has_more,
+    }
+
 
 @router.get("/{cluster_id}", response_model=ClusterMediaResponse)
-def get_cluster_media(cluster_id: int, db: Session = Depends(get_db)):
+def get_cluster_media(
+    cluster_id: int,
+    offset: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
     try:
-        cluster, faces = face_cluster_service.list_cluster_media(db, cluster_id)
+        cluster, faces, total = face_cluster_service.list_cluster_media(db, cluster_id, offset=offset, limit=limit)
     except ServiceError as exc:
         _raise_service_error(exc)
 
@@ -102,4 +121,12 @@ def get_cluster_media(cluster_id: int, db: Session = Depends(get_db)):
         representativeFaceId=cluster.representative_face_id,
     )
 
-    return ClusterMediaResponse(cluster=cluster_payload, items=items)
+    has_more = offset + len(items) < total
+    return ClusterMediaResponse(
+        cluster=cluster_payload,
+        items=items,
+        offset=offset,
+        limit=limit,
+        total=total,
+        hasMore=has_more,
+    )

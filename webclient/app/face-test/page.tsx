@@ -31,8 +31,9 @@ export default function FaceTestPage() {
         setLoading(true)
         const resp = await apiFetch("/face-clusters")
         if (!resp.ok) throw new Error(`接口错误 ${resp.status}`)
-        const data: Cluster[] = await resp.json()
-        setClusters(data)
+        const data = await resp.json()
+        const list: Cluster[] = Array.isArray(data?.items) ? data.items : data
+        setClusters(list)
       } catch (err: any) {
         setError(err?.message || "加载聚类失败")
       } finally {
