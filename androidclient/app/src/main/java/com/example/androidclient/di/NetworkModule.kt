@@ -1,6 +1,7 @@
 package com.example.androidclient.di
 
 import com.example.androidclient.data.remote.ApiService
+import com.example.androidclient.data.remote.UploadApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -43,6 +44,9 @@ object NetworkModule {
     @Volatile
     private var apiInstance: ApiService? = null
 
+    @Volatile
+    private var uploadApiInstance: UploadApi? = null
+
     val api: ApiService
         get() = apiInstance ?: throw IllegalStateException("服务器地址尚未初始化，请先在连接页完成配置")
 
@@ -53,10 +57,15 @@ object NetworkModule {
         baseUrl = normalized
         // 复用同一个 OkHttpClient，重新构建 Retrofit 与 ApiService
         val newApi = buildRetrofit(normalized).create(ApiService::class.java)
+        val newUploadApi = buildRetrofit(normalized).create(UploadApi::class.java)
         apiInstance = newApi
+        uploadApiInstance = newUploadApi
     }
 
     fun currentBaseUrl(): String? = baseUrl
+
+    val uploadApi: UploadApi
+        get() = uploadApiInstance ?: throw IllegalStateException("服务器地址尚未初始化，请先在连接页完成配置")
 
     // 暴露 OkHttp 供图片加载器等共用连接池/缓存，避免重复初始化带来的抖动
     fun okHttpClient(): OkHttpClient = okHttp

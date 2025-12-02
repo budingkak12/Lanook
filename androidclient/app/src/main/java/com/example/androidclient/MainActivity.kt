@@ -32,6 +32,9 @@ import com.example.androidclient.ui.MainScreen
 import com.example.androidclient.ui.MainViewModel
 import com.example.androidclient.ui.SearchViewModel
 import com.example.androidclient.ui.SearchViewModelFactory
+import com.example.androidclient.ui.backup.BackupPermissionViewModel
+import com.example.androidclient.ui.backup.BackupPermissionViewModelFactory
+import com.example.androidclient.ui.backup.BackupSettingsScreen
 import com.example.androidclient.ui.connection.ConnectionScreen
 import com.example.androidclient.ui.connection.ConnectionViewModel
 import com.example.androidclient.ui.navigation.NavigationTransitions
@@ -217,6 +220,21 @@ class MainActivity : ComponentActivity() {
                         )
                         TasksScreen(
                             viewModel = tasksViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(
+                        "backup",
+                        enterTransition = NavigationTransitions.enter,
+                        exitTransition = NavigationTransitions.exit,
+                        popEnterTransition = NavigationTransitions.popEnter,
+                        popExitTransition = NavigationTransitions.popExit
+                    ) {
+                        val backupViewModel: BackupPermissionViewModel = viewModel(
+                            factory = BackupPermissionViewModelFactory(this@MainActivity.application)
+                        )
+                        BackupSettingsScreen(
+                            viewModel = backupViewModel,
                             onBack = { navController.popBackStack() }
                         )
                     }

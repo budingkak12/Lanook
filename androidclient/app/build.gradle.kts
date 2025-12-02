@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "2.0.21"
+    id("org.jetbrains.kotlin.kapt")
 }
 
 import java.util.Properties
@@ -116,4 +117,15 @@ dependencies {
     // Preferences & 扫码
     implementation(libs.androidx.datastore)
     implementation(libs.quickie.bundled)
+
+    // Room (备份本地表)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+
+    // DocumentFile
+    implementation(libs.androidx.documentfile)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime)
 }

@@ -8,8 +8,6 @@ import com.example.androidclient.data.model.setup.DirectoryEntry
 import com.example.androidclient.data.model.setup.DirectoryListResponse
 import com.example.androidclient.data.model.setup.InitializationStatusResponse
 import com.example.androidclient.data.model.setup.MediaRootRequest
-import com.example.androidclient.data.model.settings.AutoScanStatusResponse
-import com.example.androidclient.data.model.settings.AutoScanUpdateRequest
 import com.example.androidclient.data.model.tasks.ScanTaskStatusResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -87,9 +85,4 @@ interface ApiService {
         @Query("force_refresh") forceRefresh: Boolean = false
     ): ScanTaskStatusResponse
 
-    @GET("settings/auto-scan")
-    suspend fun getAutoScanStatus(): AutoScanStatusResponse
-
-    @POST("settings/auto-scan")
-    suspend fun updateAutoScan(@Body req: AutoScanUpdateRequest): AutoScanStatusResponse
 }

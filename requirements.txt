@@ -20,3 +20,4 @@ sentence-transformers==3.0.1
 faiss-cpu==1.8.0.post1
 huggingface_hub==0.26.1
 timm==0.9.16
+python-multipart==0.0.9

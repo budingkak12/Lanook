@@ -28,6 +28,7 @@ thumbnails/
 media_snapshots/
 artifacts/
 faiss_vectors/
+incoming/
 
 # uv caches
 .uv_cache/

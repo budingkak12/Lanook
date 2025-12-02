@@ -89,6 +89,93 @@
  说明
  - 详情查看通过进入播放器视图并在当前工作区按索引播放；如需元数据可直接使用列表返回的 `MediaItem`。
 
+上传（分块/秒传）
+-----------------
+
+目标：移动端/局域网客户端将文件分块上传到后端本地磁盘（默认 `incoming/mobile/{device}/{yyyyMMdd}/`），上传完成自动触发一次扫描入库。
+
+流程
+1) init：创建上传会话，可携带整文件哈希用于秒传。
+```
+POST /upload/init
+{
+  "filename": "photo.jpg",
+  "total_size": 123456,
+  "chunk_size": 1024*1024,
+  "checksum": "sha256...",   // 可选，提供则 finish 时校验；已存在则直接返回 existed=true
+  "device_id": "android-abc",// 可选，用于归档路径
+  "mime_type": "image/jpeg"  // 可选
+}
+响应 200:
+{
+  "upload_id": "uuid",
+  "existed": false,
+  "received_chunks": [],
+  "chunk_size": 1048576
+}
+```
+
+2) 上传分块：表单方式上传二进制。
+```
+POST /upload/chunk
+Form fields:
+  upload_id: uuid
+  index: 0-based chunk index
+  checksum: <optional chunk hash>
+Files:
+  file: 二进制分块
+成功返回 204，无 body。
+```
+
+3) 查询已传分块（可选，用于续传）：
+```
+GET /upload/{upload_id}
+响应示例:
+{ "upload_id": "...", "received_chunks": [0,1,2], "total_size": 123456, "chunk_size": 1048576 }
+```
+
+4) finish：合并校验并落盘；未传全会返回 400。
+```
+POST /upload/finish
+{
+  "upload_id": "...",
+  "total_chunks": 5,
+  "checksum": "sha256...", // 可选，覆盖 init 的 checksum
+  "skip_scan": false       // 默认为 false，设为 true 则仅落盘不触发扫描
+}
+成功返回 200:
+{ "path": "/abs/path/to/incoming/mobile/device-1/20251202/photo.jpg" }
+```
+
+错误码约定（detail.code）
+- upload_not_found → 404
+- chunk_out_of_range → 400（索引越界、分块超长或缺失）
+- invalid_checksum → 400
+- size_mismatch → 400
+- duplicate_finish → 409（重复 finish 或已完成会话再次上传分块）
+
+手工验证示例（假设后端 8000 端口）：
+```
+# 1. init
+curl -s -X POST http://localhost:8000/upload/init \
+  -H 'Content-Type: application/json' \
+  -d '{"filename":"a.bin","total_size":6,"chunk_size":3,"device_id":"dev1"}' | tee /tmp/up_init.json
+UID=$(jq -r .upload_id /tmp/up_init.json)
+
+# 2. 发送分块
+head -c 3 sample_media/a.jpg > /tmp/c0.bin
+tail -c +4 sample_media/a.jpg | head -c 3 > /tmp/c1.bin
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8000/upload/chunk \
+  -F upload_id=$UID -F index=0 -F file=@/tmp/c0.bin
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:8000/upload/chunk \
+  -F upload_id=$UID -F index=1 -F file=@/tmp/c1.bin
+
+# 3. finish
+curl -s -X POST http://localhost:8000/upload/finish \
+  -H 'Content-Type: application/json' \
+  -d "{\"upload_id\":\"$UID\",\"total_chunks\":2}"
+```
+
  
 
 初始化/媒体来源 v1（新增）

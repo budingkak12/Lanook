@@ -21,10 +21,12 @@ from app.api.media_routes import router as media_router
 from app.api.face_routes import router as face_router
 from app.api.clip_routes import router as clip_router
 from app.api.tag_routes import router as tag_router
+from app.api.upload_routes import router as upload_router
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
 from app.services.asset_pipeline import ensure_pipeline_started, shutdown_pipeline
 from app.services.auto_scan_service import ensure_auto_scan_service, get_auto_scan_enabled
+from app.services.incoming_dir import ensure_incoming_dir
 
 
 app = FastAPI(title="Media App API", version="1.0.0")
@@ -51,6 +53,7 @@ app.include_router(media_router)
 app.include_router(face_router)
 app.include_router(clip_router)
 app.include_router(tag_router)
+app.include_router(upload_router)
 
 # 轻量健康检查，供 Android 客户端自动探测可用服务地址
 @app.get("/health")
@@ -92,6 +95,18 @@ def _mount_static_frontend():
 
     app.state.frontend_available = True
     app.state.frontend_index = index_file
+
+
+@app.on_event("startup")
+def _ensure_incoming_directory():
+    """准备移动端上传落盘目录，确保后续流程可写。"""
+    try:
+        incoming_dir = ensure_incoming_dir()
+        app.state.incoming_dir = incoming_dir
+        print(f"[startup] 上传接收目录已就绪：{incoming_dir}")
+    except Exception as exc:
+        raise RuntimeError(f"无法准备上传目录：{exc}") from exc
+
 
 # 应用启动时可选地初始化数据库（默认跳过；设置环境变量开启）
 @app.on_event("startup")
