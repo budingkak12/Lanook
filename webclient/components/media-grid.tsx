@@ -32,6 +32,10 @@ type MediaGridProps = {
   queryText?: string | null
   onMediaClick: (media: MediaItem) => void
   onItemsChange?: (items: MediaItem[]) => void
+  /**
+   * 调试/无后端时使用，走内置假数据，不触发任何接口。
+   */
+  mockMode?: boolean
 }
 
 type MediaListItem = {
@@ -65,7 +69,7 @@ export type MediaGridHandle = {
 }
 
 export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function MediaGrid(
-  { sessionId = null, tag = null, queryText = null, onMediaClick, onItemsChange },
+  { sessionId = null, tag = null, queryText = null, onMediaClick, onItemsChange, mockMode = false },
   ref,
 ) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -88,6 +92,31 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     setSelectedIds(new Set())
     setIsSelectionMode(false)
     setShowDeleteDialog(false)
+  }, [])
+
+  const generateMockItems = useCallback((offset: number, limit: number): MediaItem[] => {
+    const mockTotal = 60
+    const items: MediaItem[] = []
+    const start = offset
+    const end = Math.min(offset + limit, mockTotal)
+    for (let i = start; i < end; i++) {
+      const id = i + 1
+      const seed = (i % 20) + 1
+      const imageUrl = `https://picsum.photos/seed/lanook-${seed}/800/600`
+      items.push({
+        id: String(id),
+        mediaId: id,
+        type: "image",
+        url: imageUrl,
+        resourceUrl: imageUrl,
+        thumbnailUrl: imageUrl,
+        filename: `mock_image_${id}.jpg`,
+        createdAt: new Date(Date.now() - i * 3600_000).toISOString(),
+        liked: (i % 7) === 0,
+        favorited: (i % 11) === 0,
+      })
+    }
+    return items
   }, [])
 
   const normalizeItems = useCallback((items: MediaListItem[]): MediaItem[] => {
@@ -117,17 +146,19 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       const effectiveSessionId = currentSessionId || sessionId
 
       // 无标签、无文本时才需要 seed；有文本则允许无 sessionId
-      if (!isTagMode && !isQueryMode && !effectiveSessionId) {
-        setMediaItems([])
-        setHasMore(false)
-        setError("尚未获取会话，请稍候重试。")
-        return 0
-      }
-      if (isTagMode && trimmedTag.length === 0) {
-        setMediaItems([])
-        setHasMore(false)
-        setError(null)
-        return 0
+      if (!mockMode) {
+        if (!isTagMode && !isQueryMode && !effectiveSessionId) {
+          setMediaItems([])
+          setHasMore(false)
+          setError("尚未获取会话，请稍候重试。")
+          return 0
+        }
+        if (isTagMode && trimmedTag.length === 0) {
+          setMediaItems([])
+          setHasMore(false)
+          setError(null)
+          return 0
+        }
       }
 
       if (fetchingRef.current) {
@@ -146,6 +177,23 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       abortRef.current = controller
 
       try {
+        if (mockMode) {
+          const mockItems = generateMockItems(offset, PAGE_SIZE)
+          let addedCount = 0
+          setMediaItems((prev) => {
+            if (mode === "replace") {
+              addedCount = mockItems.length
+              return mockItems
+            }
+            addedCount = mockItems.length
+            return [...prev, ...mockItems]
+          })
+          const hasMoreMock = offset + PAGE_SIZE < 60
+          setHasMore(hasMoreMock)
+          setError(null)
+          return addedCount
+        }
+
         const params = new URLSearchParams({
           offset: String(offset),
           limit: String(PAGE_SIZE),
@@ -209,19 +257,21 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       }
       return 0
     },
-    [normalizeItems, sessionId, tag, queryText, toast],
+    [mockMode, normalizeItems, sessionId, tag, queryText, toast, generateMockItems],
   )
 
   useEffect(() => {
     const trimmedTag = tag?.trim() ?? ""
     const trimmedQuery = queryText?.trim() ?? ""
     setMediaItems([])
-    setHasMore(trimmedTag.length > 0 || trimmedQuery.length > 0 || !!sessionId)
+    setHasMore(
+      mockMode || trimmedTag.length > 0 || trimmedQuery.length > 0 || !!sessionId,
+    )
     resetSelection()
     setError(null)
     abortRef.current?.abort()
 
-    if (!sessionId && trimmedTag.length === 0 && trimmedQuery.length === 0) {
+    if (!mockMode && !sessionId && trimmedTag.length === 0 && trimmedQuery.length === 0) {
       return
     }
 
@@ -235,7 +285,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       abortRef.current?.abort()
       fetchingRef.current = false
     }
-  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag, queryText])
+  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag, queryText, mockMode])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -309,6 +359,12 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0 || isDeleting) {
+      return
+    }
+    if (mockMode) {
+      toast({ title: "当前为动画预览模式", description: "已跳过删除接口调用" })
+      setShowDeleteDialog(false)
+      setIsSelectionMode(false)
       return
     }
     const ids = Array.from(selectedIds)

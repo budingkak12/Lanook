@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { HardDrive } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
@@ -23,6 +24,8 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isStartingInitialization, setIsStartingInitialization] = useState(false)
+  const searchParams = useSearchParams()
+  const isMockMode = useMemo(() => searchParams?.get("mock") === "1", [searchParams])
 
   const steps = [
     {
@@ -63,13 +66,25 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
     },
   ]
 
+  const handleEnterHome = () => {
+    if (isMockMode) {
+      onInitialized?.()
+      return
+    }
+    window.location.reload()
+  }
+
   const handleNextStep = async () => {
     if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1)
     } else if (currentStep === steps.length && onInitialized) {
-      // 在最后一步，调用后端API启动初始化
+      // 在最后一步，调用后端API启动初始化；mock 模式下直接跳转以便调试动画
       setIsStartingInitialization(true)
       try {
+        if (isMockMode) {
+          onInitialized()
+          return
+        }
         // 简化调用：不传 path，由后端自动选择已存在的第一个媒体来源；若无来源，将返回 404+提示
         const response = await apiFetch("/media-root", {
           method: "POST",
@@ -239,10 +254,18 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
                     <div className="text-center pb-4">
                       <h2 className="text-lg font-medium text-muted-foreground/80 text-center">完成</h2>
                     </div>
-                    <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
+                    <StepContent
+                      content={currentStepData.content}
+                      isLastStep={currentStep === steps.length}
+                      onEnterHome={handleEnterHome}
+                    />
                   </>
                 ) : (
-                  <StepContent content={currentStepData.content} isLastStep={currentStep === steps.length} />
+                  <StepContent
+                    content={currentStepData.content}
+                    isLastStep={currentStep === steps.length}
+                    onEnterHome={handleEnterHome}
+                  />
                 )}
               </>
             )}

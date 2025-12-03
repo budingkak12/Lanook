@@ -17,9 +17,10 @@ interface StepContentData {
 interface StepContentProps {
   content: StepContentData
   isLastStep: boolean
+  onEnterHome?: () => void
 }
 
-export function StepContent({ content, isLastStep }: StepContentProps) {
+export function StepContent({ content, isLastStep, onEnterHome }: StepContentProps) {
   return (
     <motion.div
       key={content.title}
@@ -67,7 +68,11 @@ export function StepContent({ content, isLastStep }: StepContentProps) {
         >
           <Button
             onClick={() => {
-              // TODO: 切换到媒体浏览界面，这里暂时先重新加载页面
+              if (onEnterHome) {
+                onEnterHome()
+                return
+              }
+              // 默认行为：重新加载页面
               window.location.reload()
             }}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-md transition-all duration-300"

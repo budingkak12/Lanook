@@ -34,6 +34,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isMockMode = searchParams.get("mock") === "1"
 
   const [isInitialized, setIsInitialized] = useState<boolean | null>(null)
   const [isCheckingInit, setIsCheckingInit] = useState(true)
@@ -59,6 +60,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   }
 
   const checkInitializationStatus = useCallback(async () => {
+    if (isMockMode) {
+      setIsInitialized(true)
+      setIsCheckingInit(false)
+      return
+    }
     try {
       if (typeof window !== "undefined") {
         const urlParams = new URLSearchParams(window.location.search)
@@ -95,7 +101,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     } finally {
       setIsCheckingInit(false)
     }
-  }, [])
+  }, [isMockMode])
 
   useEffect(() => {
     if (typeof window === "undefined") return
