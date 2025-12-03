@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { motion } from "framer-motion"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { MainSidebar } from "@/components/main-sidebar"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
@@ -38,6 +39,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 
   const [isInitialized, setIsInitialized] = useState<boolean | null>(null)
   const [isCheckingInit, setIsCheckingInit] = useState(true)
+  const [sidebarIntro, setSidebarIntro] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
@@ -109,10 +111,15 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     const forceInit = searchParams.get("forceInit")
     const initTransitionDone = sessionStorage.getItem("initTransitionDone") === "true"
 
-    if (forceInit === "true" && !initTransitionDone) {
+    if (forceInit === "true") {
+      // 调试场景：强制进入初始化，无视已完成标记
+      sessionStorage.removeItem("initTransitionDone")
       setIsInitialized(false)
       setIsCheckingInit(false)
-    } else if (defaultView === "settings") {
+      return
+    }
+
+    if (defaultView === "settings") {
       router.replace("/settings")
     }
   }, [router, searchParams])
@@ -168,10 +175,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             // ignore
           }
           clearForceInitFromUrl()
+          setSidebarIntro(true)
           setIsInitialized(true)
-          setTimeout(() => {
-            checkInitializationStatus()
-          }, 1000)
+          setIsCheckingInit(false)
         }}
       />
     )
@@ -181,14 +187,20 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     <div className="relative h-screen overflow-hidden bg-background">
       <div className="flex">
         <div className="hidden lg:block">
-          <MainSidebar
-            activeView={activeView}
-            onViewChange={handleViewChange}
-            isSidebarOpen={isSidebarOpen}
-            onSidebarClose={() => setIsSidebarOpen(false)}
-            collapsed={isSidebarCollapsed}
-            onCollapsedChange={setIsSidebarCollapsed}
-          />
+          <motion.div
+            initial={sidebarIntro ? { x: -160, opacity: 0 } : { x: 0, opacity: 1 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+          >
+            <MainSidebar
+              activeView={activeView}
+              onViewChange={handleViewChange}
+              isSidebarOpen={isSidebarOpen}
+              onSidebarClose={() => setIsSidebarOpen(false)}
+              collapsed={isSidebarCollapsed}
+              onCollapsedChange={setIsSidebarCollapsed}
+            />
+          </motion.div>
         </div>
 
         <main

@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { useSearchParams } from "next/navigation"
 import { HardDrive } from "lucide-react"
 import { useTranslation } from "react-i18next"
@@ -21,13 +22,10 @@ interface InitializationViewProps {
 export function InitializationView({ onInitialized }: InitializationViewProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isStartingInitialization, setIsStartingInitialization] = useState(false)
   const searchParams = useSearchParams()
   const isMockMode = useMemo(() => searchParams?.get("mock") === "1", [searchParams])
 
-  const steps = [
+  const steps = useMemo(() => ([
     {
       id: 1,
       title: t('init.selectLanguage'),
@@ -55,16 +53,24 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         sections: [],
       },
     },
-    {
-      id: 4,
-      title: "完成",
-      content: {
-        title: t('init.step4.title'),
-        description: "",
-        sections: [],
-      },
-    },
-  ]
+  ]), [t])
+
+  const initialStep = useMemo(() => {
+    const param = Number(searchParams?.get("initStep"))
+    if (Number.isFinite(param) && param >= 1 && param <= steps.length) {
+      return param
+    }
+    return 1
+  }, [searchParams, steps.length])
+
+  const [currentStep, setCurrentStep] = useState(initialStep)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isStartingInitialization, setIsStartingInitialization] = useState(false)
+  const [isExiting, setIsExiting] = useState(false)
+
+  useEffect(() => {
+    setCurrentStep(initialStep)
+  }, [initialStep])
 
   const handleEnterHome = () => {
     if (isMockMode) {
@@ -79,10 +85,12 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
       setCurrentStep(currentStep + 1)
     } else if (currentStep === steps.length && onInitialized) {
       // 在最后一步，调用后端API启动初始化；mock 模式下直接跳转以便调试动画
+      if (isExiting) return
       setIsStartingInitialization(true)
       try {
         if (isMockMode) {
-          onInitialized()
+          setIsExiting(true)
+          setTimeout(() => onInitialized(), 650)
           return
         }
         // 简化调用：不传 path，由后端自动选择已存在的第一个媒体来源；若无来源，将返回 404+提示
@@ -104,7 +112,8 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         }
         // 200 且 body 为空也视为成功，避免空响应导致前端报错
         if (response.ok && (!data || data.success === true || data.success === undefined)) {
-          onInitialized()
+          setIsExiting(true)
+          setTimeout(() => onInitialized(), 650)
           return
         }
         // 其他情况作为错误提示
@@ -131,7 +140,13 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden" style={{ position: 'fixed', top: 0, left: 0, right: 0, transform: 'translateZ(0)' }}>
+      <motion.header
+        initial={{ y: 0, opacity: 1 }}
+        animate={isExiting ? { y: "-120%", opacity: 0 } : { y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
+        className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden"
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, transform: 'translateZ(0)' }}
+      >
         {/* 上半部分 */}
         <div
           className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm bg-card/50"
@@ -175,7 +190,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
             background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 100%)'
           }}
         />
-      </header>
+      </motion.header>
 
       <div className="flex py-2 pt-16">
         {/* Mobile Sidebar Overlay */}
@@ -187,7 +202,10 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         )}
 
         {/* Sidebar Navigation - Fixed */}
-        <aside
+        <motion.aside
+          initial={{ x: 0, opacity: 1 }}
+          animate={isExiting ? { x: "-120%", opacity: 0 } : { x: 0, opacity: 1 }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
           className={`
             fixed top-16 h-[calc(100vh-4rem)] z-[9999] transition-transform duration-300 ease-in-out overflow-y-auto
             lg:translate-x-0 lg:left-0 lg:ml-0 lg:pl-0
@@ -207,7 +225,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
               setIsSidebarOpen(false) // 点击步骤后自动关闭侧边栏
             }}
           />
-        </aside>
+        </motion.aside>
 
         {/* Main Content */}
         <main
@@ -219,7 +237,13 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
             overflowY: 'auto'
           }}
         >
-          <div className="w-full max-w-2xl mx-auto px-2 sm:px-4 h-full">
+          <motion.div
+            className="w-full max-w-2xl mx-auto px-2 sm:px-4 h-full"
+            initial={{ scaleY: 1, opacity: 1, y: 0, transformOrigin: "top center" }}
+            animate={isExiting ? { scaleY: 0, opacity: 0, y: -40 } : { scaleY: 1, opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            style={{ transformOrigin: "top center" }}
+          >
 
             {/* Step Content */}
             {currentStepData && (
@@ -270,7 +294,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
               </>
             )}
 
-          </div>
+          </motion.div>
         </main>
       </div>
 
@@ -297,7 +321,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
           ? '正在初始化...'
           : currentStep < steps.length
             ? t('init.nextStep')
-            : '完成初始化'
+            : '进入首页'
         }
       </Button>
     </div>
