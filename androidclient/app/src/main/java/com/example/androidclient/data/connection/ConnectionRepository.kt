@@ -69,4 +69,15 @@ class ConnectionRepository(context: Context) {
         saveBaseUrl(normalized)
         return Result.success(normalized)
     }
+
+    /**
+     * 依次尝试候选地址，返回第一个可用的 canonical URL，不落库。
+     */
+    suspend fun findReachable(candidates: List<String>): String? = withContext(Dispatchers.IO) {
+        for (raw in candidates) {
+            val canonical = canonicalize(raw) ?: continue
+            if (verify(canonical)) return@withContext canonical
+        }
+        null
+    }
 }

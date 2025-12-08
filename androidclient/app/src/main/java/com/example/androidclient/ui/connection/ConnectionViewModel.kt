@@ -39,6 +39,8 @@ class ConnectionViewModel(
     val events: SharedFlow<ConnectionEvent> = _events.asSharedFlow()
 
     private var autoNavigated = false
+    private var autoProbeStarted = false
+    private val defaultCandidates = listOf("http://172.29.45.74:8000")
 
     init {
         viewModelScope.launch {
@@ -59,6 +61,9 @@ class ConnectionViewModel(
                     _events.emit(ConnectionEvent.Connected(canonical, requireSetup))
                 }
             }
+        }
+        viewModelScope.launch {
+            probeDefaultCandidates()
         }
     }
 
@@ -112,6 +117,23 @@ class ConnectionViewModel(
         val statusResult = runCatching { repo.fetchStatus() }
         val status = statusResult.getOrNull() ?: return true
         return status.state != InitializationState.COMPLETED || status.mediaRootPath.isNullOrBlank()
+    }
+
+    /**
+     * 优先尝试预设内网地址，成功则直接导航；失败则保持原有手动流程。
+     */
+    private suspend fun probeDefaultCandidates() {
+        if (autoNavigated || autoProbeStarted) return
+        autoProbeStarted = true
+        val hit = repository.findReachable(defaultCandidates)
+        if (hit != null && !autoNavigated) {
+            autoNavigated = true
+            NetworkModule.updateBaseUrl(hit)
+            repository.saveBaseUrl(hit)
+            val requiresSetup = runCatching { determineRequiresSetup() }.getOrElse { true }
+            _uiState.update { it.copy(baseUrlInput = hit, lastSuccessUrl = hit, errorMessage = null) }
+            _events.emit(ConnectionEvent.Connected(hit, requiresSetup))
+        }
     }
 
     class Factory(private val repository: ConnectionRepository) : ViewModelProvider.Factory {
