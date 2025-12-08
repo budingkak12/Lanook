@@ -107,10 +107,10 @@ def batch_delete_media(req: DeleteBatchReq, db: Session = Depends(get_db)):
         _raise_service_error(exc)
 
 
-@router.get("/media/{media_id}/thumbnail")
-def get_media_thumbnail(media_id: int, db: Session = Depends(get_db)):
+@router.get("/media/{key}/thumbnail")
+def get_media_thumbnail(key: str, db: Session = Depends(get_db)):
     try:
-        payload = media_service.get_thumbnail_payload(db, media_id=media_id)
+        payload = media_service.get_thumbnail_payload(db, key=key)
         return FileResponse(path=payload.path, media_type=payload.media_type, headers=payload.headers)
     except ServiceError as exc:
         _raise_service_error(exc)

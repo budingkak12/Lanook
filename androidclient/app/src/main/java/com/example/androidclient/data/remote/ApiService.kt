@@ -9,6 +9,10 @@ import com.example.androidclient.data.model.setup.DirectoryListResponse
 import com.example.androidclient.data.model.setup.InitializationStatusResponse
 import com.example.androidclient.data.model.setup.MediaRootRequest
 import com.example.androidclient.data.model.tasks.ScanTaskStatusResponse
+import com.example.androidclient.data.model.fs.FsRoot
+import com.example.androidclient.data.model.fs.FsListResponse
+import com.example.androidclient.data.model.fs.PathsRequest
+import com.example.androidclient.data.model.fs.SuccessResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -84,5 +88,35 @@ interface ApiService {
     suspend fun getScanTaskStatus(
         @Query("force_refresh") forceRefresh: Boolean = false
     ): ScanTaskStatusResponse
+
+    // === 文件系统（本机浏览） ===
+    @GET("fs/roots")
+    suspend fun getFsRoots(): List<FsRoot>
+
+    @GET("fs/list")
+    suspend fun listFs(
+        @Query("root_id") rootId: String,
+        @Query("path") path: String = "",
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 100,
+        @Query("show_hidden") showHidden: Boolean = false,
+        @Query("sort") sort: String = "name",
+        @Query("order") order: String = "asc"
+    ): FsListResponse
+
+    @POST("fs/mkdir")
+    suspend fun mkdir(@Body req: PathsRequest): SuccessResponse
+
+    @POST("fs/rename")
+    suspend fun rename(@Body req: PathsRequest): SuccessResponse
+
+    @POST("fs/delete")
+    suspend fun deletePaths(@Body req: PathsRequest): SuccessResponse
+
+    @POST("fs/move")
+    suspend fun move(@Body req: PathsRequest): SuccessResponse
+
+    @POST("fs/copy")
+    suspend fun copy(@Body req: PathsRequest): SuccessResponse
 
 }

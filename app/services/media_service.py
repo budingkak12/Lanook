@@ -45,6 +45,7 @@ from app.services.exceptions import (
 from app.services.fs_providers import is_smb_url, iter_bytes, stat_url
 from app.services.thumbnails_service import build_thumb_headers, get_or_generate_thumbnail
 from app.services import clip_service
+from app.services import fs_service
 
 
 @dataclass
@@ -92,6 +93,21 @@ def _filter_active_media(query: Query) -> Query:
     )
 
 
+def _ensure_fingerprint(db: Session, media: Media) -> Optional[str]:
+    if media.fingerprint:
+        return media.fingerprint
+    try:
+        fp = fs_service.compute_fingerprint(Path(media.absolute_path))
+    except Exception:
+        return None
+    media.fingerprint = fp
+    try:
+        db.flush()
+    except Exception:
+        db.rollback()
+    return fp
+
+
 def _to_media_item(
     db: Session,
     media: Media,
@@ -118,6 +134,8 @@ def _to_media_item(
     created = media.created_at
     created_str = created.isoformat() if isinstance(created, datetime) else str(created)
 
+    fingerprint = _ensure_fingerprint(db, media)
+
     return MediaItem(
         id=media.id,
         url=f"/media-resource/{media.id}",
@@ -125,9 +143,10 @@ def _to_media_item(
         type=media.media_type,
         filename=media.filename,
         createdAt=created_str,
-        thumbnailUrl=(f"/media/{media.id}/thumbnail" if include_thumb else None),
+        thumbnailUrl=(f"/media/{fingerprint}/thumbnail" if include_thumb and fingerprint else None),
         liked=liked_val,
         favorited=favorited_val,
+        fingerprint=fingerprint,
     )
 
 
@@ -236,13 +255,17 @@ def _query_cached_media_rows(
     return rows[:limit], has_more
 
 
-def _rows_to_media_items(rows) -> List[MediaItem]:
+def _rows_to_media_items(db: Session, rows) -> List[MediaItem]:
     items: List[MediaItem] = []
     for row in rows:
         mapping = row._mapping
         media_id = int(mapping["media_id"])
         created = mapping["created_at"]
         created_str = created.isoformat() if isinstance(created, datetime) else str(created)
+        media = db.query(Media).filter(Media.id == media_id).first()
+        fingerprint: Optional[str] = None
+        if media and media.absolute_path:
+            fingerprint = _ensure_fingerprint(db, media)
         items.append(
             MediaItem(
                 id=media_id,
@@ -251,9 +274,10 @@ def _rows_to_media_items(rows) -> List[MediaItem]:
                 type=str(mapping["media_type"]),
                 filename=str(mapping["filename"]),
                 createdAt=created_str,
-                thumbnailUrl=f"/media/{media_id}/thumbnail",
+                thumbnailUrl=(f"/media/{fingerprint}/thumbnail" if fingerprint else None),
                 liked=bool(mapping["like_count"]),
                 favorited=bool(mapping["favorite_count"]),
+                fingerprint=fingerprint,
             )
         )
     return items
@@ -428,7 +452,7 @@ def get_media_page(
             limit=limit,
             extra_params={"seed_factor": seed_factor, "seed_mod": seed_mod},
         )
-    items = _rows_to_media_items(rows)
+    items = _rows_to_media_items(db, rows)
     _record_cache_hits(db, [item.id for item in items])
     return PageResponse(items=items, offset=offset, hasMore=has_more)
 
@@ -600,33 +624,35 @@ def batch_delete_media(db: Session, *, ids: List[int], delete_file: bool) -> Del
 # 媒体资源
 # ---------------------------------------------------------------------------
 
-def get_thumbnail_payload(db: Session, *, media_id: int) -> ThumbnailPayload:
-    media = _require_media(db, media_id)
+def _resolve_media_by_key(db: Session, key: str) -> Media:
+    media: Optional[Media] = None
+    if key.isdigit():
+        media = _require_media(db, int(key))
+    else:
+        media = db.query(Media).filter(Media.fingerprint == key).first()
+        if not media:
+            raise MediaNotFoundError("media not found")
+    return media
+
+
+def get_thumbnail_payload(db: Session, *, key: str) -> ThumbnailPayload:
+    media = _resolve_media_by_key(db, key)
     if (not is_smb_url(media.absolute_path)) and (not os.path.exists(media.absolute_path)):
         raise FileNotFoundOnDiskError("file not found")
-    cached = get_cached_artifact(db, media.id, ArtifactType.THUMBNAIL)
-    if cached and cached.path and cached.path.exists():
-        headers = build_thumb_headers(str(cached.path))
-        media_type = headers.get("Content-Type", "image/jpeg")
-        media_cache.mark_thumbnail_state(db, media.id, "ready")
-        _safe_cache_commit(db)
-        return ThumbnailPayload(path=str(cached.path), media_type=media_type, headers=headers)
 
-    # 直接等待缩略图生成完成，避免 8 秒超时导致首页无法看到缩略图。
-    # 对 SMB 等慢速源，会在 HTTP 请求内同步等待生成结果（期间 pipeline worker 仍负责执行生成逻辑）。
-    # 同步生成，确保首次访问也能拿到缩略图（慢源会阻塞该请求，但保证拿到结果或明确失败）。
-    generated = get_or_generate_thumbnail(media)
-    if generated and generated.path and generated.path.exists():
-        headers = build_thumb_headers(str(generated.path))
-        media_type = headers.get("Content-Type", "image/jpeg")
-        media_cache.mark_thumbnail_state(db, media.id, "ready")
-        _safe_cache_commit(db)
-        return ThumbnailPayload(path=str(generated.path), media_type=media_type, headers=headers)
+    fingerprint = _ensure_fingerprint(db, media)
+    if not fingerprint:
+        raise ThumbnailUnavailableError("fingerprint unavailable")
 
-    media_cache.mark_thumbnail_state(db, media.id, "missing")
-    _safe_cache_commit(db)
-    # 生成失败时直接返回异常，不再生成占位图
-    raise ThumbnailUnavailableError("thumbnail not available")
+    dest = fs_service.thumb_path_for_fingerprint(fingerprint)
+    if not dest.exists():
+        ok = fs_service.generate_thumbnail(Path(media.absolute_path), dest, max_size=(480, 480))
+        if not ok or not dest.exists():
+            raise ThumbnailUnavailableError("thumbnail not available")
+
+    headers = build_thumb_headers(str(dest))
+    media_type = headers.get("Content-Type", "image/jpeg")
+    return ThumbnailPayload(path=str(dest), media_type=media_type, headers=headers)
 
 
 def get_media_metadata(db: Session, *, media_id: int, wait_timeout: Optional[float] = None) -> MediaMetadata:

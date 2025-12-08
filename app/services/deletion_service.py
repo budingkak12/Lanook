@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from app.db import Media
 
 
-# thumbnails 目录位于项目根目录，与 main.py 中保持一致的命名规则："thumbnails/<id>.jpg"
 THUMBNAILS_DIR = Path(__file__).resolve().parents[2] / "thumbnails"
 
 
@@ -19,9 +18,18 @@ class FailedItem:
     id: int
     reason: str
 
+def _thumb_path_for_media(media: Media) -> Path:
+    # 基于内容指纹命名；若缺失则回退到旧 id 命名
+    if media.absolute_path:
+        try:
+            from app.services.fs_service import compute_fingerprint
 
-def _thumb_path_for_id(media_id: int) -> Path:
-    return THUMBNAILS_DIR / f"{media_id}.jpg"
+            fp = compute_fingerprint(Path(media.absolute_path))
+            bucket = fp[:2]
+            return THUMBNAILS_DIR / "fs" / bucket / f"{fp}.jpg"
+        except Exception:
+            pass
+    return THUMBNAILS_DIR / f"{media.id}.jpg"
 
 
 def delete_media_record_and_files(
@@ -38,7 +46,7 @@ def delete_media_record_and_files(
 
     # 提前保留路径，避免 db.delete 后访问关系属性
     abs_path = media.absolute_path if isinstance(media.absolute_path, str) else None
-    thumb_path = _thumb_path_for_id(media.id)
+    thumb_path = _thumb_path_for_media(media)
 
     # 删除 DB 记录（包含 Tag 关联，依赖 ORM 级联）
     try:

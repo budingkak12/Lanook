@@ -23,6 +23,7 @@ from PIL import ImageDraw, ImageFont
 import av  # type: ignore
 
 from app.db import Media
+from app.services import fs_service
 from app.services.asset_models import ArtifactPayload
 from app.services.fs_providers import is_smb_url, iter_bytes, read_bytes, stat_url
 
@@ -40,8 +41,19 @@ else:  # pragma: no cover - 兼容旧版本 Pillow
 
 
 def thumb_path_for(media: Media) -> Path:
-    """缩略图路径：<repo>/thumbnails/<id>.jpg"""
-    return THUMBNAILS_DIR / f"{media.id}.jpg"
+    """缩略图路径：基于内容指纹存储在 thumbnails/fs/<bucket>/<fingerprint>.jpg"""
+    if not media.absolute_path:
+        return THUMBNAILS_DIR / "fs" / "invalid" / "missing.jpg"
+    fingerprint = getattr(media, "fingerprint", None)
+    if not fingerprint:
+        try:
+            fingerprint = fs_service.compute_fingerprint(Path(media.absolute_path))
+        except Exception:
+            fingerprint = None
+    if not fingerprint:
+        return THUMBNAILS_DIR / "fs" / "invalid" / "missing.jpg"
+    bucket = fingerprint[:2]
+    return THUMBNAILS_DIR / "fs" / bucket / f"{fingerprint}.jpg"
 
 
 def resolve_cached_thumbnail(media: Media) -> Optional[ArtifactPayload]:

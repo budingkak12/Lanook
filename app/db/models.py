@@ -17,6 +17,7 @@ class Media(Base):
     media_type = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     source_id = Column(Integer, ForeignKey("media_sources.id"), nullable=True, index=True)
+    fingerprint = Column(String, nullable=True, unique=True, index=True)
 
     tags = relationship("MediaTag", back_populates="media", cascade="all, delete-orphan")
     faces = relationship("FaceEmbedding", back_populates="media", cascade="all, delete-orphan")

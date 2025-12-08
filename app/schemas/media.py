@@ -15,6 +15,7 @@ class MediaItem(BaseModel):
     thumbnailUrl: Optional[str] = None
     liked: Optional[bool] = None
     favorited: Optional[bool] = None
+    fingerprint: Optional[str] = None
 
 
 class PageResponse(BaseModel):
