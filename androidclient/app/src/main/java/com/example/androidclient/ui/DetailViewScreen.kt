@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -41,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import coil3.compose.AsyncImage
@@ -75,8 +78,10 @@ fun DetailViewScreen(
     }
     val overrides by viewModel.tagOverrides.collectAsState()
     val context = LocalContext.current
+    val density = LocalDensity.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    val bottomInset = with(density) { WindowInsets.systemBars.getBottom(this).toDp() }
 
     Box(
         modifier = Modifier
@@ -180,7 +185,8 @@ fun DetailViewScreen(
                             onToggleFavorite = toggleFavorite,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
-                                .padding(bottom = 32.dp)
+                                // 抬高操作条，兼容虚拟按键/全面屏手势
+                                .padding(bottom = bottomInset + 24.dp)
                         )
                     }
                 }
