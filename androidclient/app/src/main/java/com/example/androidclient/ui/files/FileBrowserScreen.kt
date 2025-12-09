@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
@@ -97,13 +99,8 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text("本机文件", fontWeight = FontWeight.Bold)
-                        val pathDisplay = state.path.ifBlank { "/" }
-                        Text(pathDisplay, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                },
+                // 顶部不再展示路径/标题，路径改到下方 RootSelector 区域
+                title = { Spacer(Modifier.width(1.dp)) },
                 navigationIcon = {
                     IconButton(onClick = { vm.goParent() }, enabled = state.path.isNotBlank()) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "返回上级")
@@ -237,12 +234,26 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
 
 @Composable
 private fun RootSelector(state: FileUiState, onSelect: (String) -> Unit) {
-    val current = state.currentRoot?.displayName ?: "选择根目录"
+    val rootAbs = state.currentRoot?.absPath?.trimEnd('/') ?: ""
+    val rel = state.path.trim('/')
+    val fullPath = when {
+        rootAbs.isBlank() && rel.isBlank() -> "/"
+        rootAbs.isBlank() -> "/" + rel
+        rel.isBlank() -> rootAbs
+        else -> "$rootAbs/$rel"
+    }
+    val maxChars = 32
+    val shortenedPath = if (fullPath.length > maxChars) "…" + fullPath.takeLast(maxChars - 1) else fullPath
+
     LazyColumn(modifier = Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 12.dp)) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(Icons.Filled.FolderOpen, contentDescription = null)
-                Text(current, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(shortenedPath, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
             }
             Row(modifier = Modifier.fillMaxWidth()) {
                 state.roots.forEach { root ->
