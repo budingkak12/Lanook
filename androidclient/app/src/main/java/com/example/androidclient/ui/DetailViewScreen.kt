@@ -82,6 +82,7 @@ fun DetailViewScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     val bottomInset = with(density) { WindowInsets.systemBars.getBottom(this).toDp() }
+    val topInset = with(density) { WindowInsets.systemBars.getTop(this).toDp() }
 
     Box(
         modifier = Modifier
@@ -196,7 +197,7 @@ fun DetailViewScreen(
         IconButton(
             onClick = onBack,
             modifier = Modifier
-                .padding(16.dp)
+                .padding(start = 16.dp, top = topInset + 12.dp, end = 16.dp, bottom = 16.dp)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.5f))
         ) {
@@ -211,7 +212,7 @@ fun DetailViewScreen(
         IconButton(
             onClick = { if (!deleting) showDeleteDialog = true },
             modifier = Modifier
-                .padding(16.dp)
+                .padding(start = 16.dp, top = topInset + 12.dp, end = 16.dp, bottom = 16.dp)
                 .align(Alignment.TopEnd)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.5f))
