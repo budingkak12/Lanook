@@ -101,7 +101,8 @@ interface ApiService {
         @Query("limit") limit: Int = 100,
         @Query("show_hidden") showHidden: Boolean = false,
         @Query("sort") sort: String = "name",
-        @Query("order") order: String = "asc"
+        @Query("order") order: String = "asc",
+        @Query("media_only") mediaOnly: Boolean = true
     ): FsListResponse
 
     @POST("fs/mkdir")

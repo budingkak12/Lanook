@@ -46,6 +46,7 @@ def list_dir(
     show_hidden: bool = Query(False),
     sort: SortField = Query(SortField.name),
     order: SortOrder = Query(SortOrder.asc),
+    media_only: bool = Query(True, description="仅返回媒体文件（图片/视频），目录始终返回"),
 ):
     items, total = fs_service.list_dir(
         root_id,
@@ -55,6 +56,7 @@ def list_dir(
         show_hidden=show_hidden,
         sort=sort.value,
         order=order.value,
+        media_only=media_only,
     )
     return ListResponse(items=items, total=total, offset=offset, limit=limit)
 

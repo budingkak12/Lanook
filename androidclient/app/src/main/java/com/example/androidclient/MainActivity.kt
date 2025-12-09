@@ -73,10 +73,15 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val systemUiController = rememberSystemUiController()
+                val navColor = androidx.compose.material3.MaterialTheme.colorScheme.background
                 SideEffect {
                     systemUiController.setSystemBarsColor(
                         color = Color.Transparent,
                         darkIcons = false
+                    )
+                    systemUiController.setNavigationBarColor(
+                        color = navColor,
+                        darkIcons = true
                     )
                 }
 

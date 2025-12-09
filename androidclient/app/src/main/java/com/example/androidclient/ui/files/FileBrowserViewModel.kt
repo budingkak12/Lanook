@@ -21,9 +21,11 @@ data class FileUiState(
     val path: String = "",
     val items: List<FsItem> = emptyList(),
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val error: String? = null,
     val showHidden: Boolean = false,
-    val viewMode: FsViewMode = FsViewMode.List
+    val viewMode: FsViewMode = FsViewMode.List,
+    val mediaOnly: Boolean = true,
 )
 
 class FileBrowserViewModel(private val repo: FsRepository) : ViewModel() {
@@ -56,14 +58,49 @@ class FileBrowserViewModel(private val repo: FsRepository) : ViewModel() {
                     rootId = root.id,
                     path = _uiState.value.path,
                     offset = 0,
-                    limit = 300,
-                    showHidden = _uiState.value.showHidden
+                    limit = 200,
+                    showHidden = _uiState.value.showHidden,
+                    mediaOnly = _uiState.value.mediaOnly
                 )
             }
             result.onSuccess { resp ->
-                _uiState.update { it.copy(items = resp.items, isLoading = false) }
+                val ordered = resp.items.sortedWith(compareByDescending<FsItem> { it.isDir }.thenBy { it.name.lowercase() })
+                _uiState.update { it.copy(items = ordered, isLoading = false) }
             }.onFailure { e ->
                 _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+            }
+        }
+    }
+
+    fun loadMoreIfNeeded(targetIndex: Int) {
+        val state = _uiState.value
+        if (state.isLoadingMore) return
+        if (targetIndex < state.items.size - 5) return
+        val root = state.currentRoot ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMore = true) }
+            val result = runCatching {
+                repo.list(
+                    rootId = root.id,
+                    path = state.path,
+                    offset = state.items.size,
+                    limit = 200,
+                    showHidden = state.showHidden,
+                    mediaOnly = state.mediaOnly
+                )
+            }
+            result.onSuccess { resp ->
+                if (resp.items.isNotEmpty()) {
+                    _uiState.update { current ->
+                        val merged = (current.items + resp.items)
+                            .sortedWith(compareByDescending<FsItem> { it.isDir }.thenBy { it.name.lowercase() })
+                        current.copy(items = merged, isLoadingMore = false)
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoadingMore = false) }
+                }
+            }.onFailure {
+                _uiState.update { it.copy(isLoadingMore = false) }
             }
         }
     }
@@ -92,6 +129,31 @@ class FileBrowserViewModel(private val repo: FsRepository) : ViewModel() {
     fun toggleHidden() {
         _uiState.update { it.copy(showHidden = !it.showHidden) }
         refresh()
+    }
+
+    fun toggleMediaOnly() {
+        val root = _uiState.value.currentRoot ?: return
+        val newMode = !_uiState.value.mediaOnly
+        viewModelScope.launch {
+            _uiState.update { it.copy(mediaOnly = newMode) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val result = runCatching {
+                repo.list(
+                    rootId = root.id,
+                    path = _uiState.value.path,
+                    offset = 0,
+                    limit = 200,
+                    showHidden = _uiState.value.showHidden,
+                    mediaOnly = newMode
+                )
+            }
+            result.onSuccess { resp ->
+                val ordered = resp.items.sortedWith(compareByDescending<FsItem> { it.isDir }.thenBy { it.name.lowercase() })
+                _uiState.update { it.copy(items = ordered, isLoading = false) }
+            }.onFailure { e ->
+                _uiState.update { it.copy(isLoading = false, error = e.message ?: "加载失败") }
+            }
+        }
     }
 
     fun toggleViewMode() {

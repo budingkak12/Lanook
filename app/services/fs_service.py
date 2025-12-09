@@ -141,6 +141,7 @@ def list_dir(
     show_hidden: bool,
     sort: str,
     order: str,
+    media_only: bool,
 ):
     root = _resolve_root(root_id)
     if not root.available:
@@ -167,6 +168,8 @@ def list_dir(
             is_dir = entry.is_dir()
             size = 0 if is_dir else stat.st_size
             ext = entry.suffix[1:].lower() if entry.suffix else ""
+            if (not is_dir) and media_only and ext not in _THUMB_MEDIA_EXTS:
+                continue
             thumb_url = None
             if not is_dir and ext in _THUMB_MEDIA_EXTS:
                 encoded = quote(f"{path.strip('/')}/" + name if path else name)

@@ -15,8 +15,9 @@ class FsRepository(private val api: ApiService) {
         limit: Int = 100,
         showHidden: Boolean = false,
         sort: String = "name",
-        order: String = "asc"
-    ): FsListResponse = api.listFs(rootId, path, offset, limit, showHidden, sort, order)
+        order: String = "asc",
+        mediaOnly: Boolean = true
+    ): FsListResponse = api.listFs(rootId, path, offset, limit, showHidden, sort, order, mediaOnly)
 
     suspend fun mkdir(rootId: String, path: String) = api.mkdir(PathsRequest(rootId = rootId, path = path))
 

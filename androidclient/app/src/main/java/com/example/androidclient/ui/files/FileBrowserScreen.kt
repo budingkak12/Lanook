@@ -1,7 +1,5 @@
 package com.example.androidclient.ui.files
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,11 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
@@ -59,12 +62,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
 import coil3.size.Size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import com.example.androidclient.ui.VideoPlayer
 import com.example.androidclient.data.model.fs.FsItem
 import com.example.androidclient.data.repository.FsRepository
 import com.example.androidclient.di.NetworkModule
@@ -73,7 +82,10 @@ import com.example.androidclient.di.NetworkModule
 @Composable
 fun FileBrowserScreen(vm: FileBrowserViewModel) {
     val state by vm.uiState.collectAsState()
-    val context = LocalContext.current
+
+    // 当前目录下的文件列表（非目录），用于详情翻页
+    val files = remember(state.items, state.path) { state.items.filter { !it.isDir } }
+    var detailIndex by remember { mutableStateOf<Int?>(null) }
 
     var showNewFolder by remember { mutableStateOf(false) }
     var showRename: FsItem? by remember { mutableStateOf(null) }
@@ -82,6 +94,7 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
     LaunchedEffect(Unit) { vm.loadRoots() }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
@@ -100,28 +113,35 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
                     IconButton(onClick = { vm.toggleHidden() }) {
                         Icon(if (state.showHidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "隐藏项")
                     }
+                    IconButton(onClick = { vm.toggleMediaOnly() }) {
+                        Icon(
+                            imageVector = if (state.mediaOnly) Icons.Filled.Image else Icons.Filled.ListAlt,
+                            contentDescription = if (state.mediaOnly) "只看媒体" else "全部文件"
+                        )
+                    }
                     IconButton(onClick = { vm.toggleViewMode() }) {
                         Icon(if (state.viewMode == FsViewMode.List) Icons.Filled.GridView else Icons.Filled.List, contentDescription = "视图")
                     }
                     IconButton(onClick = { vm.refresh() }) {
                         Icon(Icons.Filled.Refresh, contentDescription = "刷新")
                     }
+                    IconButton(onClick = { showNewFolder = true }) {
+                        Icon(Icons.Outlined.CreateNewFolder, contentDescription = "新建文件夹")
+                    }
                 }
             )
         },
-        bottomBar = {
-            BottomAppBar(actions = {
-                AssistChip(onClick = { vm.refresh() }, label = { Text("刷新") }, leadingIcon = {
-                    Icon(Icons.Filled.Refresh, contentDescription = null)
-                })
-                Spacer(modifier = Modifier.size(8.dp))
-                AssistChip(onClick = { showNewFolder = true }, label = { Text("新建文件夹") }, leadingIcon = {
-                    Icon(Icons.Outlined.CreateNewFolder, contentDescription = null)
-                })
-            })
-        }
+        bottomBar = { }
     ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        val layoutDir = LocalLayoutDirection.current
+        val startPad = paddingValues.calculateLeftPadding(layoutDir)
+        val endPad = paddingValues.calculateRightPadding(layoutDir)
+        val topPad = paddingValues.calculateTopPadding()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = startPad, end = endPad, top = topPad)
+        ) {
             RootSelector(state, onSelect = { vm.switchRoot(it) })
             if (state.isLoading) {
                 LoadingBox()
@@ -136,15 +156,9 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
                                 item = item,
                                 thumbUrl = vm.thumbUrl(item, NetworkModule.currentBaseUrl()),
                                 onClick = {
-                                    if (item.isDir) {
-                                        vm.enterDirectory(item.name)
-                                    } else {
-                                        vm.fileUrl(item, NetworkModule.currentBaseUrl())?.let { url ->
-                                            runCatching {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                context.startActivity(intent)
-                                            }
-                                        }
+                                    if (item.isDir) vm.enterDirectory(item.name) else {
+                                        val idx = files.indexOfFirst { it.name == item.name && !it.isDir }
+                                        if (idx >= 0) detailIndex = idx
                                     }
                                 },
                                 onLongPress = { pendingDelete = item },
@@ -159,15 +173,9 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
                                 item = item,
                                 thumbUrl = vm.thumbUrl(item, NetworkModule.currentBaseUrl()),
                                 onClick = {
-                                    if (item.isDir) {
-                                        vm.enterDirectory(item.name)
-                                    } else {
-                                        vm.fileUrl(item, NetworkModule.currentBaseUrl())?.let { url ->
-                                            runCatching {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                context.startActivity(intent)
-                                            }
-                                        }
+                                    if (item.isDir) vm.enterDirectory(item.name) else {
+                                        val idx = files.indexOfFirst { it.name == item.name && !it.isDir }
+                                        if (idx >= 0) detailIndex = idx
                                     }
                                 },
                                 onLongPress = { pendingDelete = item },
@@ -214,6 +222,15 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
                 pendingDelete = null
                 vm.delete(target.name) {}
             }
+        )
+    }
+
+    detailIndex?.let { idx ->
+        FsDetailPager(
+            items = files,
+            startIndex = idx,
+            onClose = { detailIndex = null },
+            vm = vm
         )
     }
 }
@@ -332,6 +349,7 @@ private fun FileCard(
                         .fillMaxWidth()
                         .height(110.dp)
                         .background(Color(0x11000000))
+                        .clickable(onClick = onClick)
                 )
             } else {
                 Icon(
@@ -392,4 +410,50 @@ private fun humanSize(size: Long): String {
         i++
     }
     return String.format("%.1f%s", v, units[i])
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FsDetailPager(
+    items: List<FsItem>,
+    startIndex: Int,
+    onClose: () -> Unit,
+    vm: FileBrowserViewModel
+) {
+    if (items.isEmpty()) return
+    val pagerState = rememberPagerState(initialPage = startIndex, pageCount = { items.size })
+    val baseUrl = NetworkModule.currentBaseUrl()
+
+    LaunchedEffect(pagerState.currentPage, items.size) {
+        vm.loadMoreIfNeeded(pagerState.currentPage)
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            val item = items[page]
+            val resourceUrl = vm.fileUrl(item, baseUrl)
+            when (item.ext.lowercase()) {
+                "mp4", "mov", "mkv", "avi" -> {
+                    VideoPlayer(url = resourceUrl ?: "", modifier = Modifier.fillMaxSize())
+                }
+                else -> {
+                    AsyncImage(
+                        model = resourceUrl,
+                        contentDescription = item.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+        }
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier
+                .padding(16.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.5f))
+        ) {
+            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "关闭", tint = Color.White)
+        }
+    }
 }
