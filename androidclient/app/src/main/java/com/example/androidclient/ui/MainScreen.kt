@@ -98,7 +98,7 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: Se
             start = innerPadding.calculateStartPadding(layoutDirection),
             top = innerPadding.calculateTopPadding(),
             end = innerPadding.calculateEndPadding(layoutDirection),
-            bottom = innerPadding.calculateBottomPadding() + 8.dp
+            bottom = innerPadding.calculateBottomPadding()
         )
         NavHost(
             navController = innerNavController,

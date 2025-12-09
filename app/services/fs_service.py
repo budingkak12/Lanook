@@ -186,7 +186,8 @@ def list_dir(
                     "media_meta": None,
                 }
             )
-        except PermissionError:
+        except (PermissionError, FileNotFoundError):
+            # 跳过无法访问或已被删除的文件（如 .VolumeIcon.icns）
             continue
 
     def sort_key(it):

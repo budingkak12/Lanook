@@ -34,14 +34,14 @@ import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +54,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -84,6 +86,7 @@ import com.example.androidclient.di.NetworkModule
 @Composable
 fun FileBrowserScreen(vm: FileBrowserViewModel) {
     val state by vm.uiState.collectAsState()
+    var moreMenuExpanded by remember { mutableStateOf(false) }
 
     // 当前目录下的文件列表（非目录），用于详情翻页
     val files = remember(state.items, state.path) { state.items.filter { !it.isDir } }
@@ -107,15 +110,6 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { vm.toggleHidden() }) {
-                        Icon(if (state.showHidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "隐藏项")
-                    }
-                    IconButton(onClick = { vm.toggleMediaOnly() }) {
-                        Icon(
-                            imageVector = if (state.mediaOnly) Icons.Filled.Image else Icons.Filled.ListAlt,
-                            contentDescription = if (state.mediaOnly) "只看媒体" else "全部文件"
-                        )
-                    }
                     IconButton(onClick = { vm.toggleViewMode() }) {
                         Icon(if (state.viewMode == FsViewMode.List) Icons.Filled.GridView else Icons.Filled.List, contentDescription = "视图")
                     }
@@ -124,6 +118,52 @@ fun FileBrowserScreen(vm: FileBrowserViewModel) {
                     }
                     IconButton(onClick = { showNewFolder = true }) {
                         Icon(Icons.Outlined.CreateNewFolder, contentDescription = "新建文件夹")
+                    }
+                    Box {
+                        IconButton(onClick = { moreMenuExpanded = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                        }
+                        DropdownMenu(
+                            expanded = moreMenuExpanded,
+                            onDismissRequest = { moreMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = state.showHidden,
+                                            onCheckedChange = {
+                                                moreMenuExpanded = false
+                                                vm.toggleHidden()
+                                            }
+                                        )
+                                        Text("显示隐藏文件", modifier = Modifier.padding(start = 4.dp))
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuExpanded = false
+                                    vm.toggleHidden()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = state.mediaOnly,
+                                            onCheckedChange = {
+                                                moreMenuExpanded = false
+                                                vm.toggleMediaOnly()
+                                            }
+                                        )
+                                        Text("只看媒体", modifier = Modifier.padding(start = 4.dp))
+                                    }
+                                },
+                                onClick = {
+                                    moreMenuExpanded = false
+                                    vm.toggleMediaOnly()
+                                }
+                            )
+                        }
                     }
                 }
             )
