@@ -378,7 +378,12 @@ fun MediaGrid(
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Adaptive(minSize = 108.dp),
-                    contentPadding = PaddingValues(8.dp),
+                    contentPadding = PaddingValues(
+                        start = 8.dp,
+                        top = 8.dp,
+                        end = 8.dp,
+                        bottom = 0.dp // 减少底部额外留白，保持各 Tab 截止线一致
+                    ),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxSize()

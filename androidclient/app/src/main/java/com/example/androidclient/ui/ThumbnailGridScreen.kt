@@ -21,6 +21,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
 import com.example.androidclient.data.model.BulkDeleteResult
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,6 +40,7 @@ fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Uni
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
     var pendingResult by remember { mutableStateOf<BulkDeleteResult?>(null) }
+    val layoutDirection = LocalLayoutDirection.current
 
     fun exitSelection() {
         selectedMap.clear()
@@ -81,10 +88,18 @@ fun ThumbnailGridScreen(viewModel: MainViewModel, onThumbnailClick: (Int) -> Uni
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
+        val contentPadding = PaddingValues(
+            start = paddingValues.calculateStartPadding(layoutDirection),
+            top = paddingValues.calculateTopPadding(),
+            end = paddingValues.calculateEndPadding(layoutDirection),
+            bottom = 0.dp // 对齐文件页的截止线，避免额外底部留白
+        )
         MediaGrid(
             items = items,
             onThumbnailClick = onThumbnailClick,
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier
+                .padding(contentPadding)
+                .fillMaxSize(), // 保持与文件页一致的底边截断
             gridContentDescription = "Thumbnail Grid",
             isSelecting = isSelecting,
             selectedIds = selectedIds,
