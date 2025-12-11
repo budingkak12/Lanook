@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import type { MediaItem } from "@/app/(main)/types"
-import { X, Heart, Star, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { X, Heart, Star, Trash2, ChevronLeft, ChevronRight, RotateCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -59,6 +59,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   const [isDeleting, setIsDeleting] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set())
+  const [rotation, setRotation] = useState(0)
   const swiperRef = useRef<any>(null)
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({})
   const { toast } = useToast()
@@ -181,6 +182,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     setIsLiked(Boolean(media.liked))
     setIsFavorited(Boolean(media.favorited))
+    setRotation(0)
     setLikeLoading(false)
     setFavoriteLoading(false)
     setIsDeleting(false)
@@ -414,6 +416,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     setCurrentSlideIndex(newIndex)
     onIndexChange(newIndex)
+    setRotation(0)
 
     // 更新当前媒体项
     if (allMedia[newIndex]) {
@@ -542,7 +545,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                         maxWidth: '100vw',
                         objectFit: 'contain',
                         minWidth: '1px',
-                        minHeight: '1px'
+                        minHeight: '1px',
+                        transform: `rotate(${rotation}deg)`,
+                        transition: 'transform 0.2s ease'
                       }}
                       onError={(e) => {
                         const target = e.currentTarget
@@ -620,26 +625,36 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
         </>
       )}
 
-      
-      {/* Bottom Actions */}
-      <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center gap-4 sm:gap-6 z-[99940]">
+    
+    {/* Bottom Actions */}
+    <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center z-[99940]">
+      <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
         <button
           type="button"
           disabled={likeLoading || isDeleting}
           onClick={() => void toggleLike()}
-          className={`text-foreground/90 transition-transform ${isLiked ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
+          className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white transition-transform ${isLiked ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
-          <Heart className={`w-7 h-7 ${isLiked ? "fill-current text-red-400" : "text-foreground/90"}`} />
+          <Heart className={`w-6 h-6 ${isLiked ? "fill-current text-red-400" : "text-white"}`} />
         </button>
         <button
           type="button"
           disabled={favoriteLoading || isDeleting}
           onClick={() => void toggleFavorite()}
-          className={`text-foreground/90 transition-transform ${isFavorited ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
+          className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white transition-transform ${isFavorited ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
         >
-          <Star className={`w-7 h-7 ${isFavorited ? "fill-current text-yellow-400" : "text-foreground/90"}`} />
+          <Star className={`w-6 h-6 ${isFavorited ? "fill-current text-yellow-400" : "text-white"}`} />
+        </button>
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={() => setRotation((prev) => (prev + 90) % 360)}
+          className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <RotateCw className="w-6 h-6" />
         </button>
       </div>
+    </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
