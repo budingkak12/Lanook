@@ -12,8 +12,9 @@
   --card-foreground: rgb(74 77 78);
   --popover: rgb(251 251 251);
   --popover-foreground: rgb(74 77 78);
-  --primary: rgb(251 251 251); /* 默认按钮/强调块：白底 */
-  --primary-foreground: rgb(74 77 78);
+  /* 主色用于强调/标签/图标等（不要用白色，否则会“看不见”） */
+  --primary: rgb(74 77 78);
+  --primary-foreground: rgb(251 251 251);
   --secondary: rgb(251 251 251);
   --secondary-foreground: rgb(74 77 78);
   --muted: rgb(240 242 244);

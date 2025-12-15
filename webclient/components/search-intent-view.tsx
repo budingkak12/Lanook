@@ -202,7 +202,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
         左侧：搜索控制区
         =========================================== 
       */}
-      <div className="w-full max-w-sm border-r border-border/60 flex flex-col bg-muted/20">
+      <div className="w-full max-w-sm border-r border-border/60 flex flex-col bg-transparent">
         
         {/* 状态提示 */}
         <div className="px-4 pt-2">
@@ -224,7 +224,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
             </div>
 
             <div 
-              className="group relative min-h-[44px] w-full rounded-xl border border-input bg-background px-2 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary cursor-text"
+              className="group relative min-h-[44px] w-full rounded-xl border border-input bg-card px-2 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary cursor-text"
               onClick={() => wantInputRef.current?.focus()}
             >
               <div className="flex flex-wrap items-center gap-1.5">
@@ -295,7 +295,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
             </div>
 
             <div 
-              className="group relative min-h-[44px] w-full rounded-xl border border-input bg-background px-2 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-destructive/20 focus-within:border-destructive/50 cursor-text"
+              className="group relative min-h-[44px] w-full rounded-xl border border-input bg-card px-2 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-destructive/20 focus-within:border-destructive/50 cursor-text"
               onClick={() => notWantInputRef.current?.focus()}
             >
               <div className="flex flex-wrap items-center gap-1.5">
@@ -396,7 +396,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
         右侧：搜索结果展示区域
         =========================================== 
       */}
-      <div className="flex-1 min-w-0 flex flex-col bg-background/50">
+      <div className="flex-1 min-w-0 flex flex-col bg-background">
         <div className="flex-1 overflow-y-auto">
           {hasActiveQuery ? (
             <div className="p-0 h-full">

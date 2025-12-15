@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AdvancedSearchView } from "@/components/advanced-search-view"
 import { SearchIntentView } from "@/components/search-intent-view"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -42,17 +43,27 @@ export default function SearchPage() {
       <div className="border-b border-border/60 bg-background/70 backdrop-blur-sm">
         <div className="px-4 h-12 flex items-center gap-2">
           <Button
-            variant={activeTab === "basic" ? "default" : "ghost"}
+            variant="ghost"
             size="sm"
-            className="rounded-full"
+            className={cn(
+              "rounded-full border border-transparent",
+              activeTab === "basic"
+                ? "bg-card text-foreground border-border shadow-xs hover:bg-card"
+                : "bg-transparent text-muted-foreground hover:text-foreground",
+            )}
             onClick={() => switchTab("basic")}
           >
             默认搜索
           </Button>
           <Button
-            variant={activeTab === "advanced" ? "default" : "ghost"}
+            variant="ghost"
             size="sm"
-            className="rounded-full"
+            className={cn(
+              "rounded-full border border-transparent",
+              activeTab === "advanced"
+                ? "bg-card text-foreground border-border shadow-xs hover:bg-card"
+                : "bg-transparent text-muted-foreground hover:text-foreground",
+            )}
             onClick={() => switchTab("advanced")}
           >
             高级面板
