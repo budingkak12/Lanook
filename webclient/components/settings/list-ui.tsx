@@ -1,15 +1,23 @@
 import type { ReactNode } from "react"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AnimatePresence, motion } from "framer-motion"
 
 export function SettingsPageShell({ children }: { children: ReactNode }) {
-  return <div className="min-h-[100dvh] w-full px-3 py-3 sm:px-5 sm:py-5">{children}</div>
+  // 顶部预留：safe-area + 固定标题栏高度（3rem）
+  return (
+    <div className="min-h-[100dvh] w-full px-3 sm:px-5 pb-4 pt-[calc(env(safe-area-inset-top)+3rem)]">
+      {children}
+    </div>
+  )
 }
 
 export function SettingsTitle({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky top-0 z-10 -mx-3 sm:-mx-5 px-3 sm:px-5 py-3 bg-[rgb(212_215_218)]">
-      <h1 className="text-center text-base sm:text-lg font-semibold text-[rgb(74_77_78)]">{children}</h1>
+    <div className="fixed top-0 left-0 right-0 z-30 bg-background pt-safe">
+      <div className="h-12 px-3 sm:px-5 flex items-center justify-center">
+        <h1 className="text-center text-base sm:text-lg font-semibold text-[rgb(74_77_78)]">{children}</h1>
+      </div>
     </div>
   )
 }
@@ -57,7 +65,8 @@ export function SettingsRow({
       )}
       aria-expanded={expanded}
     >
-      <div className="w-12 sm:w-14 flex items-center justify-center border-r border-[rgb(228_231_234)] text-[rgb(160_163_164)]">
+      {/* 左侧图标栏底色：0.972 ~= 248/255；右侧内容区保持 0.983 ~= 251/255 */}
+      <div className="w-12 sm:w-14 flex items-center justify-center border-r border-[rgb(228_231_234)] bg-[rgb(248_248_248)] text-[rgb(130_133_134)]">
         {icon}
       </div>
       <div className="flex-1 px-3 py-3 sm:px-4 sm:py-4 min-w-0">
@@ -82,3 +91,21 @@ export function SettingsPanel({ children }: { children: ReactNode }) {
   return <div className="px-3 py-3 sm:px-4 sm:py-4 bg-[rgb(251_251_251)]">{children}</div>
 }
 
+export function SettingsExpand({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {open ? (
+        <motion.div
+          key="settings-expand"
+          initial={{ height: 0, opacity: 0, y: -4 }}
+          animate={{ height: "auto", opacity: 1, y: 0 }}
+          exit={{ height: 0, opacity: 0, y: -4 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          style={{ overflow: "hidden" }}
+        >
+          {children}
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  )
+}
