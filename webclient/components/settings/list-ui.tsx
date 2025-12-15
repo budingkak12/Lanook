@@ -26,11 +26,12 @@ export function SettingsGroup({ children, className }: { children: ReactNode; cl
   return (
     <div
       className={cn(
-        "bg-[rgb(251_251_251)] rounded-xl overflow-hidden border border-[rgb(228_231_234)] shadow-sm",
+        // 阴影与顶部 tab 按钮保持一致（shadow-xs），避免明显描边
+        "bg-[rgb(251_251_251)] rounded-xl overflow-hidden shadow-lg",
         className,
       )}
     >
-      <div className="divide-y divide-[rgb(228_231_234)]">{children}</div>
+      <div className="divide-y divide-border/50">{children}</div>
     </div>
   )
 }
@@ -66,7 +67,7 @@ export function SettingsRow({
       aria-expanded={expanded}
     >
       {/* 左侧图标栏底色：0.972 ~= 248/255；右侧内容区保持 0.983 ~= 251/255 */}
-      <div className="w-12 sm:w-14 flex items-center justify-center border-r border-[rgb(228_231_234)] bg-[rgb(248_248_248)] text-[rgb(130_133_134)]">
+      <div className="w-12 sm:w-14 flex items-center justify-center border-r border-border/50 bg-[rgb(248_248_248)] text-[rgb(130_133_134)]">
         {icon}
       </div>
       <div className="flex-1 px-3 py-3 sm:px-4 sm:py-4 min-w-0">
