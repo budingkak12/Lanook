@@ -177,4 +177,39 @@
         rgba(255, 255, 255, 0.03) 4px
       );
   }
+} 
+
+/* Web 设置页：对齐 Android 白色主题风格 */
+.settings-web-androidlike {
+  /* 整体底色（最大背景） */
+  background-color: rgb(212 215 218);
+  color: rgb(74 77 78);
+
+  /* 让 Tailwind 的 bg-background/text-foreground 在该页面生效 */
+  --background: rgb(212 215 218);
+  --foreground: rgb(74 77 78);
+
+  /* 卡片/按钮的“盒子” */
+  --card: rgb(251 251 251);
+  --card-foreground: rgb(74 77 78);
+  --popover: rgb(251 251 251);
+  --popover-foreground: rgb(74 77 78);
+
+  /* 交互态/分隔线：保持轻量层次 */
+  --muted: rgb(240 242 244);
+  --muted-foreground: rgb(74 77 78);
+  --accent: rgb(240 242 244);
+  --accent-foreground: rgb(74 77 78);
+  --border: rgb(228 231 234);
+  --input: rgb(228 231 234);
+  --ring: rgb(160 163 164);
+}
+
+/* 设置页按钮盒子统一为 251/251/251，字体 74/77/78 */
+.settings-web-androidlike [data-slot="button"][data-variant="default"],
+.settings-web-androidlike [data-slot="button"][data-variant="outline"],
+.settings-web-androidlike [data-slot="button"][data-variant="secondary"] {
+  background-color: rgb(251 251 251);
+  color: rgb(74 77 78);
+  border-color: rgb(228 231 234);
 }
