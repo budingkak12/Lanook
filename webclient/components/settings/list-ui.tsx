@@ -77,14 +77,24 @@ export function SettingsRow({
   showChevron = true,
   expanded,
 }: SettingsRowProps) {
+  const clickable = Boolean(onClick)
   return (
-    <button
-      type="button"
+    <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       className={cn(
         "w-full text-left flex items-stretch",
         "text-[rgb(74_77_78)] bg-[rgb(251_251_251)]",
         "active:bg-[rgb(240_242_244)] transition-colors",
+        clickable && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
       )}
       aria-expanded={expanded}
     >
@@ -106,7 +116,7 @@ export function SettingsRow({
           </div>
         </div>
       </div>
-    </button>
+    </div>
   )
 }
 
