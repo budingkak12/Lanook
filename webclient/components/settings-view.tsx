@@ -12,7 +12,6 @@ import {
   NetworkSection,
   type NetworkInfo,
   SecuritySection,
-  SmartSection,
   StorageSection,
 } from "@/components/settings/sections"
 import { SettingsFileScan } from "@/components/settings-file-scan"
@@ -21,7 +20,7 @@ import { SettingsTasksPanel } from "@/components/settings-tasks-panel"
 import { useToast } from "@/hooks/use-toast"
 import { apiFetch, getOSInfo } from "@/lib/api"
 
-type SettingsSectionKey = "language" | "appearance" | "network" | "storage" | "smart" | "security"
+type SettingsSectionKey = "language" | "appearance" | "network" | "storage" | "security"
 
 export function SettingsView() {
   const { t, i18n } = useTranslation()
@@ -170,7 +169,6 @@ export function SettingsView() {
                 mediaManagement: <SettingsMediaManagement />,
               }}
             />
-            <SmartSection open={expandedSection === "smart"} onToggle={() => toggleSection("smart")} />
             <SecuritySection open={expandedSection === "security"} onToggle={() => toggleSection("security")} t={t} />
           </SettingsGroup>
         </div>

@@ -11,7 +11,6 @@ import {
   RotateCcw,
   Settings,
   Shield,
-  Sparkles,
   Sun,
   Wifi,
 } from "lucide-react"
@@ -366,39 +365,6 @@ export function StorageSection({
               </div>
             </div>
           </div>
-        </SettingsPanel>
-      </SettingsExpand>
-    </>
-  )
-}
-
-export function SmartSection({
-  open,
-  onToggle,
-}: {
-  open: boolean
-  onToggle: () => void
-}) {
-  return (
-    <>
-      <SettingsRow
-        icon={<Sparkles className="w-5 h-5" />}
-        title="智能搜索 (Beta)"
-        description="文本搜图 / 图搜图，调用 CLIP/SigLIP 向量检索"
-        expanded={open}
-        onClick={onToggle}
-        showChevron={false}
-        right={
-          <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-            <a href="/smart-search" target="_blank" rel="noreferrer">
-              打开
-            </a>
-          </Button>
-        }
-      />
-      <SettingsExpand open={open}>
-        <SettingsPanel>
-          <p className="text-sm text-[rgb(120_123_124)]">需要先在后端运行 /clip/rebuild 生成向量索引。</p>
         </SettingsPanel>
       </SettingsExpand>
     </>
