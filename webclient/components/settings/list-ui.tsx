@@ -15,8 +15,30 @@ export function SettingsPageShell({ children }: { children: ReactNode }) {
 export function SettingsTitle({ children }: { children: ReactNode }) {
   return (
     <div className="fixed top-0 left-0 right-0 z-30 bg-background pt-safe">
-      <div className="h-12 px-3 sm:px-5 flex items-center justify-center">
-        <h1 className="text-center text-base sm:text-lg font-semibold text-[rgb(74_77_78)]">{children}</h1>
+      <div className="h-12 px-3 sm:px-5 flex items-center gap-2">
+        <div className="w-10 shrink-0" />
+        <h1 className="flex-1 text-center text-base sm:text-lg font-semibold text-[rgb(74_77_78)]">{children}</h1>
+        <div className="w-10 shrink-0" />
+      </div>
+    </div>
+  )
+}
+
+export function SettingsTitleBar({
+  title,
+  left,
+  right,
+}: {
+  title: ReactNode
+  left?: ReactNode
+  right?: ReactNode
+}) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-30 bg-background pt-safe">
+      <div className="h-12 px-3 sm:px-5 flex items-center gap-2">
+        <div className="w-10 shrink-0 flex items-center">{left}</div>
+        <h1 className="flex-1 text-center text-base sm:text-lg font-semibold text-[rgb(74_77_78)]">{title}</h1>
+        <div className="w-10 shrink-0 flex items-center justify-end">{right}</div>
       </div>
     </div>
   )
