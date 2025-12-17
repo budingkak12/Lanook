@@ -238,10 +238,9 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               className={cn(
                 "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
                 searchCapsuleWrapperClass,
-                // 覆盖胶囊默认的 flex 布局，避免影响内部 input 的宽度计算
+                // 覆盖胶囊默认的 flex 布局，避免影响内部 input 的宽度计算；
+                // 其它状态（包含 focus-within 边框色）完全沿用 demo 中的默认实现。
                 "block",
-                // 不在输入时高亮边框/阴影，保持静态视觉
-                "focus-within:border-[rgb(150_150_150)] focus-within:ring-0",
               )}
               onClick={() => wantInputRef.current?.focus()}
             >
@@ -316,7 +315,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
                 searchCapsuleWrapperClass,
                 "block",
-                "focus-within:border-[rgb(150_150_150)] focus-within:ring-0",
               )}
               onClick={() => notWantInputRef.current?.focus()}
             >
