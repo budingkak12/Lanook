@@ -7,6 +7,12 @@ import type { MediaItem } from "@/app/(main)/types"
 import { MediaGrid } from "@/components/media-grid"
 import { Button } from "@/components/ui/button"
 import { getAllTags, type TagItem } from "@/lib/api"
+import {
+  SearchCapsuleInput,
+  SearchStandaloneButton,
+  searchCapsuleWrapperClass,
+} from "@/components/search/search-capsule"
+import { cn } from "@/lib/utils"
 
 // --- 类型定义 ---
 type TagOption = {
@@ -202,7 +208,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
         左侧：搜索控制区
         =========================================== 
       */}
-      <div className="w-full max-w-sm border-r border-border/60 flex flex-col bg-transparent">
+      <div className="w-full max-w-sm flex flex-col bg-transparent">
         
         {/* 状态提示 */}
         <div className="px-4 pt-2">
@@ -223,8 +229,12 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               <span className="text-sm font-medium text-foreground">想看</span>
             </div>
 
-            <div 
-              className="group relative min-h-[44px] w-full rounded-xl border border-input bg-card px-2 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary cursor-text"
+            <div
+              className={cn(
+                "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
+                searchCapsuleWrapperClass,
+                "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary",
+              )}
               onClick={() => wantInputRef.current?.focus()}
             >
               <div className="flex flex-wrap items-center gap-1.5">
@@ -253,13 +263,13 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 })}
                 
                 {/* 输入框 */}
-                <input
+                <SearchCapsuleInput
                   ref={wantInputRef}
                   value={wantInput}
                   onChange={(e) => setWantInput(e.target.value)}
                   onKeyDown={(e) => handleInputKeyDown(e, "want", wantInput)}
                   placeholder={wantTags.length > 0 ? "" : "描述画面，例：夕阳 海边"}
-                  className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none py-1"
+                  className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
                   autoComplete="off"
                   autoFocus
                 />
@@ -294,8 +304,12 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               <span className="text-sm font-medium text-foreground">不想看</span>
             </div>
 
-            <div 
-              className="group relative min-h-[44px] w-full rounded-xl border border-input bg-card px-2 py-1.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-destructive/20 focus-within:border-destructive/50 cursor-text"
+            <div
+              className={cn(
+                "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
+                searchCapsuleWrapperClass,
+                "focus-within:ring-2 focus-within:ring-destructive/20 focus-within:border-destructive/50",
+              )}
               onClick={() => notWantInputRef.current?.focus()}
             >
               <div className="flex flex-wrap items-center gap-1.5">
@@ -324,13 +338,13 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 })}
                 
                 {/* 输入框 */}
-                <input
+                <SearchCapsuleInput
                   ref={notWantInputRef}
                   value={notWantInput}
                   onChange={(e) => setNotWantInput(e.target.value)}
                   onKeyDown={(e) => handleInputKeyDown(e, "notWant", notWantInput)}
                   placeholder={notWantTags.length > 0 ? "" : "排除内容，例：#nsfw"}
-                  className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none py-1"
+                  className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
                   autoComplete="off"
                 />
               </div>
@@ -365,17 +379,14 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
 
           {/* 按钮区域 */}
           <div className="flex gap-3 pt-4">
-            <Button 
-                size="lg" 
-                className="flex-1 rounded-xl shadow-lg shadow-primary/20" 
-                onClick={handleRunSearch}
-            >
-              <SearchIcon className="w-5 h-5" />
-            </Button>
+            <SearchStandaloneButton
+              className="flex-1 h-11 shadow-lg shadow-primary/20"
+              onClick={handleRunSearch}
+            />
             <Button
               size="lg"
               variant="outline"
-              className="px-4 rounded-xl border-border/60 text-muted-foreground hover:text-foreground"
+              className="px-4 h-11 rounded-full border-border/60 text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setWantInput("")
                 setWantTags([])
