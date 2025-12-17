@@ -6,7 +6,15 @@ import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function SelectableList({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("bg-[rgb(251_251_251)]", className)}>{children}</div>
+  return <div className={cn("bg-[rgb(251_251_251)] divide-y divide-border/50", className)}>{children}</div>
+}
+
+export function SelectableListCard({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("rounded-xl overflow-hidden shadow-lg border border-border/50", className)}>
+      <SelectableList>{children}</SelectableList>
+    </div>
+  )
 }
 
 export type SelectableListItemProps = {

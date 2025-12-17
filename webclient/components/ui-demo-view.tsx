@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Settings as SettingsIcon, Sparkles } from "lucide-react"
+import { Settings as SettingsIcon, Sparkles } from "lucide-react"
 
-import { SettingsGroup, SettingsRow, SettingsPanel } from "@/components/settings/list-ui"
+import { SettingsExpand, SettingsGroup, SettingsRow, SettingsPanel } from "@/components/settings/list-ui"
 import {
   SearchCapsuleButton,
   SearchCapsuleInput,
@@ -12,6 +12,7 @@ import {
 } from "@/components/search/search-capsule"
 import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
+import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { cn } from "@/lib/utils"
 
 const quickActions = [
@@ -27,6 +28,7 @@ const switchColorCandidates = [
 export function UiDemoView() {
   const [searchText, setSearchText] = useState("")
   const [autoSearch, setAutoSearch] = useState(true)
+  const [instantSearchOpen, setInstantSearchOpen] = useState(true)
   const [selectedActionId, setSelectedActionId] = useState<string>("screenshot")
   const [thumbSizeTabLike, setThumbSizeTabLike] = useState<"large" | "small">("large")
 
@@ -111,19 +113,32 @@ export function UiDemoView() {
               icon={<SettingsIcon className="w-5 h-5" />}
               title="即时搜索"
               description="输入文字后自动触发搜索示例"
-              expanded={false}
-              onClick={() => setAutoSearch((prev) => !prev)}
+              expanded={instantSearchOpen}
+              onClick={() => setInstantSearchOpen((prev) => !prev)}
               showChevron={false}
-              right={
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation()
-                  }}
-                >
-                  <Switch checked={autoSearch} onCheckedChange={setAutoSearch} />
-                </div>
-              }
             />
+            <SettingsExpand open={instantSearchOpen}>
+              <SettingsPanel>
+                <div className="space-y-3">
+                  <div className="text-xs text-[rgb(120_123_124)]">
+                    这里演示“展开 → 单选勾选”的交互（与主题选择一致）。
+                  </div>
+                  <SelectableListCard className="shadow-none">
+                    <SelectableListItem selected={autoSearch === true} onSelect={() => setAutoSearch(true)}>
+                      开启（输入即搜索）
+                    </SelectableListItem>
+                    <SelectableListItem selected={autoSearch === false} onSelect={() => setAutoSearch(false)}>
+                      关闭（仅点击按钮搜索）
+                    </SelectableListItem>
+                  </SelectableListCard>
+
+                  <div className="flex items-center justify-between rounded-lg border border-border/50 bg-[rgb(251_251_251)] px-3 py-2">
+                    <div className="text-xs text-[rgb(120_123_124)]">Switch 独立展示（不放在“即时搜索”右侧）</div>
+                    <Switch checked={autoSearch} onCheckedChange={setAutoSearch} />
+                  </div>
+                </div>
+              </SettingsPanel>
+            </SettingsExpand>
             <SettingsPanel>
               <div className="flex items-center gap-2 text-xs text-[rgb(120_123_124)]">
                 <Sparkles className="w-4 h-4 text-[rgb(190_150_90)]" />
@@ -151,33 +166,17 @@ export function UiDemoView() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">选中项目示例</h2>
         <div className="w-full lg:w-1/2">
-          <SettingsGroup>
-            <div className="bg-[rgb(251_251_251)]">
-              {quickActions.map((action, index) => {
-                const isSelected = action.id === selectedActionId
-                return (
-                  <button
-                    key={action.id}
-                    type="button"
-                    className={cn(
-                      "flex w-full items-center justify-between px-4 py-3 text-left text-sm text-[rgb(74_77_78)]",
-                      index !== quickActions.length - 1 && "border-b border-border/50",
-                    )}
-                    onClick={() => setSelectedActionId(action.id)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {isSelected ? (
-                        <Check className="w-4 h-4 text-[#0eb83a]" style={{ strokeWidth: 3.2 }} />
-                      ) : (
-                        <span className="w-4 h-4" />
-                      )}
-                      <span>{action.label}</span>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </SettingsGroup>
+          <SelectableListCard>
+            {quickActions.map((action) => (
+              <SelectableListItem
+                key={action.id}
+                selected={action.id === selectedActionId}
+                onSelect={() => setSelectedActionId(action.id)}
+              >
+                {action.label}
+              </SelectableListItem>
+            ))}
+          </SelectableListCard>
         </div>
       </section>
     </div>

@@ -17,7 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { SettingsExpand, SettingsPanel, SettingsRow } from "@/components/settings/list-ui"
-import { SelectableList, SelectableListItem } from "@/components/ui/selectable-list"
+import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 
 type TFn = (key: string) => string
 
@@ -44,23 +44,14 @@ export function LanguageSection({
       />
       <SettingsExpand open={open}>
         <SettingsPanel>
-          <div className="rounded-xl overflow-hidden shadow-lg">
-            <SelectableList>
-              <SelectableListItem
-                selected={i18n.language === "zh-CN"}
-                onSelect={() => i18n.changeLanguage("zh-CN")}
-                className="border-b border-border/50"
-              >
-                {t("settings.language.chinese")}
-              </SelectableListItem>
-              <SelectableListItem
-                selected={i18n.language === "en-US"}
-                onSelect={() => i18n.changeLanguage("en-US")}
-              >
-                {t("settings.language.english")}
-              </SelectableListItem>
-            </SelectableList>
-          </div>
+          <SelectableListCard>
+            <SelectableListItem selected={i18n.language === "zh-CN"} onSelect={() => i18n.changeLanguage("zh-CN")}>
+              {t("settings.language.chinese")}
+            </SelectableListItem>
+            <SelectableListItem selected={i18n.language === "en-US"} onSelect={() => i18n.changeLanguage("en-US")}>
+              {t("settings.language.english")}
+            </SelectableListItem>
+          </SelectableListCard>
         </SettingsPanel>
       </SettingsExpand>
     </>
@@ -92,36 +83,26 @@ export function AppearanceSection({
       />
       <SettingsExpand open={open}>
         <SettingsPanel>
-          <div className="rounded-xl overflow-hidden shadow-lg">
-            <SelectableList>
-              <SelectableListItem
-                selected={theme === "light"}
-                onSelect={() => setTheme("light")}
-                className="border-b border-border/50"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Sun className="w-4 h-4 shrink-0" />
-                  <span className="truncate">明亮模式</span>
-                </div>
-              </SelectableListItem>
-              <SelectableListItem
-                selected={theme === "dark"}
-                onSelect={() => setTheme("dark")}
-                className="border-b border-border/50"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Moon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">黑暗模式</span>
-                </div>
-              </SelectableListItem>
-              <SelectableListItem selected={theme === "system"} onSelect={() => setTheme("system")}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <Monitor className="w-4 h-4 shrink-0" />
-                  <span className="truncate">跟随系统</span>
-                </div>
-              </SelectableListItem>
-            </SelectableList>
-          </div>
+          <SelectableListCard>
+            <SelectableListItem selected={theme === "light"} onSelect={() => setTheme("light")}>
+              <div className="flex items-center gap-2 min-w-0">
+                <Sun className="w-4 h-4 shrink-0" />
+                <span className="truncate">明亮模式</span>
+              </div>
+            </SelectableListItem>
+            <SelectableListItem selected={theme === "dark"} onSelect={() => setTheme("dark")}>
+              <div className="flex items-center gap-2 min-w-0">
+                <Moon className="w-4 h-4 shrink-0" />
+                <span className="truncate">黑暗模式</span>
+              </div>
+            </SelectableListItem>
+            <SelectableListItem selected={theme === "system"} onSelect={() => setTheme("system")}>
+              <div className="flex items-center gap-2 min-w-0">
+                <Monitor className="w-4 h-4 shrink-0" />
+                <span className="truncate">跟随系统</span>
+              </div>
+            </SelectableListItem>
+          </SelectableListCard>
         </SettingsPanel>
       </SettingsExpand>
     </>
