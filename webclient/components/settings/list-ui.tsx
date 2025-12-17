@@ -130,10 +130,10 @@ export function SettingsExpand({ open, children }: { open: boolean; children: Re
       {open ? (
         <motion.div
           key="settings-expand"
-          initial={{ height: 0, opacity: 0, y: -4 }}
-          animate={{ height: "auto", opacity: 1, y: 0 }}
-          exit={{ height: 0, opacity: 0, y: -4 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
           style={{ overflow: "hidden" }}
         >
           {children}

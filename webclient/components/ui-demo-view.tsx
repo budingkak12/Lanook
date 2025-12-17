@@ -12,6 +12,7 @@ import {
   SearchStandaloneButton,
   SearchStandaloneInput,
 } from "@/components/search/search-capsule"
+import { StorageSettingsBlockDemo } from "@/components/ui-demo-storage-tasks"
 import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
@@ -36,7 +37,7 @@ export function UiDemoView() {
 
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[rgb(74_77_78)]">独立搜索框</div>
+              <div className="text-xs font-medium text-[rgb(74_77_78)]">独立搜索框</div>
                 <div className="w-full max-w-lg">
                     <SearchStandaloneInput
                       value={searchText}
@@ -50,6 +51,17 @@ export function UiDemoView() {
                   <div className="text-xs font-medium text-[rgb(74_77_78)]">独立按钮</div>
                   <div className="flex items-center gap-3">
                     <SearchStandaloneButton />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-[rgb(74_77_78)]">开关颜色候选</div>
+                    <div className="flex flex-wrap gap-3">
+                      {switchColorCandidates.map((item) => (
+                        <label key={item.id} className="flex items-center gap-2 text-sm text-[rgb(74_77_78)]">
+                          <Switch className={item.className} defaultChecked />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -98,52 +110,22 @@ export function UiDemoView() {
         </div>
       </section>
 
-      {/* 设置块 + 开关 */}
+      {/* 存储与任务示例 / Storage & Tasks demo */}
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">设置块与开关</h2>
+        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">存储与任务 / Storage &amp; Tasks</h2>
+        <p className="text-xs text-[rgb(120_123_124)]">
+          演示“一级：存储与任务块 / 二级：文件索引服务卡片 / 三级：扫描模式与间隔”的层级结构。
+        </p>
+        <p className="text-xs text-[rgb(120_123_124)]">
+          规则：有勾选的列表一律使用扁平选择列表 / Selectable List Card（组件名：SelectableListCard），只有细边框不带阴影；
+          一级设置块盒子 / Settings Group（组件名：SettingsGroup）和二级功能卡片 / File Index Card（示例组件：StorageTasksSectionDemo）
+          保留阴影，用来区分层级。
+        </p>
         <div className="w-full lg:w-1/2">
-          <SettingsGroup>
-            <SettingsSelectableSection
-              icon={<SettingsIcon className="w-5 h-5" />}
-              title="即时搜索"
-              description="输入文字后自动触发搜索示例"
-              open={instantSearchOpen}
-              onToggle={() => setInstantSearchOpen((prev) => !prev)}
-              panelTop="这里演示“展开 → 单选勾选”的交互（与主题选择一致）。"
-              options={[
-                { id: "on", label: "开启（输入即搜索）", selected: autoSearch === true, onSelect: () => setAutoSearch(true) },
-                { id: "off", label: "关闭（仅点击按钮搜索）", selected: autoSearch === false, onSelect: () => setAutoSearch(false) },
-              ]}
-              panelBottom={
-                <SettingsToggleRowCard
-                  label="Switch 独立展示（不放在“即时搜索”右侧）"
-                  checked={autoSearch}
-                  onCheckedChange={setAutoSearch}
-                />
-              }
-            />
-            <SettingsPanel>
-              <div className="flex items-center gap-2 text-xs text-[rgb(120_123_124)]">
-                <Sparkles className="w-4 h-4 text-[rgb(190_150_90)]" />
-                <span>该区域展示了设置列表中的单行块样式，以及右侧的开关组件。</span>
-              </div>
-            </SettingsPanel>
-          </SettingsGroup>
+          <StorageSettingsBlockDemo />
         </div>
       </section>
 
-      {/* 开关颜色候选 */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">开关颜色候选</h2>
-        <div className="flex flex-wrap gap-4">
-          {switchColorCandidates.map((item) => (
-            <label key={item.id} className="flex items-center gap-2 text-sm text-[rgb(74_77_78)]">
-              <Switch className={item.className} defaultChecked />
-              <span>{item.label}</span>
-            </label>
-          ))}
-        </div>
-      </section>
     </div>
   )
 }
