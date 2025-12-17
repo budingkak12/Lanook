@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { HardDrive } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
 import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/language-selector"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { MediaSourceSelector } from "@/components/media-source-selector"
 import { MediaPathList } from "@/components/media-path-list"
 import { apiFetch } from "@/lib/api"
@@ -23,6 +22,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const isMockMode = useMemo(() => searchParams?.get("mock") === "1", [searchParams])
 
   const steps = useMemo(() => ([
@@ -46,7 +46,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
     },
     {
       id: 3,
-      title: "媒体路径清单",
+      title: "媒体来源清单",
       content: {
         title: t('init.step3.title'),
         description: "",
@@ -73,11 +73,20 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   }, [initialStep])
 
   const handleEnterHome = () => {
-    if (isMockMode) {
-      onInitialized?.()
-      return
+    // 初始化结束后，清理 URL 中的 forceInit 参数并回到首页
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("forceInit")
+      url.searchParams.delete("initStep")
+      window.history.replaceState({}, document.title, url.pathname + (url.search ? "?" + url.searchParams.toString() : "") + url.hash)
+    } catch {
+      // ignore
     }
-    window.location.reload()
+    if (onInitialized) {
+      onInitialized()
+    } else {
+      router.push("/")
+    }
   }
 
   const handleNextStep = async () => {
@@ -176,10 +185,8 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
               <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">{t('init.welcome')}</h1>
             </div>
 
-            {/* 主题切换按钮 */}
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-            </div>
+            {/* 初始化流程统一使用亮色主题，这里不提供切换入口 */}
+            <div className="flex items-center gap-2" />
           </div>
         </div>
 

@@ -1,8 +1,8 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
+import { motion } from "framer-motion"
+import { useTranslation } from "react-i18next"
+import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 
 export function LanguageSelector() {
   const { i18n, t } = useTranslation()
@@ -18,37 +18,22 @@ export function LanguageSelector() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeInOut" }}
-      className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg sm:rounded-xl p-4 sm:p-6 lg:p-8 shadow-lg w-full max-w-sm mx-auto"
+      className="w-full max-w-sm mx-auto"
     >
-      <div className="flex flex-col items-center justify-center gap-4 sm:gap-6 w-full">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+      <SelectableListCard>
+        <SelectableListItem
+          selected={currentLanguage === "zh-CN"}
+          onSelect={() => handleLanguageSelect("zh-CN")}
         >
-          <Button
-            variant={currentLanguage === 'zh-CN' ? 'default' : 'outline'}
-            onClick={() => handleLanguageSelect('zh-CN')}
-            className="w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300"
-          >
-            {t('init.chinese')}
-          </Button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+          <span className="text-sm sm:text-base">{t("init.chinese")}</span>
+        </SelectableListItem>
+        <SelectableListItem
+          selected={currentLanguage === "en-US"}
+          onSelect={() => handleLanguageSelect("en-US")}
         >
-          <Button
-            variant={currentLanguage === 'en-US' ? 'default' : 'outline'}
-            onClick={() => handleLanguageSelect('en-US')}
-            className="w-36 sm:w-44 lg:w-48 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg rounded-lg sm:rounded-xl transition-all duration-300"
-          >
-            {t('init.english')}
-          </Button>
-        </motion.div>
-      </div>
+          <span className="text-sm sm:text-base">{t("init.english")}</span>
+        </SelectableListItem>
+      </SelectableListCard>
     </motion.div>
   )
 }
