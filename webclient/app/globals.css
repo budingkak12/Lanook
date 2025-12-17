@@ -42,8 +42,37 @@
   --sidebar-ring: rgb(160 163 164);
 }
 
-/* Demo 专用暖色主题覆写：仅在 .theme-demo-warm 容器内生效 */
-.theme-demo-warm {
+.light {
+  --background: rgb(212 215 218);
+  --foreground: rgb(74 77 78);
+  --card: rgb(251 251 251);
+  --card-foreground: rgb(74 77 78);
+  --popover: rgb(251 251 251);
+  --popover-foreground: rgb(74 77 78);
+  --primary: rgb(74 77 78);
+  --primary-foreground: rgb(251 251 251);
+  --secondary: rgb(251 251 251);
+  --secondary-foreground: rgb(74 77 78);
+  --muted: rgb(240 242 244);
+  --muted-foreground: rgb(120 123 124);
+  --accent: rgb(240 242 244);
+  --accent-foreground: rgb(74 77 78);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: rgb(228 231 234);
+  --input: rgb(228 231 234);
+  --ring: rgb(160 163 164);
+  --sidebar: rgb(251 251 251);
+  --sidebar-foreground: rgb(74 77 78);
+  --sidebar-primary: rgb(251 251 251);
+  --sidebar-primary-foreground: rgb(74 77 78);
+  --sidebar-accent: rgb(240 242 244);
+  --sidebar-accent-foreground: rgb(74 77 78);
+  --sidebar-border: rgb(228 231 234);
+  --sidebar-ring: rgb(160 163 164);
+}
+
+.warm {
   --background: rgb(252 246 229); /* L0 页面背景：偏暖浅米色 */
   --foreground: rgb(74 77 78); /* 保持现有文字色，保证对比度 */
   --card: rgb(255 252 244); /* L1 卡片：略浅一点的奶白色 */

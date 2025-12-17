@@ -90,6 +90,12 @@ export function AppearanceSection({
                 <span className="truncate">明亮模式</span>
               </div>
             </SelectableListItem>
+            <SelectableListItem selected={theme === "warm"} onSelect={() => setTheme("warm")}>
+              <div className="flex items-center gap-2 min-w-0">
+                <Palette className="w-4 h-4 shrink-0" />
+                <span className="truncate">暖色模式</span>
+              </div>
+            </SelectableListItem>
             <SelectableListItem selected={theme === "dark"} onSelect={() => setTheme("dark")}>
               <div className="flex items-center gap-2 min-w-0">
                 <Moon className="w-4 h-4 shrink-0" />

@@ -45,6 +45,7 @@ export default function RootLayout({
           defaultTheme="light"
           enableSystem
           disableTransitionOnChange
+          themes={["light", "dark", "warm"]}
         >
           <I18nProvider>
             {children}

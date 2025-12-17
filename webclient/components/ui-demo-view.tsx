@@ -1,13 +1,14 @@
- "use client"
+"use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   SearchCapsuleButton,
   SearchCapsuleInput,
   SearchStandaloneButton,
   SearchStandaloneInput,
 } from "@/components/search/search-capsule"
-import { StorageSettingsBlockDemo, type DemoTheme } from "@/components/ui-demo-storage-tasks"
+import { StorageSettingsBlockDemo } from "@/components/ui-demo-storage-tasks"
+import { useTheme } from "next-themes"
 import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
@@ -16,14 +17,16 @@ const switchColorCandidates = [
   { id: "c1", label: "#0eb83a / rgb(14, 184, 58)", className: "data-[state=checked]:bg-[#0eb83a]" },
 ]
 
-export function UiDemoView({
-  demoTheme,
-  onDemoThemeChange,
-}: {
-  demoTheme: DemoTheme
-  onDemoThemeChange: (theme: DemoTheme) => void
-}) {
+export function UiDemoView() {
   const [searchText, setSearchText] = useState("")
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const currentTheme = mounted ? theme : undefined
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -85,22 +88,38 @@ export function UiDemoView({
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">主题预览切换 / Theme Preview</h2>
         <div className="w-full lg:w-1/2">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <TabLikeButton
-                active={demoTheme === "gray"}
-                className="w-24"
-                onClick={() => onDemoThemeChange("gray")}
+                active={currentTheme === "light"}
+                className="w-28"
+                onClick={() => setTheme("light")}
               >
-                灰色主题 / Gray
+                亮色 / Light
               </TabLikeButton>
 
               <TabLikeButton
-                active={demoTheme === "warm"}
-                className="w-24"
-                onClick={() => onDemoThemeChange("warm")}
+                active={currentTheme === "warm"}
+                className="w-28"
+                onClick={() => setTheme("warm")}
               >
-                米色主题 / Warm
+                暖色 / Warm
+              </TabLikeButton>
+
+              <TabLikeButton
+                active={currentTheme === "dark"}
+                className="w-28"
+                onClick={() => setTheme("dark")}
+              >
+                暗色 / Dark
+              </TabLikeButton>
+
+              <TabLikeButton
+                active={currentTheme === "system" || (!mounted && !currentTheme)}
+                className="w-32"
+                onClick={() => setTheme("system")}
+              >
+                跟随系统 / System
               </TabLikeButton>
             </div>
           </div>
