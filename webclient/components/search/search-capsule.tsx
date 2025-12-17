@@ -79,18 +79,25 @@ export function SearchStandaloneButton({
   ...props
 }: SearchStandaloneButtonProps) {
   return (
-    <button
-      type={type}
-      {...props}
+    <div
       className={cn(
-        baseButtonClass,
-        "rounded-full border border-input",
-        "hover:border-primary hover:bg-primary hover:text-primary-foreground",
-        className,
+        searchCapsuleWrapperClass,
+        "inline-flex items-stretch",
         wrapperClassName,
       )}
     >
-      {icon ?? <SearchIcon className="w-5 h-5" strokeWidth={2.4} />}
-    </button>
+      <button
+        type={type}
+        {...props}
+        className={cn(
+          baseButtonClass,
+          "flex-1 rounded-none border-none bg-transparent shadow-none",
+          "hover:bg-primary hover:text-primary-foreground",
+          className,
+        )}
+      >
+        {icon ?? <SearchIcon className="w-5 h-5" strokeWidth={2.4} />}
+      </button>
+    </div>
   )
 }

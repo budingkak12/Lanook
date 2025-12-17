@@ -380,7 +380,8 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
           {/* 按钮区域 */}
           <div className="flex gap-3 pt-4">
             <SearchStandaloneButton
-              className="flex-1 h-11 shadow-lg shadow-primary/20"
+              wrapperClassName="flex-1"
+              className="h-11 shadow-lg shadow-primary/20"
               onClick={handleRunSearch}
             />
             <Button

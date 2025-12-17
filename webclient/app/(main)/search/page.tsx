@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdvancedSearchView } from "@/components/advanced-search-view"
 import { SearchIntentView } from "@/components/search-intent-view"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { TabLikeButton } from "@/components/ui/tab-like-button"
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -41,33 +40,21 @@ export default function SearchPage() {
   return (
     <div className="h-full flex flex-col">
       <div className="border-b border-border/60 bg-background/70 backdrop-blur-sm">
-        <div className="px-4 h-12 flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "rounded-full border border-transparent",
-              activeTab === "basic"
-                ? "bg-card text-foreground border-border shadow-xs hover:bg-card"
-                : "bg-transparent text-muted-foreground hover:text-foreground",
-            )}
+        <div className="px-4 h-14 flex items-center gap-2">
+          <TabLikeButton
+            active={activeTab === "basic"}
+            className="h-9 px-3"
             onClick={() => switchTab("basic")}
           >
             默认搜索
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "rounded-full border border-transparent",
-              activeTab === "advanced"
-                ? "bg-card text-foreground border-border shadow-xs hover:bg-card"
-                : "bg-transparent text-muted-foreground hover:text-foreground",
-            )}
+          </TabLikeButton>
+          <TabLikeButton
+            active={activeTab === "advanced"}
+            className="h-9 px-3"
             onClick={() => switchTab("advanced")}
           >
             高级面板
-          </Button>
+          </TabLikeButton>
         </div>
       </div>
       <div className="flex-1 min-h-0">

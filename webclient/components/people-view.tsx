@@ -318,7 +318,7 @@ export function PeopleView() {
             }}
             icon={<ArrowLeft className="w-5 h-5" strokeWidth={2.4} />}
             aria-label="返回"
-            className="w-11"
+            wrapperClassName="w-11"
           />
           <div className="text-base font-semibold">
             {selectedCluster ? `${selectedCluster.label} 的照片` : "人物照片"}
