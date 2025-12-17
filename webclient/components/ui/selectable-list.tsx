@@ -22,9 +22,18 @@ export type SelectableListItemProps = {
   onSelect?: () => void
   children: React.ReactNode
   className?: string
+  right?: React.ReactNode
+  showCheck?: boolean
 }
 
-export function SelectableListItem({ selected = false, onSelect, children, className }: SelectableListItemProps) {
+export function SelectableListItem({
+  selected = false,
+  onSelect,
+  children,
+  className,
+  right,
+  showCheck = true,
+}: SelectableListItemProps) {
   return (
     <button
       type="button"
@@ -35,14 +44,15 @@ export function SelectableListItem({ selected = false, onSelect, children, class
         className,
       )}
     >
-      <div className="flex items-center gap-2">
-        {selected ? (
+      <div className="flex items-center gap-2 min-w-0">
+        {showCheck && selected ? (
           <Check className="w-4 h-4 text-[#0eb83a]" style={{ strokeWidth: 3.2 }} />
         ) : (
           <span className="w-4 h-4" />
         )}
-        {children}
+        <div className="min-w-0">{children}</div>
       </div>
+      {right ? <div className="shrink-0">{right}</div> : null}
     </button>
   )
 }

@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { SettingsExpand, SettingsPanel, SettingsRow } from "@/components/settings/list-ui"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
+import { SettingsSelectableSection } from "@/components/settings/selectable-section"
 
 type TFn = (key: string) => string
 
@@ -33,28 +34,27 @@ export function LanguageSection({
   i18n: { language: string; changeLanguage: (lng: string) => void }
 }) {
   return (
-    <>
-      <SettingsRow
-        icon={<Globe className="w-5 h-5" />}
-        title={t("settings.language.title")}
-        description={t("settings.language.current")}
-        expanded={open}
-        onClick={onToggle}
-        showChevron={false}
-      />
-      <SettingsExpand open={open}>
-        <SettingsPanel>
-          <SelectableListCard>
-            <SelectableListItem selected={i18n.language === "zh-CN"} onSelect={() => i18n.changeLanguage("zh-CN")}>
-              {t("settings.language.chinese")}
-            </SelectableListItem>
-            <SelectableListItem selected={i18n.language === "en-US"} onSelect={() => i18n.changeLanguage("en-US")}>
-              {t("settings.language.english")}
-            </SelectableListItem>
-          </SelectableListCard>
-        </SettingsPanel>
-      </SettingsExpand>
-    </>
+    <SettingsSelectableSection
+      icon={<Globe className="w-5 h-5" />}
+      title={t("settings.language.title")}
+      description={t("settings.language.current")}
+      open={open}
+      onToggle={onToggle}
+      options={[
+        {
+          id: "zh-CN",
+          label: t("settings.language.chinese"),
+          selected: i18n.language === "zh-CN",
+          onSelect: () => i18n.changeLanguage("zh-CN"),
+        },
+        {
+          id: "en-US",
+          label: t("settings.language.english"),
+          selected: i18n.language === "en-US",
+          onSelect: () => i18n.changeLanguage("en-US"),
+        },
+      ]}
+    />
   )
 }
 

@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { Settings as SettingsIcon, Sparkles } from "lucide-react"
 
-import { SettingsExpand, SettingsGroup, SettingsRow, SettingsPanel } from "@/components/settings/list-ui"
+import { SettingsGroup, SettingsPanel } from "@/components/settings/list-ui"
+import { SettingsSelectableSection } from "@/components/settings/selectable-section"
+import { SettingsToggleRowCard } from "@/components/settings/toggle-row-card"
 import {
   SearchCapsuleButton,
   SearchCapsuleInput,
@@ -13,7 +15,6 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
-import { cn } from "@/lib/utils"
 
 const quickActions = [
   { id: "screenshot", label: "屏幕截图" },
@@ -109,36 +110,25 @@ export function UiDemoView() {
         <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">设置块与开关</h2>
         <div className="w-full lg:w-1/2">
           <SettingsGroup>
-            <SettingsRow
+            <SettingsSelectableSection
               icon={<SettingsIcon className="w-5 h-5" />}
               title="即时搜索"
               description="输入文字后自动触发搜索示例"
-              expanded={instantSearchOpen}
-              onClick={() => setInstantSearchOpen((prev) => !prev)}
-              showChevron={false}
+              open={instantSearchOpen}
+              onToggle={() => setInstantSearchOpen((prev) => !prev)}
+              panelTop="这里演示“展开 → 单选勾选”的交互（与主题选择一致）。"
+              options={[
+                { id: "on", label: "开启（输入即搜索）", selected: autoSearch === true, onSelect: () => setAutoSearch(true) },
+                { id: "off", label: "关闭（仅点击按钮搜索）", selected: autoSearch === false, onSelect: () => setAutoSearch(false) },
+              ]}
+              panelBottom={
+                <SettingsToggleRowCard
+                  label="Switch 独立展示（不放在“即时搜索”右侧）"
+                  checked={autoSearch}
+                  onCheckedChange={setAutoSearch}
+                />
+              }
             />
-            <SettingsExpand open={instantSearchOpen}>
-              <SettingsPanel>
-                <div className="space-y-3">
-                  <div className="text-xs text-[rgb(120_123_124)]">
-                    这里演示“展开 → 单选勾选”的交互（与主题选择一致）。
-                  </div>
-                  <SelectableListCard className="shadow-none">
-                    <SelectableListItem selected={autoSearch === true} onSelect={() => setAutoSearch(true)}>
-                      开启（输入即搜索）
-                    </SelectableListItem>
-                    <SelectableListItem selected={autoSearch === false} onSelect={() => setAutoSearch(false)}>
-                      关闭（仅点击按钮搜索）
-                    </SelectableListItem>
-                  </SelectableListCard>
-
-                  <div className="flex items-center justify-between rounded-lg border border-border/50 bg-[rgb(251_251_251)] px-3 py-2">
-                    <div className="text-xs text-[rgb(120_123_124)]">Switch 独立展示（不放在“即时搜索”右侧）</div>
-                    <Switch checked={autoSearch} onCheckedChange={setAutoSearch} />
-                  </div>
-                </div>
-              </SettingsPanel>
-            </SettingsExpand>
             <SettingsPanel>
               <div className="flex items-center gap-2 text-xs text-[rgb(120_123_124)]">
                 <Sparkles className="w-4 h-4 text-[rgb(190_150_90)]" />
