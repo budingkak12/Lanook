@@ -1,18 +1,13 @@
-"use client"
+ "use client"
 
 import { useState } from "react"
-import { Settings as SettingsIcon, Sparkles } from "lucide-react"
-
-import { SettingsGroup, SettingsPanel } from "@/components/settings/list-ui"
-import { SettingsSelectableSection } from "@/components/settings/selectable-section"
-import { SettingsToggleRowCard } from "@/components/settings/toggle-row-card"
 import {
   SearchCapsuleButton,
   SearchCapsuleInput,
   SearchStandaloneButton,
   SearchStandaloneInput,
 } from "@/components/search/search-capsule"
-import { StorageSettingsBlockDemo } from "@/components/ui-demo-storage-tasks"
+import { StorageSettingsBlockDemo, type DemoTheme } from "@/components/ui-demo-storage-tasks"
 import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
@@ -21,11 +16,14 @@ const switchColorCandidates = [
   { id: "c1", label: "#0eb83a / rgb(14, 184, 58)", className: "data-[state=checked]:bg-[#0eb83a]" },
 ]
 
-export function UiDemoView() {
+export function UiDemoView({
+  demoTheme,
+  onDemoThemeChange,
+}: {
+  demoTheme: DemoTheme
+  onDemoThemeChange: (theme: DemoTheme) => void
+}) {
   const [searchText, setSearchText] = useState("")
-  const [autoSearch, setAutoSearch] = useState(true)
-  const [instantSearchOpen, setInstantSearchOpen] = useState(true)
-  const [thumbSizeTabLike, setThumbSizeTabLike] = useState<"large" | "small">("large")
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -83,27 +81,26 @@ export function UiDemoView() {
             </div>
           </section>
 
-      {/* 大图 / 小图 按钮切换 */}
+      {/* 主题预览切换 / Theme Preview Switch */}
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">大图 / 小图 切换</h2>
+        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">主题预览切换 / Theme Preview</h2>
         <div className="w-full lg:w-1/2">
           <div className="flex items-center gap-2">
-            {/* Web 侧边栏四个 Tab（随机 / 相册 / 搜索 / 设置）风格的版本，仅保留这一组 */}
             <div className="flex items-center gap-2">
               <TabLikeButton
-                active={thumbSizeTabLike === "large"}
+                active={demoTheme === "gray"}
                 className="w-24"
-                onClick={() => setThumbSizeTabLike("large")}
+                onClick={() => onDemoThemeChange("gray")}
               >
-                大图
+                灰色主题 / Gray
               </TabLikeButton>
 
               <TabLikeButton
-                active={thumbSizeTabLike === "small"}
+                active={demoTheme === "warm"}
                 className="w-24"
-                onClick={() => setThumbSizeTabLike("small")}
+                onClick={() => onDemoThemeChange("warm")}
               >
-                小图
+                米色主题 / Warm
               </TabLikeButton>
             </div>
           </div>

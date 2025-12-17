@@ -42,6 +42,29 @@
   --sidebar-ring: rgb(160 163 164);
 }
 
+/* Demo 专用暖色主题覆写：仅在 .theme-demo-warm 容器内生效 */
+.theme-demo-warm {
+  --background: rgb(252 246 229); /* L0 页面背景：偏暖浅米色 */
+  --foreground: rgb(74 77 78); /* 保持现有文字色，保证对比度 */
+  --card: rgb(255 252 244); /* L1 卡片：略浅一点的奶白色 */
+  --card-foreground: rgb(74 77 78);
+  --muted: rgb(246 238 226); /* L2 辅助块背景（列表行 hover 等） */
+  --muted-foreground: rgb(130 120 105);
+  --accent: rgb(248 236 216); /* 轻量强调底色 */
+  --accent-foreground: rgb(74 77 78);
+  --border: rgb(236 226 210);
+  --input: rgb(236 226 210);
+  --ring: rgb(210 180 130);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--card);
+  --sidebar-primary-foreground: var(--foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
 /* 暗色主题 - 保持原有风格一致 (参考提交5252ae3之前的配置) */
 .dark {
   --background: oklch(0.42 0.005 264); /* 深灰色背景 */

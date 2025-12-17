@@ -13,7 +13,7 @@ export function SearchCapsuleInput({ className, ...props }: SearchCapsuleInputPr
     <Input
       {...props}
       className={cn(
-        "h-11 flex-1 border-none bg-transparent shadow-none rounded-none px-5 text-base placeholder:text-[rgb(160_163_164)] focus-visible:ring-0 focus-visible:border-transparent",
+        "h-11 flex-1 border-none bg-transparent shadow-none rounded-none px-5 text-base placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-transparent",
         className,
       )}
     />
@@ -25,7 +25,7 @@ export type SearchCapsuleButtonProps = React.ButtonHTMLAttributes<HTMLButtonElem
 }
 
 const baseButtonClass =
-  "flex h-11 w-14 items-center justify-center bg-[rgb(252_252_252)] text-[rgb(30_30_30)] transition-colors"
+  "flex h-11 w-14 items-center justify-center bg-card text-foreground transition-colors"
 
 export function SearchCapsuleButton({ className, icon, type = "button", ...props }: SearchCapsuleButtonProps) {
   return (
@@ -34,8 +34,8 @@ export function SearchCapsuleButton({ className, icon, type = "button", ...props
       className={cn(
         baseButtonClass,
         // 默认底色比输入框区域略深一点，形成“分区”层次
-        "bg-[rgb(245_245_245)]",
-        "border-l border-[rgb(228_231_234)]",
+        "bg-muted",
+        "border-l border-border",
         "hover:border-primary hover:bg-primary hover:text-primary-foreground",
         className,
       )}
@@ -54,7 +54,7 @@ export function SearchStandaloneInput({ wrapperClassName, className, ...props }:
   return (
     <div
       className={cn(
-        "flex w-full items-center rounded-full border border-[rgb(150_150_150)] bg-[rgb(252_252_252)] overflow-hidden focus-within:border-[rgb(90_90_90)]",
+        "flex w-full items-center rounded-full border border-input bg-card overflow-hidden focus-within:border-ring",
         wrapperClassName,
       )}
     >
@@ -80,7 +80,7 @@ export function SearchStandaloneButton({
       {...props}
       className={cn(
         baseButtonClass,
-        "rounded-full border border-[rgb(150_150_150)]",
+        "rounded-full border border-input",
         "hover:border-primary hover:bg-primary hover:text-primary-foreground",
         className,
         wrapperClassName,

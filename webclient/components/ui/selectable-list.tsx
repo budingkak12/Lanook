@@ -6,7 +6,7 @@ import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function SelectableList({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("bg-[rgb(251_251_251)] divide-y divide-border/50", className)}>{children}</div>
+  return <div className={cn("bg-card divide-y divide-border/50", className)}>{children}</div>
 }
 
 export function SelectableListCard({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -39,8 +39,8 @@ export function SelectableListItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center justify-between px-4 py-3 text-left text-sm text-[rgb(74_77_78)]",
-        "active:bg-[rgb(240_242_244)] transition-colors",
+        "flex w-full items-center justify-between px-4 py-3 text-left text-sm text-foreground",
+        "active:bg-muted transition-colors",
         className,
       )}
     >

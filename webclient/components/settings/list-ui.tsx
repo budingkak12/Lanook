@@ -49,7 +49,7 @@ export function SettingsGroup({ children, className }: { children: ReactNode; cl
     <div
       className={cn(
         // 阴影与顶部 tab 按钮保持一致（shadow-xs），避免明显描边
-        "bg-[rgb(251_251_251)] rounded-xl overflow-hidden shadow-lg",
+        "bg-card rounded-xl overflow-hidden shadow-lg",
         className,
       )}
     >
@@ -92,22 +92,22 @@ export function SettingsRow({
       }}
       className={cn(
         "w-full text-left flex items-stretch",
-        "text-[rgb(74_77_78)] bg-[rgb(251_251_251)]",
-        "active:bg-[rgb(240_242_244)] transition-colors",
+        "text-foreground bg-card",
+        "active:bg-muted transition-colors",
         clickable && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
       )}
       aria-expanded={expanded}
     >
       {/* 左侧图标栏底色：0.972 ~= 248/255；右侧内容区保持 0.983 ~= 251/255 */}
-      <div className="w-12 sm:w-14 flex items-center justify-center border-r border-border/50 bg-[rgb(248_248_248)] text-[rgb(130_133_134)]">
+      <div className="w-12 sm:w-14 flex items-center justify-center border-r border-border/50 bg-muted text-[rgb(130_133_134)]">
         {icon}
       </div>
       <div className="flex-1 px-3 py-3 sm:px-4 sm:py-4 min-w-0">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[rgb(74_77_78)] text-sm sm:text-base font-medium truncate">{title}</div>
+            <div className="text-foreground text-sm sm:text-base font-medium truncate">{title}</div>
             {description ? (
-              <div className="text-xs sm:text-sm text-[rgb(120_123_124)] mt-0.5 truncate">{description}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">{description}</div>
             ) : null}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -121,7 +121,7 @@ export function SettingsRow({
 }
 
 export function SettingsPanel({ children }: { children: ReactNode }) {
-  return <div className="px-3 py-3 sm:px-4 sm:py-4 bg-[rgb(251_251_251)]">{children}</div>
+  return <div className="px-3 py-3 sm:px-4 sm:py-4 bg-card">{children}</div>
 }
 
 export function SettingsExpand({ open, children }: { open: boolean; children: ReactNode }) {

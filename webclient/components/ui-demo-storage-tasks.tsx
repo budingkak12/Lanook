@@ -12,7 +12,7 @@ export function StorageSettingsBlockDemo() {
   const [open, setOpen] = useState(true)
 
   return (
-    <SettingsGroup>
+    <SettingsGroup className="shadow-lg">
       <SettingsRow
         icon={<HardDrive className="w-5 h-5" />}
         title="存储与任务 / Storage & Tasks"
@@ -28,7 +28,7 @@ export function StorageSettingsBlockDemo() {
             <StorageTasksSectionDemo />
 
             {/* 预留区：任务与进度 / Tasks & Progress */}
-            <div className="border-t border-[rgb(228_231_234)] pt-4">
+            <div className="border-t border-border pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <HardDrive className="w-4 h-4" />
                 <h4 className="text-sm font-medium">任务与进度 / Tasks &amp; Progress</h4>
@@ -39,7 +39,7 @@ export function StorageSettingsBlockDemo() {
             </div>
 
             {/* 预留区：媒体路径管理 / Media Path Management */}
-            <div className="border-t border-[rgb(228_231_234)] pt-4">
+            <div className="border-t border-border pt-4">
               <div className="flex items-center gap-2 mb-3">
                 <HardDrive className="w-4 h-4" />
                 <h4 className="text-sm font-medium">媒体路径管理 / Media Paths</h4>
@@ -51,7 +51,7 @@ export function StorageSettingsBlockDemo() {
           </div>
         </SettingsPanel>
       </SettingsExpand>
-    </SettingsGroup>
+      </SettingsGroup>
   )
 }
 
@@ -62,7 +62,7 @@ export function StorageTasksSectionDemo() {
   const [scanInterval, setScanInterval] = useState<"hourly" | "daily" | "weekly">("hourly")
 
   return (
-    <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 bg-[rgb(251_251_251)]">
+    <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-card">
       <div className="px-4 py-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-medium text-[rgb(74_77_78)]">
