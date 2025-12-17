@@ -39,7 +39,7 @@ export function MobileBottomNav({ activeView, onViewChange }: MobileBottomNavPro
                   "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-300 min-w-0 flex-1",
                   isActive
                     ? "text-primary opacity-100"
-                    : "text-muted-foreground opacity-55 hover:text-foreground hover:opacity-100"
+                    : "text-muted-foreground opacity-40 hover:text-foreground hover:opacity-100"
                 )}
               >
                 <div className={cn(
