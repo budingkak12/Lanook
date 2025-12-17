@@ -11,6 +11,7 @@ import {
   SearchStandaloneInput,
 } from "@/components/search/search-capsule"
 import { Switch } from "@/components/ui/switch"
+import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { cn } from "@/lib/utils"
 
 const quickActions = [
@@ -81,32 +82,21 @@ export function UiDemoView() {
           <div className="flex items-center gap-2">
             {/* Web 侧边栏四个 Tab（随机 / 相册 / 搜索 / 设置）风格的版本，仅保留这一组 */}
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className={cn(
-                  // 完全复用 StepNavigation 中的样式，只是横向排布、居中
-                  "flex items-center gap-2 rounded-xl text-left transition-colors duration-150 justify-center w-24 px-3 py-2",
-                  thumbSizeTabLike === "large"
-                    ? "bg-primary text-primary-foreground shadow-lg"
-                    : "bg-card/30 backdrop-blur-sm hover:bg-card/50 shadow-sm hover:shadow-md",
-                )}
+              <TabLikeButton
+                active={thumbSizeTabLike === "large"}
+                className="w-24"
                 onClick={() => setThumbSizeTabLike("large")}
               >
-                <span className="text-sm sm:text-base font-medium leading-relaxed">大图</span>
-              </button>
+                大图
+              </TabLikeButton>
 
-              <button
-                type="button"
-                className={cn(
-                  "flex items-center gap-2 rounded-xl text-left transition-colors duration-150 justify-center w-24 px-3 py-2",
-                  thumbSizeTabLike === "small"
-                    ? "bg-primary text-primary-foreground shadow-lg"
-                    : "bg-card/30 backdrop-blur-sm hover:bg-card/50 shadow-sm hover:shadow-md",
-                )}
+              <TabLikeButton
+                active={thumbSizeTabLike === "small"}
+                className="w-24"
                 onClick={() => setThumbSizeTabLike("small")}
               >
-                <span className="text-sm sm:text-base font-medium leading-relaxed">小图</span>
-              </button>
+                小图
+              </TabLikeButton>
             </div>
           </div>
         </div>

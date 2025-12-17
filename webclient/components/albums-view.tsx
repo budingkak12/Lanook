@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import { Album, Users, FolderOpen } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { PeopleView } from "@/components/people-view"
+import { TabLikeButton } from "@/components/ui/tab-like-button"
 
 function AlbumsPlaceholder() {
   return (
@@ -23,32 +23,22 @@ export function AlbumsView() {
   return (
     <div className="h-full flex flex-col gap-4 p-4 lg:p-6">
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition",
-            tab === "albums"
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-card border-border hover:bg-muted",
-          )}
+        <TabLikeButton
+          active={tab === "albums"}
+          className="w-28"
+          icon={<Album className="w-4 h-4" />}
           onClick={() => setTab("albums")}
         >
-          <Album className="w-4 h-4" />
           相册
-        </button>
-        <button
-          type="button"
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition",
-            tab === "people"
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-card border-border hover:bg-muted",
-          )}
+        </TabLikeButton>
+        <TabLikeButton
+          active={tab === "people"}
+          className="w-28"
+          icon={<Users className="w-4 h-4" />}
           onClick={() => setTab("people")}
         >
-          <Users className="w-4 h-4" />
           人物
-        </button>
+        </TabLikeButton>
       </div>
 
       <div className="flex-1 min-h-0">

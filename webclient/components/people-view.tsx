@@ -7,6 +7,7 @@ import type { FaceCluster, FaceClusterMediaItem } from "@/lib/api"
 import { getFaceClusterItems, getFaceClusters } from "@/lib/api"
 import type { MediaItem } from "@/app/(main)/types"
 import { MediaViewer } from "@/components/media-viewer"
+import { SearchStandaloneButton } from "@/components/search/search-capsule"
 
 function guessType(filename: string): "image" | "video" {
   const lower = (filename || "").toLowerCase()
@@ -306,8 +307,7 @@ export function PeopleView() {
     <div className="flex-1 min-h-0 flex flex-col gap-3">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <SearchStandaloneButton
             onClick={() => {
               setMode("list")
               setSelectedId(null)
@@ -316,11 +316,10 @@ export function PeopleView() {
               setItemsHasMore(true)
               setError(null)
             }}
-            className="inline-flex items-center gap-1 px-2 py-1 text-sm rounded-md border hover:bg-muted transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            返回
-          </button>
+            icon={<ArrowLeft className="w-5 h-5" strokeWidth={2.4} />}
+            aria-label="返回"
+            className="w-11"
+          />
           <div className="text-base font-semibold">
             {selectedCluster ? `${selectedCluster.label} 的照片` : "人物照片"}
           </div>
