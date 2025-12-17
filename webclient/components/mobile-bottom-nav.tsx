@@ -36,14 +36,14 @@ export function MobileBottomNav({ activeView, onViewChange }: MobileBottomNavPro
                 key={item.id}
                 onClick={() => onViewChange(item.id)}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-300 min-w-0 flex-1",
+                  "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-colors duration-150 min-w-0 flex-1",
                   isActive
                     ? "text-primary opacity-100"
                     : "text-muted-foreground opacity-40 hover:text-foreground hover:opacity-100"
                 )}
               >
                 <div className={cn(
-                  "p-1.5 rounded-lg transition-all duration-300",
+                  "p-1.5 rounded-lg transition-colors duration-150",
                   isActive
                     ? "bg-transparent text-primary"
                     : "bg-transparent hover:bg-muted/50"

@@ -61,6 +61,24 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
     console.log("[search] media click", media.mediaId)
   }, [])
 
+  // 输入时始终让光标附近内容可见（处理长文本在部分浏览器中不自动滚动的问题）
+  const handleWantInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setWantInput(e.target.value)
+    const el = e.currentTarget
+    // 下一帧再设置 scrollLeft，避免与浏览器默认行为冲突
+    requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth
+    })
+  }, [])
+
+  const handleNotWantInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNotWantInput(e.target.value)
+    const el = e.currentTarget
+    requestAnimationFrame(() => {
+      el.scrollLeft = el.scrollWidth
+    })
+  }, [])
+
   useEffect(() => {
     let mounted = true
     setIsLoadingTags(true)
@@ -220,6 +238,8 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               className={cn(
                 "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
                 searchCapsuleWrapperClass,
+                // 覆盖胶囊默认的 flex 布局，避免影响内部 input 的宽度计算
+                "block",
                 "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary",
               )}
               onClick={() => wantInputRef.current?.focus()}
@@ -253,7 +273,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 <SearchCapsuleInput
                   ref={wantInputRef}
                   value={wantInput}
-                  onChange={(e) => setWantInput(e.target.value)}
+                  onChange={handleWantInputChange}
                   onKeyDown={(e) => handleInputKeyDown(e, "want", wantInput)}
                   placeholder={wantTags.length > 0 ? "" : "描述画面，例：夕阳 海边"}
                   className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
@@ -295,6 +315,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               className={cn(
                 "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
                 searchCapsuleWrapperClass,
+                "block",
                 "focus-within:ring-2 focus-within:ring-destructive/20 focus-within:border-destructive/50",
               )}
               onClick={() => notWantInputRef.current?.focus()}
@@ -328,7 +349,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 <SearchCapsuleInput
                   ref={notWantInputRef}
                   value={notWantInput}
-                  onChange={(e) => setNotWantInput(e.target.value)}
+                  onChange={handleNotWantInputChange}
                   onKeyDown={(e) => handleInputKeyDown(e, "notWant", notWantInput)}
                   placeholder={notWantTags.length > 0 ? "" : "排除内容，例：#nsfw"}
                   className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
