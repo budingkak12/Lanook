@@ -16,12 +16,6 @@ import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 
-const quickActions = [
-  { id: "screenshot", label: "屏幕截图" },
-  { id: "quick-shot", label: "快速拍照" },
-  { id: "switch-app", label: "切换上一个应用" },
-]
-
 const switchColorCandidates = [
   { id: "c1", label: "#0eb83a / rgb(14, 184, 58)", className: "data-[state=checked]:bg-[#0eb83a]" },
 ]
@@ -30,7 +24,6 @@ export function UiDemoView() {
   const [searchText, setSearchText] = useState("")
   const [autoSearch, setAutoSearch] = useState(true)
   const [instantSearchOpen, setInstantSearchOpen] = useState(true)
-  const [selectedActionId, setSelectedActionId] = useState<string>("screenshot")
   const [thumbSizeTabLike, setThumbSizeTabLike] = useState<"large" | "small">("large")
 
   return (
@@ -149,24 +142,6 @@ export function UiDemoView() {
               <span>{item.label}</span>
             </label>
           ))}
-        </div>
-      </section>
-
-      {/* 选中项目列表 */}
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">选中项目示例</h2>
-        <div className="w-full lg:w-1/2">
-          <SelectableListCard>
-            {quickActions.map((action) => (
-              <SelectableListItem
-                key={action.id}
-                selected={action.id === selectedActionId}
-                onSelect={() => setSelectedActionId(action.id)}
-              >
-                {action.label}
-              </SelectableListItem>
-            ))}
-          </SelectableListCard>
         </div>
       </section>
     </div>
