@@ -39,7 +39,7 @@ export default function SearchPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b border-border/60 bg-background/70 backdrop-blur-sm">
+      <div className="bg-background/70 backdrop-blur-sm">
         <div className="px-4 h-14 flex items-center gap-2">
           <TabLikeButton
             active={activeTab === "basic"}

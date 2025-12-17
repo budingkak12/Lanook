@@ -49,8 +49,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   const [appliedQuery, setAppliedQuery] = useState<string | null>(null)
   const [appliedTag, setAppliedTag] = useState<string | null>(null)
   const [refreshVersion, setRefreshVersion] = useState(0)
-  const [formError, setFormError] = useState<string | null>(null)
-
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [isLoadingTags, setIsLoadingTags] = useState(false)
   const [tagError, setTagError] = useState<string | null>(null)
@@ -122,7 +120,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
         setNotWantInput((prev) => removeLastToken(prev))
         notWantInputRef.current?.focus()
       }
-      setFormError(null)
     },
     [],
   )
@@ -146,13 +143,8 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
       notWantTags.length > 0
 
     if (!hasContent) {
-      setFormError("请输入搜索内容")
-      setAppliedQuery(null)
-      setAppliedTag(null)
       return
     }
-
-    setFormError(null)
 
     const queryParts: string[] = []
     const positiveText = wantTokens.join(" ")
@@ -366,12 +358,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
             </div>
           </section>
 
-          {formError && (
-            <p className="text-xs text-destructive mt-1 animate-in fade-in slide-in-from-top-1">
-              {formError}
-            </p>
-          )}
-
           {/* 按钮区域：使用统一的独立按钮组件（默认小号，宽度可通过 className 控制） */}
           <div className="flex gap-3 pt-4">
             <SearchStandaloneButton
@@ -389,7 +375,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 setNotWantTags([])
                 setAppliedQuery(null)
                 setAppliedTag(null)
-                setFormError(null)
               }}
             />
           </div>

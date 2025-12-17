@@ -21,11 +21,11 @@ export function AlbumsView() {
   const [tab, setTab] = useState<"albums" | "people">("people")
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4 lg:p-6">
-      <div className="flex items-center gap-2">
+    <div className="h-full flex flex-col">
+      <div className="px-4 h-14 flex items-center gap-2">
         <TabLikeButton
           active={tab === "albums"}
-          className="w-28"
+          className="h-9 px-3"
           icon={<Album className="w-4 h-4" />}
           onClick={() => setTab("albums")}
         >
@@ -33,7 +33,7 @@ export function AlbumsView() {
         </TabLikeButton>
         <TabLikeButton
           active={tab === "people"}
-          className="w-28"
+          className="h-9 px-3"
           icon={<Users className="w-4 h-4" />}
           onClick={() => setTab("people")}
         >
@@ -41,7 +41,7 @@ export function AlbumsView() {
         </TabLikeButton>
       </div>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 px-4 pb-4 lg:px-6 lg:pb-6">
         {tab === "albums" ? <AlbumsPlaceholder /> : <PeopleView />}
       </div>
     </div>
