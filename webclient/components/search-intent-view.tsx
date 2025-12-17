@@ -240,7 +240,8 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 searchCapsuleWrapperClass,
                 // 覆盖胶囊默认的 flex 布局，避免影响内部 input 的宽度计算
                 "block",
-                "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary",
+                // 不在输入时高亮边框/阴影，保持静态视觉
+                "focus-within:border-[rgb(150_150_150)] focus-within:ring-0",
               )}
               onClick={() => wantInputRef.current?.focus()}
             >
@@ -278,7 +279,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                   placeholder={wantTags.length > 0 ? "" : "描述画面，例：夕阳 海边"}
                   className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
                   autoComplete="off"
-                  autoFocus
                 />
               </div>
 
@@ -316,7 +316,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
                 searchCapsuleWrapperClass,
                 "block",
-                "focus-within:ring-2 focus-within:ring-destructive/20 focus-within:border-destructive/50",
+                "focus-within:border-[rgb(150_150_150)] focus-within:ring-0",
               )}
               onClick={() => notWantInputRef.current?.focus()}
             >
