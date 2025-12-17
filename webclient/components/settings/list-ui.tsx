@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion"
 export function SettingsPageShell({ children }: { children: ReactNode }) {
   // 顶部预留：safe-area + 固定标题栏高度（3rem）
   return (
-    <div className="min-h-[100dvh] w-full px-3 sm:px-5 pb-4 pt-[calc(env(safe-area-inset-top)+3rem)]">
+    <div className="min-h-[100dvh] w-full px-3 sm:px-5 pt-[calc(env(safe-area-inset-top)+3rem)] pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
       {children}
     </div>
   )
