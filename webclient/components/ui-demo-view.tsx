@@ -6,6 +6,7 @@ import {
   SearchCapsuleInput,
   SearchStandaloneButton,
   SearchStandaloneInput,
+  searchCapsuleWrapperClass,
 } from "@/components/search/search-capsule"
 import { StorageSettingsBlockDemo } from "@/components/ui-demo-storage-tasks"
 import { useTheme } from "next-themes"
@@ -69,7 +70,7 @@ export function UiDemoView() {
 
               <div className="text-xs font-medium text-[rgb(74_77_78)]">组合搜索框（Input + Button）</div>
               <div className="w-full max-w-4xl">
-                <div className="flex w-full items-center rounded-full border border-[rgb(150_150_150)] bg-[rgb(252_252_252)] overflow-hidden focus-within:border-[rgb(90_90_90)]">
+                <div className={searchCapsuleWrapperClass}>
                   <SearchCapsuleInput
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
