@@ -17,6 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { SettingsExpand, SettingsPanel, SettingsRow } from "@/components/settings/list-ui"
+import { SelectableList, SelectableListItem } from "@/components/ui/selectable-list"
 
 type TFn = (key: string) => string
 
@@ -43,21 +44,22 @@ export function LanguageSection({
       />
       <SettingsExpand open={open}>
         <SettingsPanel>
-          <div className="space-y-2">
-            <Button
-              variant={i18n.language === "zh-CN" ? "default" : "outline"}
-              className="w-full justify-start"
-              onClick={() => i18n.changeLanguage("zh-CN")}
-            >
-              {t("settings.language.chinese")}
-            </Button>
-            <Button
-              variant={i18n.language === "en-US" ? "default" : "outline"}
-              className="w-full justify-start"
-              onClick={() => i18n.changeLanguage("en-US")}
-            >
-              {t("settings.language.english")}
-            </Button>
+          <div className="rounded-xl overflow-hidden shadow-lg">
+            <SelectableList>
+              <SelectableListItem
+                selected={i18n.language === "zh-CN"}
+                onSelect={() => i18n.changeLanguage("zh-CN")}
+                className="border-b border-border/50"
+              >
+                {t("settings.language.chinese")}
+              </SelectableListItem>
+              <SelectableListItem
+                selected={i18n.language === "en-US"}
+                onSelect={() => i18n.changeLanguage("en-US")}
+              >
+                {t("settings.language.english")}
+              </SelectableListItem>
+            </SelectableList>
           </div>
         </SettingsPanel>
       </SettingsExpand>
@@ -90,51 +92,35 @@ export function AppearanceSection({
       />
       <SettingsExpand open={open}>
         <SettingsPanel>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-2">
-              <Button
-                variant={theme === "light" ? "default" : "outline"}
-                className="h-auto p-3 justify-start"
-                onClick={() => setTheme("light")}
+          <div className="rounded-xl overflow-hidden shadow-lg">
+            <SelectableList>
+              <SelectableListItem
+                selected={theme === "light"}
+                onSelect={() => setTheme("light")}
+                className="border-b border-border/50"
               >
-                <Sun className="w-4 h-4 mr-2" />
-                <div className="text-left">
-                  <p className="text-sm font-medium">明亮模式</p>
-                  <p className="text-xs opacity-70">适合白天使用</p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sun className="w-4 h-4 shrink-0" />
+                  <span className="truncate">明亮模式</span>
                 </div>
-              </Button>
-
-              <Button
-                variant={theme === "dark" ? "default" : "outline"}
-                className="h-auto p-3 justify-start"
-                onClick={() => setTheme("dark")}
+              </SelectableListItem>
+              <SelectableListItem
+                selected={theme === "dark"}
+                onSelect={() => setTheme("dark")}
+                className="border-b border-border/50"
               >
-                <Moon className="w-4 h-4 mr-2" />
-                <div className="text-left">
-                  <p className="text-sm font-medium">黑暗模式</p>
-                  <p className="text-xs opacity-70">适合夜间使用</p>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Moon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">黑暗模式</span>
                 </div>
-              </Button>
-
-              <Button
-                variant={theme === "system" ? "default" : "outline"}
-                className="h-auto p-3 justify-start"
-                onClick={() => setTheme("system")}
-              >
-                <Monitor className="w-4 h-4 mr-2" />
-                <div className="text-left">
-                  <p className="text-sm font-medium">跟随系统</p>
-                  <p className="text-xs opacity-70">自动适配系统</p>
+              </SelectableListItem>
+              <SelectableListItem selected={theme === "system"} onSelect={() => setTheme("system")}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Monitor className="w-4 h-4 shrink-0" />
+                  <span className="truncate">跟随系统</span>
                 </div>
-              </Button>
-            </div>
-
-            <div className="text-xs bg-[rgb(240_242_244)] text-[rgb(74_77_78)] p-2 rounded">
-              当前：<span className="font-medium">{theme === "light" ? "明亮" : theme === "dark" ? "黑暗" : "跟随系统"}</span>
-              {theme === "system" && typeof window !== "undefined" ? (
-                <span className="ml-1">(系统{window.matchMedia("(prefers-color-scheme: dark)").matches ? "黑暗" : "明亮"})</span>
-              ) : null}
-            </div>
+              </SelectableListItem>
+            </SelectableList>
           </div>
         </SettingsPanel>
       </SettingsExpand>
