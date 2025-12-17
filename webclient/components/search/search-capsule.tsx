@@ -100,7 +100,7 @@ export function SearchStandaloneButton({
         className={cn(
           baseButtonClass,
           // 默认小号尺寸，调用方可通过 className/wrapperClassName 自行加宽
-          "h-9 px-3 w-auto min-w-[2.25rem] rounded-full border-none bg-muted shadow-none",
+          "h-9 px-3 w-auto min-w-[2.25rem] rounded-full border-none bg-muted shadow-none text-muted-foreground",
           "hover:bg-primary hover:text-primary-foreground",
           className,
         )}

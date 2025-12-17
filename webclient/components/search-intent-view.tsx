@@ -367,7 +367,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
             />
             <SearchStandaloneButton
               icon={<RotateCcw className="w-4 h-4" />}
-              className="bg-card/80 text-muted-foreground hover:text-primary-foreground"
+              className="w-16"
               onClick={() => {
                 setWantInput("")
                 setWantTags([])
