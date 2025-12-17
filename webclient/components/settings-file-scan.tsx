@@ -108,14 +108,14 @@ export function SettingsFileScan() {
   
   return (
     <div className="space-y-4">
-      <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 bg-[rgb(251_251_251)]">
+      <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-card">
         <div className="px-4 py-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-sm font-medium text-[rgb(74_77_78)]">
-              <Monitor className="w-5 h-5 text-[rgb(130_133_134)]" />
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Monitor className="w-5 h-5 text-muted-foreground" />
               <span>文件索引服务</span>
             </div>
-            <div className="mt-1 text-xs text-[rgb(120_123_124)]">
+            <div className="mt-1 text-xs text-muted-foreground">
               开启后将自动监控媒体目录的新文件变化
               {isLoading ? "（刷新中…）" : ""}
             </div>
@@ -135,7 +135,7 @@ export function SettingsFileScan() {
 
         {localSettings.enabled && (
           <div className="px-4 pb-4 space-y-3">
-            <div className="text-xs font-medium text-[rgb(74_77_78)]">扫描模式</div>
+            <div className="text-xs font-medium text-foreground">扫描模式</div>
             <SelectableListCard className="shadow-none">
               <SelectableListItem
                 selected={localSettings.scan_mode === "realtime"}
@@ -143,7 +143,7 @@ export function SettingsFileScan() {
               >
                 <div className="min-w-0">
                   <div className="text-sm font-medium">实时模式</div>
-                  <div className="text-xs text-[rgb(120_123_124)] mt-0.5">新文件出现时立即记录</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">新文件出现时立即记录</div>
                 </div>
               </SelectableListItem>
               <SelectableListItem
@@ -152,14 +152,14 @@ export function SettingsFileScan() {
               >
                 <div className="min-w-0">
                   <div className="text-sm font-medium">定时模式</div>
-                  <div className="text-xs text-[rgb(120_123_124)] mt-0.5">按固定间隔检查新文件</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">按固定间隔检查新文件</div>
                 </div>
               </SelectableListItem>
             </SelectableListCard>
 
             {localSettings.scan_mode === "scheduled" && (
               <div className="space-y-2">
-                <div className="text-xs font-medium text-[rgb(74_77_78)]">扫描间隔</div>
+                <div className="text-xs font-medium text-foreground">扫描间隔</div>
                 <SelectableListCard className="shadow-none">
                   <SelectableListItem
                     selected={localSettings.scan_interval === "hourly"}
@@ -187,10 +187,10 @@ export function SettingsFileScan() {
 
         {status.message && (
           <div className="px-4 pb-4">
-            <div className="p-3 rounded-lg bg-[rgb(240_242_244)] border border-border/50">
+            <div className="p-3 rounded-lg bg-muted border border-border">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-[rgb(120_123_124)] mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-[rgb(120_123_124)]">{status.message}</p>
+                <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-muted-foreground">{status.message}</p>
               </div>
             </div>
           </div>
