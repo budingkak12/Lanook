@@ -5,7 +5,6 @@ import { Eye, EyeOff, Search as SearchIcon, X, RotateCcw } from "lucide-react"
 
 import type { MediaItem } from "@/app/(main)/types"
 import { MediaGrid } from "@/components/media-grid"
-import { Button } from "@/components/ui/button"
 import { getAllTags, type TagItem } from "@/lib/api"
 import {
   SearchCapsuleInput,
@@ -176,11 +175,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   }, [wantInput, notWantInput, wantTags, notWantTags])
 
   // 统一的键盘事件处理：支持 Enter 搜索，支持 Backspace 删除标签
-  const handleInputKeyDown = (
-    e: KeyboardEvent<HTMLInputElement>,
-    field: "want" | "notWant",
-    inputValue: string
-  ) => {
+  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>, field: "want" | "notWant", inputValue: string) => {
     if (e.key === "Enter") {
       if (e.nativeEvent.isComposing) return
       e.preventDefault()
@@ -377,17 +372,16 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
             </p>
           )}
 
-          {/* 按钮区域 */}
+          {/* 按钮区域：使用统一的独立按钮组件（默认小号，宽度可通过 className 控制） */}
           <div className="flex gap-3 pt-4">
             <SearchStandaloneButton
-              wrapperClassName="flex-1"
-              className="h-11 shadow-lg shadow-primary/20"
+              icon={<SearchIcon className="w-5 h-5" />}
+              className="shadow-lg shadow-primary/20 w-16"
               onClick={handleRunSearch}
             />
-            <Button
-              size="lg"
-              variant="outline"
-              className="px-4 h-11 rounded-full border-border/60 text-muted-foreground hover:text-foreground"
+            <SearchStandaloneButton
+              icon={<RotateCcw className="w-4 h-4" />}
+              className="bg-card/80 text-muted-foreground hover:text-primary-foreground"
               onClick={() => {
                 setWantInput("")
                 setWantTags([])
@@ -397,9 +391,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 setAppliedTag(null)
                 setFormError(null)
               }}
-            >
-              <RotateCcw className="w-4 h-4" />
-            </Button>
+            />
           </div>
         </div>
       </div>

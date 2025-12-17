@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { ArrowRight } from "lucide-react"
 import {
   SearchCapsuleButton,
   SearchCapsuleInput,
@@ -50,9 +51,12 @@ export function UiDemoView() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-[rgb(74_77_78)]">独立按钮</div>
+                  <div className="text-xs font-medium text-[rgb(74_77_78)]">
+                    独立按钮（默认小号，可通过 icon 替换图标，className 自行加宽）
+                  </div>
                   <div className="flex items-center gap-3">
                     <SearchStandaloneButton />
+                    <SearchStandaloneButton className="w-20" icon={<ArrowRight className="w-4 h-4" />} />
                   </div>
                   <div className="space-y-2">
                     <div className="text-xs font-medium text-[rgb(74_77_78)]">开关颜色候选</div>

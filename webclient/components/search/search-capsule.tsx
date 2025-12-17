@@ -67,6 +67,12 @@ export function SearchStandaloneInput({ wrapperClassName, className, ...props }:
   )
 }
 
+/**
+ * 独立按钮：盒子样式与独立搜索框一致，内部默认是放大镜图标。
+ * - 默认是“小号”尺寸：较窄、适合表单操作区（`h-9 px-3`）。
+ * - 宽度由调用方控制：可通过 `className` / `wrapperClassName` 传入 `w-20` 等类名加宽。
+ * - 可通过 `icon` 属性替换内部图标（例如传入其他 Lucide 图标）。
+ */
 export type SearchStandaloneButtonProps = SearchCapsuleButtonProps & {
   wrapperClassName?: string
 }
@@ -81,8 +87,10 @@ export function SearchStandaloneButton({
   return (
     <div
       className={cn(
+        // 盒子线条与独立搜索框一致，宽度默认自适应内容；
+        // 额外覆盖 bg/shadow，避免 hover 时出现“底部一条亮线”视觉 Bug
         searchCapsuleWrapperClass,
-        "inline-flex items-stretch",
+        "inline-flex w-auto items-center justify-center bg-transparent shadow-none",
         wrapperClassName,
       )}
     >
@@ -91,7 +99,8 @@ export function SearchStandaloneButton({
         {...props}
         className={cn(
           baseButtonClass,
-          "flex-1 rounded-none border-none bg-transparent shadow-none",
+          // 默认小号尺寸，调用方可通过 className/wrapperClassName 自行加宽
+          "h-9 px-3 w-auto min-w-[2.25rem] rounded-full border-none bg-muted shadow-none",
           "hover:bg-primary hover:text-primary-foreground",
           className,
         )}
