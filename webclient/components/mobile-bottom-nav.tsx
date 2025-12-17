@@ -38,15 +38,15 @@ export function MobileBottomNav({ activeView, onViewChange }: MobileBottomNavPro
                 className={cn(
                   "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all duration-300 min-w-0 flex-1",
                   isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-primary opacity-100"
+                    : "text-muted-foreground opacity-55 hover:text-foreground hover:opacity-100"
                 )}
               >
                 <div className={cn(
                   "p-1.5 rounded-lg transition-all duration-300",
                   isActive
-                    ? "bg-primary/20 text-primary"
-                    : "hover:bg-muted/50"
+                    ? "bg-transparent text-primary"
+                    : "bg-transparent hover:bg-muted/50"
                 )}>
                   <Icon className="w-4 h-4" />
                 </div>
