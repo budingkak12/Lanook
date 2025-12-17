@@ -89,7 +89,7 @@ export function MainSidebar({
       <aside
         className={`
           fixed top-0 h-screen z-[9999] transition-transform duration-300 ease-in-out overflow-y-auto
-          lg:translate-x-0 lg:left-0 lg:ml-0 lg:pl-0 lg:border-r lg:border-border/30
+          lg:translate-x-0 lg:left-0 lg:ml-0 lg:pl-0
           ${isSidebarOpen ? 'translate-x-2 left-0' : '-translate-x-full'}
           bg-transparent
         `}
