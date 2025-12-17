@@ -87,10 +87,9 @@ export function SearchStandaloneButton({
   return (
     <div
       className={cn(
-        // 盒子线条与独立搜索框一致，宽度默认自适应内容；
-        // 额外覆盖 bg/shadow，避免 hover 时出现“底部一条亮线”视觉 Bug
+        // 盒子线条与独立搜索框一致，宽度默认自适应内容
         searchCapsuleWrapperClass,
-        "inline-flex w-auto items-center justify-center bg-transparent shadow-none",
+        "inline-flex w-auto items-center justify-center",
         wrapperClassName,
       )}
     >
@@ -98,9 +97,9 @@ export function SearchStandaloneButton({
         type={type}
         {...props}
         className={cn(
-          baseButtonClass,
-          // 默认小号尺寸，调用方可通过 className/wrapperClassName 自行加宽
-          "h-9 px-3 w-auto min-w-[2.25rem] rounded-full border-none bg-muted shadow-none text-muted-foreground",
+          // 小号按钮：高度与 SearchCapsuleInput 一致，背景透明，沿用外层胶囊的填充色；
+          // 宽度默认较窄，调用方可通过 className/wrapperClassName 自行加宽。
+          "flex h-11 px-3 w-auto min-w-[2.25rem] items-center justify-center rounded-none border-none bg-transparent shadow-none text-muted-foreground transition-colors",
           "hover:bg-primary hover:text-primary-foreground",
           className,
         )}
