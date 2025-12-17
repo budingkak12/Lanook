@@ -2,12 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { Monitor, AlertCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -112,95 +108,94 @@ export function SettingsFileScan() {
   
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Monitor className="w-5 h-5" />
-              <CardTitle>文件索引服务</CardTitle>
+      <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 bg-[rgb(251_251_251)]">
+        <div className="px-4 py-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-medium text-[rgb(74_77_78)]">
+              <Monitor className="w-5 h-5 text-[rgb(130_133_134)]" />
+              <span>文件索引服务</span>
             </div>
+            <div className="mt-1 text-xs text-[rgb(120_123_124)]">
+              开启后将自动监控媒体目录的新文件变化
+              {isLoading ? "（刷新中…）" : ""}
+            </div>
+          </div>
+          <div
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+          >
             <Switch
               id="scan-enabled"
               checked={localSettings.enabled}
               onCheckedChange={(enabled) => updateSetting({ enabled })}
             />
           </div>
-          <CardDescription>
-            开启后将自动监控媒体目录的新文件变化
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        </div>
 
-          {localSettings.enabled && (
-            <>
-              {/* 扫描模式选择 */}
-              <div className="space-y-4">
-                <Label className="text-base font-medium">扫描模式</Label>
-                <RadioGroup
-                  value={localSettings.scan_mode}
-                  onValueChange={(scan_mode) => updateSetting({ scan_mode: scan_mode as "realtime" | "scheduled" })}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="realtime" id="realtime" />
-                    <Label htmlFor="realtime" className="flex items-center gap-2 cursor-pointer">
-                      <div>
-                        <p className="font-medium">实时模式</p>
-                        <p className="text-sm text-muted-foreground">
-                          新文件出现时立即记录
-                        </p>
-                      </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="scheduled" id="scheduled" />
-                    <Label htmlFor="scheduled" className="flex items-center gap-2 cursor-pointer">
-                      <div>
-                        <p className="font-medium">定时模式</p>
-                        <p className="text-sm text-muted-foreground">
-                          按固定间隔检查新文件
-                        </p>
-                      </div>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* 定时扫描间隔设置 */}
-              {localSettings.scan_mode === "scheduled" && (
-                <div className="space-y-2">
-                  <Label htmlFor="scan-interval" className="text-base font-medium">
-                    扫描间隔
-                  </Label>
-                  <Select
-                    value={localSettings.scan_interval}
-                    onValueChange={(scan_interval) => updateSetting({ scan_interval: scan_interval as "hourly" | "daily" | "weekly" })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hourly">每小时扫描一次</SelectItem>
-                      <SelectItem value="daily">每天扫描一次</SelectItem>
-                      <SelectItem value="weekly">每周扫描一次</SelectItem>
-                    </SelectContent>
-                  </Select>
+        {localSettings.enabled && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="text-xs font-medium text-[rgb(74_77_78)]">扫描模式</div>
+            <SelectableListCard className="shadow-none">
+              <SelectableListItem
+                selected={localSettings.scan_mode === "realtime"}
+                onSelect={() => updateSetting({ scan_mode: "realtime" })}
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">实时模式</div>
+                  <div className="text-xs text-[rgb(120_123_124)] mt-0.5">新文件出现时立即记录</div>
                 </div>
-              )}
-            </>
-          )}
+              </SelectableListItem>
+              <SelectableListItem
+                selected={localSettings.scan_mode === "scheduled"}
+                onSelect={() => updateSetting({ scan_mode: "scheduled" })}
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">定时模式</div>
+                  <div className="text-xs text-[rgb(120_123_124)] mt-0.5">按固定间隔检查新文件</div>
+                </div>
+              </SelectableListItem>
+            </SelectableListCard>
 
-          {/* 状态消息显示 */}
-          {status.message && (
-            <div className="p-3 rounded-md bg-muted border">
+            {localSettings.scan_mode === "scheduled" && (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-[rgb(74_77_78)]">扫描间隔</div>
+                <SelectableListCard className="shadow-none">
+                  <SelectableListItem
+                    selected={localSettings.scan_interval === "hourly"}
+                    onSelect={() => updateSetting({ scan_interval: "hourly" })}
+                  >
+                    每小时扫描一次
+                  </SelectableListItem>
+                  <SelectableListItem
+                    selected={localSettings.scan_interval === "daily"}
+                    onSelect={() => updateSetting({ scan_interval: "daily" })}
+                  >
+                    每天扫描一次
+                  </SelectableListItem>
+                  <SelectableListItem
+                    selected={localSettings.scan_interval === "weekly"}
+                    onSelect={() => updateSetting({ scan_interval: "weekly" })}
+                  >
+                    每周扫描一次
+                  </SelectableListItem>
+                </SelectableListCard>
+              </div>
+            )}
+          </div>
+        )}
+
+        {status.message && (
+          <div className="px-4 pb-4">
+            <div className="p-3 rounded-lg bg-[rgb(240_242_244)] border border-border/50">
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-muted-foreground">{status.message}</p>
+                <AlertCircle className="w-4 h-4 text-[rgb(120_123_124)] mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-[rgb(120_123_124)]">{status.message}</p>
               </div>
             </div>
-          )}
-
-                  </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
