@@ -10,7 +10,7 @@ export type SearchCapsuleInputProps = React.ComponentProps<"input">
 
 // 标准搜索胶囊外壳样式（输入框 + 可选按钮共用）/ Search capsule shell style
 export const searchCapsuleWrapperClass =
-  "flex w-full items-center rounded-full border bg-card overflow-hidden shadow-inner border-[rgb(150_150_150)] focus-within:border-[rgb(90_90_90)]"
+  "flex w-full items-center rounded-full border bg-card overflow-hidden shadow-inner border-[rgb(150_150_150)] focus-within:border-[rgb(90_90_90)] dark:border-[rgb(120_120_120)] dark:bg-[rgb(56_56_56)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.09)]"
 
 export function SearchCapsuleInput({ className, ...props }: SearchCapsuleInputProps) {
   return (
