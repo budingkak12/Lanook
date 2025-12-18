@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { HardDrive, Monitor } from "lucide-react"
 
-import { SettingsExpand, SettingsGroup, SettingsPanel, SettingsRow } from "@/components/settings/list-ui"
+import { SettingsExpand, SettingsGroup, SettingsPanel, SettingsRow, SettingsSecondaryCard } from "@/components/settings/list-ui"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { Switch } from "@/components/ui/switch"
 
@@ -62,7 +62,7 @@ export function StorageTasksSectionDemo() {
   const [scanInterval, setScanInterval] = useState<"hourly" | "daily" | "weekly">("hourly")
 
   return (
-    <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-card">
+    <SettingsSecondaryCard>
       <div className="px-4 py-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-medium text-[rgb(74_77_78)]">
@@ -98,7 +98,7 @@ export function StorageTasksSectionDemo() {
           />
         </div>
       ) : null}
-    </div>
+    </SettingsSecondaryCard>
   )
 }
 

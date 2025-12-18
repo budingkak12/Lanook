@@ -180,12 +180,12 @@ export function UiDemoView() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">存储与任务 / Storage &amp; Tasks</h2>
         <p className="text-xs text-[rgb(120_123_124)]">
-          演示“一级：存储与任务块 / 二级：文件索引服务卡片 / 三级：扫描模式与间隔”的层级结构。
+          这里演示“外层设置块 + 内部功能卡片 + 扁平列表”的结构：视觉上只有一套盒子皮肤，区别只是用法不同。
         </p>
         <p className="text-xs text-[rgb(120_123_124)]">
-          规则：有勾选的列表一律使用扁平选择列表 / Selectable List Card（组件名：SelectableListCard），只有细边框不带阴影；
-          一级设置块盒子 / Settings Group（组件名：SettingsGroup）和二级功能卡片 / File Index Card（示例组件：StorageTasksSectionDemo）
-          保留阴影，用来区分层级。
+          使用约定：外层设置块一律使用 SettingsGroup；内部需要单独凸显的功能卡片使用 SettingsSecondaryCard；
+          两者底层都是同一个盒子组件（圆角、背景、阴影保持一致），只是在布局和间距上不同。带勾选的选项行统一使用
+          SelectableListCard + SelectableListItem 作为“元素级”扁平列表。
         </p>
         <div className="w-full lg:w-1/2">
           <StorageSettingsBlockDemo />

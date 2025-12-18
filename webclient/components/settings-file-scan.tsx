@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
+import { SettingsSecondaryCard } from "@/components/settings/list-ui"
 
 interface AutoScanStatus {
   enabled: boolean
@@ -108,7 +109,8 @@ export function SettingsFileScan() {
   
   return (
     <div className="space-y-4">
-      <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-card">
+      {/* 文件索引服务卡片：统一使用 SettingsSecondaryCard 作为二级盒子 */}
+      <SettingsSecondaryCard>
         <div className="px-4 py-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -136,7 +138,7 @@ export function SettingsFileScan() {
         {localSettings.enabled && (
           <div className="px-4 pb-4 space-y-3">
             <div className="text-xs font-medium text-foreground">扫描模式</div>
-            <SelectableListCard className="shadow-none">
+            <SelectableListCard className="shadow-none border-0 rounded-none">
               <SelectableListItem
                 selected={localSettings.scan_mode === "realtime"}
                 onSelect={() => updateSetting({ scan_mode: "realtime" })}
@@ -160,7 +162,7 @@ export function SettingsFileScan() {
             {localSettings.scan_mode === "scheduled" && (
               <div className="space-y-2">
                 <div className="text-xs font-medium text-foreground">扫描间隔</div>
-                <SelectableListCard className="shadow-none">
+                <SelectableListCard className="shadow-none border-0 rounded-none">
                   <SelectableListItem
                     selected={localSettings.scan_interval === "hourly"}
                     onSelect={() => updateSetting({ scan_interval: "hourly" })}
@@ -195,7 +197,7 @@ export function SettingsFileScan() {
             </div>
           </div>
         )}
-      </div>
+      </SettingsSecondaryCard>
     </div>
   )
 }

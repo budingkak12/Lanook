@@ -124,16 +124,20 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
   }
 
   
+  const containerClassName =
+    mode === 'settings'
+      ? 'bg-white border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg space-y-2 w-full'
+      : 'p-3 sm:p-4 space-y-2 w-full'
+
   return (
     <div className="space-y-3 w-full">
-      {/* 媒体路径清单框架 */}
+      {/* 媒体路径清单框架：初始化模式下只作为一级盒子内部元素，不再自带外层大盒子样式 */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="bg-white border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg space-y-2 w-full" style={{ maxHeight: '500px' }}>
-  
+        <div className={containerClassName} style={{ maxHeight: '500px' }}>
           {/* 路径列表 */}
           <div className="space-y-1 flex flex-col">
             <div className="overflow-y-auto space-y-2 justify-start max-h-[400px]">

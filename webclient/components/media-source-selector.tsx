@@ -30,6 +30,7 @@ import {
   searchCapsuleWrapperClass,
 } from "@/components/search/search-capsule"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
+import { SettingsSecondaryCard } from "@/components/settings/list-ui"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 
 interface ParsedSmbPath {
@@ -599,7 +600,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         transition={{ duration: 0.3, delay: 0.1 }}
         style={{ height: '600px' }}
       >
-        <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-card p-4 space-y-2 h-full flex flex-col w-full">
+        <SettingsSecondaryCard className="h-full flex flex-col w-full p-4 space-y-2">
           {/* 本机文件夹板块标题 */}
           <h3 className="text-lg font-medium text-foreground mb-3">
             选择媒体路径
@@ -641,7 +642,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                     <div className="text-sm text-muted-foreground">此文件夹为空或无子文件夹</div>
                   </div>
                 ) : (
-                  <SelectableListCard className="shadow-none">
+                  <SelectableListCard className="shadow-none border-0 rounded-none">
                     {folderContents.map((folder, index) => (
                       <motion.div
                         key={folder.path + index}
@@ -694,7 +695,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                     <div className="text-sm text-muted-foreground">未找到常用文件夹</div>
                   </div>
                 ) : (
-                  <SelectableListCard className="shadow-none">
+                  <SelectableListCard className="shadow-none border-0 rounded-none">
                     {commonFolders
                       .filter(folder => folder.readable && !folder.is_root && !folder.is_symlink)
                       .slice(0, 6)
@@ -774,7 +775,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
               />
             </div>
           </div>
-        </div>
+        </SettingsSecondaryCard>
       </motion.div>
 
       {/* 局域网设备框架 */}
@@ -785,7 +786,8 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         className="flex-shrink-0"
         style={{ height: '600px' }}
       >
-        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-4 w-full h-full flex flex-col">
+        {/* 使用统一的大盒子组件包裹 NAS 面板，使其与本机文件夹成为两个独立的大盒子 */}
+        <SettingsSecondaryCard className="w-full h-full p-4 space-y-4 flex flex-col">
           {/* 局域网设备板块标题 */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -974,7 +976,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
           )}
 
           {/* 设备列表与搜索入口已移除 */}
-        </div>
+        </SettingsSecondaryCard>
       </motion.div>
 
       {/* 合并对话框（使用项目内置 AlertDialog 组件） */}

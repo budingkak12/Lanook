@@ -10,6 +10,7 @@ import { StepContent } from "@/components/step-content"
 import { LanguageSelector } from "@/components/language-selector"
 import { MediaSourceSelector } from "@/components/media-source-selector"
 import { MediaPathList } from "@/components/media-path-list"
+import { SettingsGroup, SettingsPanel } from "@/components/settings/list-ui"
 import { SearchStandaloneButton } from "@/components/search/search-capsule"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
@@ -268,7 +269,11 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
                     <div className="text-center pb-4">
                       <h2 className="text-lg font-medium text-muted-foreground/80">选择语言</h2>
                     </div>
-                    <LanguageSelector />
+                    <SettingsGroup>
+                      <SettingsPanel>
+                        <LanguageSelector />
+                      </SettingsPanel>
+                    </SettingsGroup>
                   </>
                 ) : currentStep === 2 ? (
                   <>
@@ -276,7 +281,10 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
                     <div className="text-center pb-4">
                       <h2 className="text-lg font-medium text-muted-foreground/80">{t('init.step2.title')}</h2>
                     </div>
-                    <MediaSourceSelector />
+                    {/* 第二步：两个独立的大盒子（本机文件夹 / 局域网设备），由内部组件各自渲染 */}
+                    <div className="space-y-3">
+                      <MediaSourceSelector />
+                    </div>
                   </>
                 ) : currentStep === 3 ? (
                   <>
@@ -284,7 +292,11 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
                     <div className="text-center pb-4">
                       <h2 className="text-lg font-medium text-muted-foreground/80 text-center">媒体路径清单</h2>
                     </div>
-                    <MediaPathList />
+                    <SettingsGroup>
+                      <SettingsPanel>
+                        <MediaPathList />
+                      </SettingsPanel>
+                    </SettingsGroup>
                   </>
                 ) : currentStep === 4 ? (
                   <>

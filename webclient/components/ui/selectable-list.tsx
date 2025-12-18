@@ -11,7 +11,7 @@ export function SelectableList({ children, className }: { children: React.ReactN
 
 export function SelectableListCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-xl overflow-hidden border border-border/50", className)}>
+    <div className={cn("rounded-xl overflow-hidden bg-card", className)}>
       <SelectableList>{children}</SelectableList>
     </div>
   )
