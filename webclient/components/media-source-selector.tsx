@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateMediaSource, createMediaSourceOrMerge, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, getMediaSources, deleteMediaSource, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem, type CreateSourceRequest } from '@/lib/api'
-import { SearchStandaloneButton } from "@/components/search/search-capsule"
+import { SearchStandaloneButton, SearchStandaloneInput } from "@/components/search/search-capsule"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 
 interface ParsedSmbPath {
@@ -591,15 +591,16 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             {/* 头部：返回按钮 + 当前路径 */}
             <div className="flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <SearchStandaloneButton
                   onClick={isBrowsingFolder ? handleBackToCommon : undefined}
-                  className="h-8 w-8 p-0 hover:bg-accent/20 flex-shrink-0"
                   disabled={!isBrowsingFolder}
+                  icon={undefined}
+                  size="compact"
+                  wrapperClassName="w-8"
+                  className="justify-center"
                 >
                   ←
-                </Button>
+                </SearchStandaloneButton>
                 {isBrowsingFolder && (
                   <div className="text-xs text-muted-foreground/80 truncate max-w-[300px]" title={currentFolderPath}>
                     {formatPath(currentFolderPath)}
@@ -708,15 +709,14 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             <p className="text-xs text-muted-foreground/70">
               从上方选择文件夹，或直接输入完整路径
             </p>
-            <div className="flex gap-2">
-              <Input
-                value={localInputPath}
-                onChange={(e) => setLocalInputPath(e.target.value)}
-                placeholder={t('init.sourceType.local.pathPlaceholder')}
-                className="flex-1 bg-background/60 border-border/40 focus:border-border/60"
-                disabled={isValidatingLocal}
-              />
-            </div>
+            <SearchStandaloneInput
+              value={localInputPath}
+              onChange={(e) => setLocalInputPath(e.target.value)}
+              placeholder={t("init.sourceType.local.pathPlaceholder")}
+              wrapperClassName="w-full"
+              className="text-sm"
+              disabled={isValidatingLocal}
+            />
 
             {/* 添加按钮 - 使用独立按钮组件，有地址时才可点击 */}
             <SearchStandaloneButton

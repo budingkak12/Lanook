@@ -76,6 +76,7 @@ export function SearchStandaloneInput({ wrapperClassName, className, ...props }:
  */
 export type SearchStandaloneButtonProps = SearchCapsuleButtonProps & {
   wrapperClassName?: string
+  size?: "default" | "compact"
 }
 
 export function SearchStandaloneButton({
@@ -83,9 +84,12 @@ export function SearchStandaloneButton({
   className,
   icon,
   type = "button",
+  size = "default",
   ...props
 }: SearchStandaloneButtonProps) {
   const hasIcon = icon !== undefined && icon !== null
+  const heightClass = size === "compact" ? "h-8 text-xs" : "h-11"
+  const paddingClass = size === "compact" ? "px-2" : "px-3"
 
   return (
     <div
@@ -102,7 +106,9 @@ export function SearchStandaloneButton({
         className={cn(
           // 小号按钮：高度与 SearchCapsuleInput 一致；宽度填满外层胶囊，
           // 由外层 wrapperClassName 控制整体宽度（例如 w-full / w-20）。
-          "flex h-11 px-3 w-full items-center justify-center rounded-full border-none bg-card text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+          "flex w-full items-center justify-center rounded-full border-none bg-card text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+          heightClass,
+          paddingClass,
           "hover:bg-primary hover:text-primary-foreground",
           className,
         )}
