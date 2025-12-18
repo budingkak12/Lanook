@@ -106,6 +106,9 @@ export function SearchStandaloneButton({
         )}
       >
         {icon ?? <SearchIcon className="w-5 h-5" strokeWidth={2.4} />}
+        {props.children ? (
+          <span className="ml-2 text-sm font-medium leading-none">{props.children}</span>
+        ) : null}
       </button>
     </div>
   )

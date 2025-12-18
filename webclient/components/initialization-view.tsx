@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
-import { HardDrive } from "lucide-react"
+import { ArrowRight, HardDrive, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
-import { Button } from "@/components/ui/button"
 import { LanguageSelector } from "@/components/language-selector"
 import { MediaSourceSelector } from "@/components/media-source-selector"
 import { MediaPathList } from "@/components/media-path-list"
+import { SearchStandaloneButton } from "@/components/search/search-capsule"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -305,32 +305,27 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         </main>
       </div>
 
-    {/* Fixed Bottom Navigation Button - 使用React.memo优化重渲染 */}
-    <div
-      className="fixed bottom-8 right-4 z-[99999]"
-      style={{
-        transform: 'translateZ(0)',
-        willChange: 'transform',
-        backfaceVisibility: 'hidden',
-        isolation: 'isolate' // 创建新的层叠上下文
-      }}
-    >
-      <Button
+    {/* Fixed Bottom Navigation Button */}
+    <div className="fixed bottom-8 right-4 z-[99999]">
+      <SearchStandaloneButton
         onClick={handleNextStep}
         disabled={isStartingInitialization}
-        className="bg-primary hover:bg-primary/90 text-primary-foreground border border-border/50 px-6 py-3 rounded-xl font-medium shadow-lg hover:shadow-md transition-all duration-300 disabled:opacity-50"
-        style={{
-          transform: 'translateZ(0)',
-          willChange: 'transform'
-        }}
+        icon={
+          isStartingInitialization ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <ArrowRight className="w-4 h-4" />
+          )
+        }
+        wrapperClassName="shadow-lg shadow-primary/20"
+        className="px-5"
       >
         {isStartingInitialization
-          ? '正在初始化...'
+          ? "正在初始化..."
           : currentStep < steps.length
-            ? t('init.nextStep')
-            : '进入首页'
-        }
-      </Button>
+            ? t("init.nextStep")
+            : "进入首页"}
+      </SearchStandaloneButton>
     </div>
     </div>
   )
