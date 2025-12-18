@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { designTokens } from "@/lib/design-tokens"
 import { AnimatePresence, motion } from "framer-motion"
 
 export function SettingsPageShell({ children }: { children: ReactNode }) {
@@ -44,8 +45,10 @@ export function SettingsTitleBar({
   )
 }
 
-// 统一的盒子内核：控制圆角 / 阴影 / 边框 / 背景
+// 统一的盒子内核：控制圆角 / 阴影 / 背景。
+// 视觉规格请参考 design-tokens/ui.json 中的 "components.SettingsGroup" / "SettingsSecondaryCard"。
 function SettingsBoxBase({ children, className }: { children: ReactNode; className?: string }) {
+  void designTokens // 保留导入给类型检查，同时提示有独立的 tokens 文件可供原生端使用。
   return (
     <div
       className={cn(

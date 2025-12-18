@@ -1,0 +1,82 @@
+{
+  "radius": {
+    "card": 16,
+    "cardSmall": 12,
+    "capsule": 9999
+  },
+  "shadow": {
+    "settingsOuterCard": {
+      "offsetX": 0,
+      "offsetY": 8,
+      "blurRadius": 24,
+      "spreadRadius": 0,
+      "color": "rgba(15,23,42,0.16)"
+    },
+    "settingsInnerCard": {
+      "offsetX": 0,
+      "offsetY": 8,
+      "blurRadius": 28,
+      "spreadRadius": 0,
+      "color": "rgba(15,23,42,0.16)"
+    },
+    "searchCapsuleInner": {
+      "offsetX": 0,
+      "offsetY": 0,
+      "blurRadius": 10,
+      "spreadRadius": 0,
+      "color": "rgba(0,0,0,0.12)"
+    }
+  },
+  "spacing": {
+    "settingsCardPaddingX": 16,
+    "settingsCardPaddingY": 12,
+    "settingsListItemPaddingX": 16,
+    "settingsListItemPaddingY": 12,
+    "searchCapsuleHeight": 44,
+    "searchStandaloneButtonHeight": 44,
+    "searchStandaloneButtonHeightCompact": 32
+  },
+  "typography": {
+    "settingsTitle": {
+      "fontSize": 16,
+      "fontWeight": 600
+    },
+    "settingsBody": {
+      "fontSize": 14,
+      "fontWeight": 400
+    },
+    "listItem": {
+      "fontSize": 14,
+      "fontWeight": 500
+    }
+  },
+  "components": {
+    "SettingsGroup": {
+      "radius": "card",
+      "shadow": "settingsOuterCard",
+      "paddingX": "settingsCardPaddingX",
+      "paddingY": "settingsCardPaddingY"
+    },
+    "SettingsSecondaryCard": {
+      "radius": "card",
+      "shadow": "settingsInnerCard",
+      "paddingX": "settingsCardPaddingX",
+      "paddingY": "settingsCardPaddingY"
+    },
+    "SelectableListItem": {
+      "paddingX": "settingsListItemPaddingX",
+      "paddingY": "settingsListItemPaddingY",
+      "radius": 12
+    },
+    "SearchCapsule": {
+      "radius": "capsule",
+      "height": "searchCapsuleHeight"
+    },
+    "SearchStandaloneButton": {
+      "radius": "capsule",
+      "height": "searchStandaloneButtonHeight",
+      "heightCompact": "searchStandaloneButtonHeightCompact"
+    }
+  }
+}
+

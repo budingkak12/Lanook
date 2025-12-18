@@ -1,3 +1,5 @@
+// 搜索胶囊 + 独立按钮组件。
+// 高度、圆角等规格可以在 design-tokens/ui.json 的 "SearchCapsule" / "SearchStandaloneButton" 中找到。
 "use client"
 
 import * as React from "react"

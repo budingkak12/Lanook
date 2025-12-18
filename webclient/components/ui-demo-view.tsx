@@ -187,6 +187,10 @@ export function UiDemoView() {
           两者底层都是同一个盒子组件（圆角、背景、阴影保持一致），只是在布局和间距上不同。带勾选的选项行统一使用
           SelectableListCard + SelectableListItem 作为“元素级”扁平列表。
         </p>
+        <p className="text-xs text-[rgb(120_123_124)]">
+          跨端说明：iOS / Android 可以直接参照 /design-tokens/ui.json 中的 radius / shadow / spacing 数值，
+          以及本页面的展示效果，实现同名组件（SettingsGroup、SettingsSecondaryCard、SelectableListItem 等），即可得到一致的 UI。
+        </p>
         <div className="w-full lg:w-1/2">
           <StorageSettingsBlockDemo />
         </div>

@@ -1,3 +1,5 @@
+// 扁平选择列表组件（有勾选的小行列表）。
+// 视觉规格对应 design-tokens/ui.json 中的 "SelectableListItem"。
 "use client"
 
 import * as React from "react"
