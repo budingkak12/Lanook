@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowRight, HardDrive, Loader2 } from "lucide-react"
+import { ArrowLeft, ArrowRight, HardDrive, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
@@ -141,6 +141,13 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
       } finally {
         setIsStartingInitialization(false)
       }
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (isStartingInitialization || isExiting) return
+    if (currentStep > 1) {
+      setCurrentStep((step) => Math.max(1, step - 1))
     }
   }
 
@@ -305,8 +312,16 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         </main>
       </div>
 
-    {/* Fixed Bottom Navigation Button */}
-    <div className="fixed bottom-8 right-4 z-[99999]">
+    {/* Fixed Bottom Navigation Buttons：上一步 + 下一步（图标按钮） */}
+    <div className="fixed bottom-8 right-4 z-[99999] flex gap-3">
+      <SearchStandaloneButton
+        onClick={handlePrevStep}
+        disabled={isStartingInitialization || currentStep <= 1}
+        icon={<ArrowLeft className="w-4 h-4" />}
+        wrapperClassName="shadow-md shadow-primary/10"
+        className="px-4"
+        aria-label="上一步"
+      />
       <SearchStandaloneButton
         onClick={handleNextStep}
         disabled={isStartingInitialization}
@@ -318,14 +333,9 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
           )
         }
         wrapperClassName="shadow-lg shadow-primary/20"
-        className="px-5"
-      >
-        {isStartingInitialization
-          ? "正在初始化..."
-          : currentStep < steps.length
-            ? t("init.nextStep")
-            : "进入首页"}
-      </SearchStandaloneButton>
+        className="px-4"
+        aria-label={currentStep < steps.length ? t("init.nextStep") : "进入首页"}
+      />
     </div>
     </div>
   )
