@@ -7,7 +7,12 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateMediaSource, createMediaSourceOrMerge, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, getMediaSources, deleteMediaSource, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem, type CreateSourceRequest } from '@/lib/api'
-import { SearchStandaloneButton, SearchStandaloneInput } from "@/components/search/search-capsule"
+import {
+  SearchStandaloneButton,
+  SearchCapsuleInput,
+  SearchCapsuleButton,
+  searchCapsuleWrapperClass,
+} from "@/components/search/search-capsule"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 
 interface ParsedSmbPath {
@@ -259,6 +264,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
       setIsLoadingContents(true)
       setCurrentFolderPath(path)
       setBrowsingPath(path) // 设置浏览路径，不填充到地址栏
+      setLocalInputPath(path) // 同步填充到输入框
       setIsBrowsingFolder(true)
 
       const contents = await listFolderContents(path)
@@ -279,6 +285,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         setIsLoadingContents(true)
         setCurrentFolderPath(folder.path)
         setBrowsingPath(folder.path) // 设置浏览路径，不填充到地址栏
+        setLocalInputPath(folder.path) // 同步填充到输入框
         setIsBrowsingFolder(true) // 重要：设置浏览状态为true
 
         const contents = await listFolderContents(folder.path)
@@ -319,13 +326,6 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         setIsBrowsingFolder(false)
         setBrowsingPath('') // 清空浏览路径
       }
-    }
-  }
-
-  // 新增：选择当前文件夹按钮点击处理
-  const handleSelectCurrentFolder = () => {
-    if (browsingPath) {
-      setLocalInputPath(browsingPath) // 只有点击按钮才填充到地址栏
     }
   }
 
@@ -583,7 +583,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-2 h-full flex flex-col w-full">
           {/* 本机文件夹板块标题 */}
           <h3 className="text-lg font-medium text-foreground mb-3">
-            {t('init.sourceType.local.title')}
+            选择媒体路径
           </h3>
 
           {/* 文件夹浏览区域 */}
@@ -691,17 +691,6 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
               )}
             </div>
 
-            {/* 浏览模式下选择按钮 */}
-            {isBrowsingFolder && browsingPath && (
-              <SearchStandaloneButton
-                onClick={handleSelectCurrentFolder}
-                disabled={isValidatingLocal}
-                icon={undefined}
-                wrapperClassName="w-full"
-              >
-                {isValidatingLocal ? "验证中..." : `选择当前文件夹: ${browsingPath.split("/").pop() || browsingPath}`}
-              </SearchStandaloneButton>
-            )}
           </div>
 
           {/* 自定义路径 */}
@@ -709,24 +698,30 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
             <p className="text-xs text-muted-foreground/70">
               从上方选择文件夹，或直接输入完整路径
             </p>
-            <SearchStandaloneInput
-              value={localInputPath}
-              onChange={(e) => setLocalInputPath(e.target.value)}
-              placeholder={t("init.sourceType.local.pathPlaceholder")}
-              wrapperClassName="w-full"
-              className="text-sm"
-              disabled={isValidatingLocal}
-            />
-
-            {/* 添加按钮 - 使用独立按钮组件，有地址时才可点击 */}
-            <SearchStandaloneButton
-              onClick={() => localInputPath && handleSelectPath(localInputPath)}
-              disabled={!localInputPath || isValidatingLocal}
-              icon={undefined}
-              wrapperClassName="w-full"
-            >
-              {isValidatingLocal ? "验证中..." : "添加至媒体路径清单"}
-            </SearchStandaloneButton>
+            <div className={searchCapsuleWrapperClass}>
+              <SearchCapsuleInput
+                value={localInputPath}
+                onChange={(e) => setLocalInputPath(e.target.value)}
+                placeholder={t("init.sourceType.local.pathPlaceholder")}
+                className="text-sm"
+                disabled={isValidatingLocal}
+              />
+              {!!localInputPath && (
+                <button
+                  type="button"
+                  onClick={() => setLocalInputPath("")}
+                  className="flex h-11 px-2 items-center justify-center border-l border-border/40 text-muted-foreground hover:bg-muted/40 transition-colors"
+                  disabled={isValidatingLocal}
+                >
+                  ×
+                </button>
+              )}
+              <SearchCapsuleButton
+                onClick={() => localInputPath && handleSelectPath(localInputPath)}
+                disabled={!localInputPath || isValidatingLocal}
+                icon={<span className="text-base leading-none">✓</span>}
+              />
+            </div>
           </div>
         </div>
       </motion.div>
