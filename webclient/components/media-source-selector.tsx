@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateMediaSource, createMediaSourceOrMerge, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, getMediaSources, deleteMediaSource, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem, type CreateSourceRequest } from '@/lib/api'
+import { SearchStandaloneButton } from "@/components/search/search-capsule"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 
 interface ParsedSmbPath {
@@ -691,13 +692,14 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
 
             {/* 浏览模式下选择按钮 */}
             {isBrowsingFolder && browsingPath && (
-                <Button
-                  onClick={handleSelectCurrentFolder}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              <SearchStandaloneButton
+                onClick={handleSelectCurrentFolder}
                 disabled={isValidatingLocal}
-                >
-                {isValidatingLocal ? '验证中...' : `选择当前文件夹: ${browsingPath.split('/').pop() || browsingPath}`}
-                </Button>
+                icon={undefined}
+                wrapperClassName="w-full"
+              >
+                {isValidatingLocal ? "验证中..." : `选择当前文件夹: ${browsingPath.split("/").pop() || browsingPath}`}
+              </SearchStandaloneButton>
             )}
           </div>
 
@@ -716,14 +718,15 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
               />
             </div>
 
-            {/* 添加按钮 - 始终存在，有地址时才可点击 */}
-            <Button
+            {/* 添加按钮 - 使用独立按钮组件，有地址时才可点击 */}
+            <SearchStandaloneButton
               onClick={() => localInputPath && handleSelectPath(localInputPath)}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground disabled:bg-muted disabled:opacity-60 disabled:cursor-not-allowed disabled:border-border/50 disabled:text-muted-foreground"
               disabled={!localInputPath || isValidatingLocal}
+              icon={undefined}
+              wrapperClassName="w-full"
             >
-              {isValidatingLocal ? '验证中...' : '添加至媒体路径清单'}
-            </Button>
+              {isValidatingLocal ? "验证中..." : "添加至媒体路径清单"}
+            </SearchStandaloneButton>
           </div>
         </div>
       </motion.div>
@@ -912,14 +915,15 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                 )}
               </div>
 
-              {/* 添加按钮（文案统一为 添加至媒体路径清单） */}
-              <Button
+              {/* 添加按钮（文案统一为 添加至媒体路径清单），使用独立按钮组件 */}
+              <SearchStandaloneButton
                 onClick={handleAddCurrentNasFolder}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={isValidatingNas || !currentNasPath}
+                icon={undefined}
+                wrapperClassName="w-full"
               >
-                {isValidatingNas ? '验证中...' : '添加至媒体路径清单'}
-              </Button>
+                {isValidatingNas ? "验证中..." : "添加至媒体路径清单"}
+              </SearchStandaloneButton>
             </div>
           )}
 

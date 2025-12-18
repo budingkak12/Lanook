@@ -85,12 +85,14 @@ export function SearchStandaloneButton({
   type = "button",
   ...props
 }: SearchStandaloneButtonProps) {
+  const hasIcon = icon !== undefined && icon !== null
+
   return (
     <div
       className={cn(
-        // 盒子线条与独立搜索框一致，宽度默认自适应内容
+        // 盒子线条与独立搜索框一致（圆角 + 边框），宽度默认根据内容自适应。
         searchCapsuleWrapperClass,
-        "inline-flex w-auto items-center justify-center",
+        "inline-flex w-auto items-center justify-center bg-transparent shadow-none",
         wrapperClassName,
       )}
     >
@@ -98,16 +100,18 @@ export function SearchStandaloneButton({
         type={type}
         {...props}
         className={cn(
-          // 小号按钮：高度与 SearchCapsuleInput 一致，背景透明，沿用外层胶囊的填充色；
-          // 宽度默认较窄，调用方可通过 className/wrapperClassName 自行加宽。
-          "flex h-11 px-3 w-auto min-w-[2.25rem] items-center justify-center rounded-none border-none bg-transparent shadow-none text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+          // 小号按钮：高度与 SearchCapsuleInput 一致；宽度填满外层胶囊，
+          // 由外层 wrapperClassName 控制整体宽度（例如 w-full / w-20）。
+          "flex h-11 px-3 w-full items-center justify-center rounded-full border-none bg-card text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
           "hover:bg-primary hover:text-primary-foreground",
           className,
         )}
       >
-        {icon ?? <SearchIcon className="w-5 h-5" strokeWidth={2.4} />}
+        {hasIcon ? icon : null}
         {props.children ? (
-          <span className="ml-2 text-sm font-medium leading-none">{props.children}</span>
+          <span className={cn("text-sm font-medium leading-none", hasIcon ? "ml-2" : "")}>
+            {props.children}
+          </span>
         ) : null}
       </button>
     </div>
