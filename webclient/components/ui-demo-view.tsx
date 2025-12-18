@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import {
   SearchCapsuleButton,
   SearchCapsuleInput,
@@ -21,6 +21,8 @@ const switchColorCandidates = [
 
 export function UiDemoView() {
   const [searchText, setSearchText] = useState("")
+  const [demoLoading, setDemoLoading] = useState(false)
+  const [demoError, setDemoError] = useState<string | null>(null)
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -54,10 +56,53 @@ export function UiDemoView() {
                   <div className="text-xs font-medium text-[rgb(74_77_78)]">
                     独立按钮（默认小号，可通过 icon 替换图标，className 自行加宽）
                   </div>
+                  {/* 不可点击状态：虚线描边版本 */}
                   <div className="flex items-center gap-3">
-                    <SearchStandaloneButton />
-                    <SearchStandaloneButton className="w-20" icon={<ArrowRight className="w-4 h-4" />} />
+                    <div className="flex flex-col items-center gap-1">
+                      <SearchStandaloneButton
+                        disabled
+                        wrapperClassName="bg-transparent border border-dashed border-border/70"
+                      />
+                      <span className="text-[10px] text-[rgb(120_123_124)]">disabled · 虚线描边</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1">
+                      <SearchStandaloneButton
+                        disabled
+                        icon={null}
+                        wrapperClassName="bg-transparent border border-dashed border-border/70"
+                      >
+                        不可点击
+                      </SearchStandaloneButton>
+                      <span className="text-[10px] text-[rgb(120_123_124)]">disabled · 文字示例</span>
+                    </div>
                   </div>
+                  {/* 普通 + loading 示例 */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <SearchStandaloneButton className="w-20" icon={<ArrowRight className="w-4 h-4" />} />
+                    <SearchStandaloneButton
+                      className="w-20"
+                      icon={
+                        demoLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ArrowRight className="w-4 h-4" />
+                        )
+                      }
+                      disabled={demoLoading}
+                      onClick={() => {
+                        if (demoLoading) return
+                        setDemoError(null)
+                        setDemoLoading(true)
+                        setTimeout(() => {
+                          setDemoLoading(false)
+                          setDemoError("暂时不可加载")
+                        }, 2000)
+                      }}
+                    />
+                  </div>
+                  {demoError && (
+                    <p className="text-xs text-destructive mt-1">错误：{demoError}</p>
+                  )}
                   <div className="space-y-2">
                     <div className="text-xs font-medium text-[rgb(74_77_78)]">开关颜色候选</div>
                     <div className="flex flex-wrap gap-3">

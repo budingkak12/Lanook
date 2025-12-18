@@ -100,7 +100,7 @@ export function SearchStandaloneButton({
         className={cn(
           // 小号按钮：高度与 SearchCapsuleInput 一致，背景透明，沿用外层胶囊的填充色；
           // 宽度默认较窄，调用方可通过 className/wrapperClassName 自行加宽。
-          "flex h-11 px-3 w-auto min-w-[2.25rem] items-center justify-center rounded-none border-none bg-transparent shadow-none text-muted-foreground transition-colors",
+          "flex h-11 px-3 w-auto min-w-[2.25rem] items-center justify-center rounded-none border-none bg-transparent shadow-none text-muted-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
           "hover:bg-primary hover:text-primary-foreground",
           className,
         )}
