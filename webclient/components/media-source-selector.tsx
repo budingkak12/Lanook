@@ -6,13 +6,30 @@ import { useTranslation } from 'react-i18next'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { validateMediaSource, createMediaSourceOrMerge, getCommonFolders, listFolderContents, browseNasFolders, discoverNasShares, getMediaSources, deleteMediaSource, type CommonFolderEntry, type FolderItem, type MediaSource, type NasFolderItem, type NasShareInfo, type NasFileItem, type CreateSourceRequest } from '@/lib/api'
+import {
+  validateMediaSource,
+  createMediaSourceOrMerge,
+  getCommonFolders,
+  listFolderContents,
+  browseNasFolders,
+  discoverNasShares,
+  getMediaSources,
+  deleteMediaSource,
+  type CommonFolderEntry,
+  type FolderItem,
+  type MediaSource,
+  type NasFolderItem,
+  type NasShareInfo,
+  type NasFileItem,
+  type CreateSourceRequest,
+} from '@/lib/api'
 import {
   SearchStandaloneButton,
   SearchCapsuleInput,
   SearchCapsuleButton,
   searchCapsuleWrapperClass,
 } from "@/components/search/search-capsule"
+import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 
 interface ParsedSmbPath {
@@ -582,7 +599,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         transition={{ duration: 0.3, delay: 0.1 }}
         style={{ height: '600px' }}
       >
-        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4 shadow-lg space-y-2 h-full flex flex-col w-full">
+        <div className="rounded-xl overflow-hidden shadow-lg border border-border bg-card p-4 space-y-2 h-full flex flex-col w-full">
           {/* 本机文件夹板块标题 */}
           <h3 className="text-lg font-medium text-foreground mb-3">
             选择媒体路径
@@ -611,8 +628,8 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
               </div>
             </div>
 
-            {/* 文件夹列表 */}
-            <div className="overflow-y-auto flex-1 min-h-0 space-y-2 justify-start">
+            {/* 文件夹列表，使用统一的 SelectableListCard 风格 */}
+            <div className="overflow-y-auto flex-1 min-h-0 justify-start">
               {isBrowsingFolder ? (
                 // 显示当前文件夹内容
                 isLoadingContents ? (
@@ -624,31 +641,47 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                     <div className="text-sm text-muted-foreground">此文件夹为空或无子文件夹</div>
                   </div>
                 ) : (
-                  folderContents.map((folder, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: index * 0.02 }}
-                      className="flex items-center justify-between p-2 h-14 w-full bg-background/80 border border-border/40 rounded-lg hover:bg-accent/50 hover:border-border/60 transition-all duration-200 cursor-pointer group"
-                      onClick={() => handleFolderNavigate(folder)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
-                          <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1 overflow-hidden">
-                          <div className="text-sm font-medium text-foreground truncate">{folder.name}</div>
-                          <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>{formatPath(folder.path)}</div>
-                        </div>
-                      </div>
-                      <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </motion.div>
-                  ))
+                  <SelectableListCard className="shadow-none">
+                    {folderContents.map((folder, index) => (
+                      <motion.div
+                        key={folder.path + index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, delay: index * 0.02 }}
+                      >
+                        <SelectableListItem
+                          selected={false}
+                          onSelect={() => handleFolderNavigate(folder)}
+                          showCheck={false}
+                          className="py-2"
+                          right={
+                            <svg
+                              className="w-4 h-4 text-[rgb(160_163_164)]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          }
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
+                              <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                              </svg>
+                            </div>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <div className="text-sm font-medium text-foreground truncate">{folder.name}</div>
+                              <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>
+                                {formatPath(folder.path)}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectableListItem>
+                      </motion.div>
+                    ))}
+                  </SelectableListCard>
                 )
               ) : (
                 // 显示常用路径
@@ -661,34 +694,50 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                     <div className="text-sm text-muted-foreground">未找到常用文件夹</div>
                   </div>
                 ) : (
-                  commonFolders
-                    .filter(folder => folder.readable && !folder.is_root && !folder.is_symlink)
-                    .slice(0, 6)
-                    .map((folder, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2, delay: index * 0.02 }}
-                        className="flex items-center justify-between p-2 h-14 w-full bg-background/60 border border-border/30 rounded-lg hover:bg-accent/40 hover:border-border/50 transition-all duration-200 cursor-pointer group"
-                        onClick={() => handleCommonPathClick(folder.path)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
-                            <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                            </svg>
-                          </div>
-                          <div className="min-w-0 flex-1 overflow-hidden">
-                            <div className="text-sm font-medium text-foreground truncate">{folder.name}</div>
-                            <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>{formatPath(folder.path)}</div>
-                          </div>
-                        </div>
-                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </motion.div>
-                    ))
+                  <SelectableListCard className="shadow-none">
+                    {commonFolders
+                      .filter(folder => folder.readable && !folder.is_root && !folder.is_symlink)
+                      .slice(0, 6)
+                      .map((folder, index) => (
+                        <motion.div
+                          key={folder.path + index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2, delay: index * 0.02 }}
+                        >
+                          <SelectableListItem
+                            selected={false}
+                            onSelect={() => handleCommonPathClick(folder.path)}
+                            showCheck={false}
+                            className="py-2"
+                            right={
+                              <svg
+                                className="w-4 h-4 text-[rgb(160_163_164)]"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            }
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 bg-primary/20 rounded flex items-center justify-center">
+                                <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0 flex-1 overflow-hidden">
+                                <div className="text-sm font-medium text-foreground truncate">{folder.name}</div>
+                                <div className="text-xs text-muted-foreground/80 truncate" title={folder.path}>
+                                  {formatPath(folder.path)}
+                                </div>
+                              </div>
+                            </div>
+                          </SelectableListItem>
+                        </motion.div>
+                      ))}
+                  </SelectableListCard>
                 )
               )}
             </div>
