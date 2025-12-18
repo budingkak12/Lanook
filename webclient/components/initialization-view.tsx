@@ -243,11 +243,11 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
         {/* Main Content */}
         <main
-          className="flex-1 lg:ml-44 ml-0 lg:pl-1 pl-1 pr-1 lg:pr-1 lg:relative pb-24"
+          // 底部预留更多空间，避免内容被右下角固定按钮遮挡
+          className="flex-1 lg:ml-44 ml-0 lg:pl-1 pl-1 pr-1 lg:pr-1 lg:relative pb-40"
           onClick={() => setIsSidebarOpen(false)} // 点击内容区域关闭侧边栏
           style={{
             minHeight: 'calc(100vh - 6rem)',
-            maxHeight: 'calc(100vh - 6rem)',
             overflowY: 'auto'
           }}
         >
