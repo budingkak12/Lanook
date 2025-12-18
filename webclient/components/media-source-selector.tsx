@@ -310,7 +310,8 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         try {
           setIsLoadingContents(true)
           setCurrentFolderPath(parentPath)
-          setBrowsingPath(parentPath) // 设置浏览路径，不填充到地址栏
+          setBrowsingPath(parentPath) // 设置浏览路径
+          setLocalInputPath(parentPath) // 同步到下方输入框
 
           const contents = await listFolderContents(parentPath)
           const foldersOnly = contents.filter(item => item.type === 'folder')
@@ -325,6 +326,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         // 如果已经是顶层，则返回到常用路径
         setIsBrowsingFolder(false)
         setBrowsingPath('') // 清空浏览路径
+        setLocalInputPath('') // 输入框也清空
       }
     }
   }
@@ -710,7 +712,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
                 <button
                   type="button"
                   onClick={() => setLocalInputPath("")}
-                  className="flex h-11 px-2 items-center justify-center border-l border-border/40 text-muted-foreground hover:bg-muted/40 transition-colors"
+                  className="flex h-11 px-3 items-center justify-center text-muted-foreground hover:bg-muted/40 transition-colors"
                   disabled={isValidatingLocal}
                 >
                   ×
