@@ -14,6 +14,10 @@ export type ReactionVariant =
   | "tiktok_burst"
   | "spring"
   | "soft"
+  | "pulse_beat"
+  | "spin_bloom"
+  | "magic_dust"
+  | "jiggle"
 
 type ReactionButtonProps = {
   kind: ReactionKind
@@ -43,6 +47,10 @@ const BASE_MS: Record<ReactionVariant, number> = {
   tiktok_burst: 230,
   spring: 240,
   soft: 200,
+  pulse_beat: 400,
+  spin_bloom: 450,
+  magic_dust: 500,
+  jiggle: 300,
 }
 
 const EASING: Record<ReactionVariant, string> = {
@@ -55,6 +63,10 @@ const EASING: Record<ReactionVariant, string> = {
   tiktok_burst: "cubic-bezier(0.2, 0.9, 0.2, 1)",
   spring: "cubic-bezier(0.16, 1, 0.3, 1)",
   soft: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  pulse_beat: "cubic-bezier(0.25, 0.8, 0.25, 1)",
+  spin_bloom: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+  magic_dust: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  jiggle: "linear",
 }
 
 function Icon({ kind, active }: { kind: ReactionKind; active: boolean }) {
@@ -94,6 +106,9 @@ export function ReactionButton({
     if (variant === "youtube_glow") return active ? 1.1 : 1
     if (variant.startsWith("youtube")) return active ? 1.09 : 1
     if (variant.startsWith("tiktok")) return active ? 1.12 : 1
+    if (variant === "pulse_beat") return active ? 1.15 : 1
+    if (variant === "spin_bloom") return active ? 1.1 : 1
+    if (variant === "jiggle") return active ? 1.05 : 1
     return active ? 1.1 : 1
   })()
 
@@ -127,51 +142,65 @@ export function ReactionButton({
         variant === "youtube_glow" ||
         variant === "youtube_ripple" ||
         variant === "youtube_soft" ||
-        variant === "tiktok_burst") &&
+        variant === "tiktok_burst" ||
+        variant === "magic_dust" ||
+        variant === "spin_bloom") &&
         active && (
-        <span key={burstKey} className="absolute inset-0 pointer-events-none">
-          {variant !== "tiktok_burst" && (
-            <span className={`rb-ring ${variant === "youtube_soft" ? "rb-ring--soft" : variant === "youtube_ripple" ? "rb-ring--ripple" : ""}`} />
-          )}
-          {variant === "youtube_glow" && <span className="rb-glow" />}
-          {(variant === "youtube" || variant === "youtube_glow" || variant === "tiktok_burst") && (
-            <>
-              <span className="rb-dot rb-dot-1" />
-              <span className="rb-dot rb-dot-2" />
-              <span className="rb-dot rb-dot-3" />
-              <span className="rb-dot rb-dot-4" />
-              <span className="rb-dot rb-dot-5" />
-              <span className="rb-dot rb-dot-6" />
-            </>
-          )}
-          {variant === "youtube_spark" && (
-            <>
-              <span className="rb-spark rb-spark-1" />
-              <span className="rb-spark rb-spark-2" />
-              <span className="rb-spark rb-spark-3" />
-              <span className="rb-spark rb-spark-4" />
-              <span className="rb-spark rb-spark-5" />
-              <span className="rb-spark rb-spark-6" />
-            </>
-          )}
-          {variant === "tiktok_burst" && (
-            <>
-              <span className="rb-tt-glow" />
-              <span className="rb-dot rb-dot-1" />
-              <span className="rb-dot rb-dot-2" />
-              <span className="rb-dot rb-dot-3" />
-              <span className="rb-dot rb-dot-4" />
-              <span className="rb-dot rb-dot-5" />
-              <span className="rb-dot rb-dot-6" />
-            </>
-          )}
-        </span>
-      )}
+          <span key={burstKey} className="absolute inset-0 pointer-events-none">
+            {variant !== "tiktok_burst" && variant !== "magic_dust" && variant !== "spin_bloom" && (
+              <span className={`rb-ring ${variant === "youtube_soft" ? "rb-ring--soft" : variant === "youtube_ripple" ? "rb-ring--ripple" : ""}`} />
+            )}
+            {variant === "youtube_glow" && <span className="rb-glow" />}
+            {(variant === "youtube" || variant === "youtube_glow" || variant === "tiktok_burst") && (
+              <>
+                <span className="rb-dot rb-dot-1" />
+                <span className="rb-dot rb-dot-2" />
+                <span className="rb-dot rb-dot-3" />
+                <span className="rb-dot rb-dot-4" />
+                <span className="rb-dot rb-dot-5" />
+                <span className="rb-dot rb-dot-6" />
+              </>
+            )}
+            {variant === "youtube_spark" && (
+              <>
+                <span className="rb-spark rb-spark-1" />
+                <span className="rb-spark rb-spark-2" />
+                <span className="rb-spark rb-spark-3" />
+                <span className="rb-spark rb-spark-4" />
+                <span className="rb-spark rb-spark-5" />
+                <span className="rb-spark rb-spark-6" />
+              </>
+            )}
+            {variant === "tiktok_burst" && (
+              <>
+                <span className="rb-tt-glow" />
+                <span className="rb-dot rb-dot-1" />
+                <span className="rb-dot rb-dot-2" />
+                <span className="rb-dot rb-dot-3" />
+                <span className="rb-dot rb-dot-4" />
+                <span className="rb-dot rb-dot-5" />
+                <span className="rb-dot rb-dot-6" />
+              </>
+            )}
+            {variant === "magic_dust" && (
+              <>
+                <span className="rb-dust rb-dust-1" />
+                <span className="rb-dust rb-dust-2" />
+                <span className="rb-dust rb-dust-3" />
+                <span className="rb-dust rb-dust-4" />
+                <span className="rb-dust rb-dust-5" />
+                <span className="rb-dust rb-dust-6" />
+              </>
+            )}
+            {variant === "spin_bloom" && (
+              <span className="rb-bloom" />
+            )}
+          </span>
+        )}
 
       <span
         key={animKey}
-        className={`relative flex items-center justify-center ${
-          variant.startsWith("tiktok")
+        className={`relative flex items-center justify-center ${variant.startsWith("tiktok")
             ? "rb-pop"
             : variant === "spring"
               ? "rb-spring"
@@ -179,8 +208,14 @@ export function ReactionButton({
                 ? variant === "youtube_soft"
                   ? "rb-yt-soft"
                   : "rb-bounce"
-                : "rb-soft"
-        }`}
+                : variant === "pulse_beat"
+                  ? "rb-pulse-beat"
+                  : variant === "spin_bloom"
+                    ? "rb-spin-bloom"
+                    : variant === "jiggle"
+                      ? "rb-jiggle"
+                      : "rb-soft"
+          }`}
       >
         <span style={{ opacity: loading ? 0.55 : 1, transition: `opacity ${ms}ms ${easing}` }}>
           <Icon kind={kind} active={active} />
@@ -264,6 +299,38 @@ export function ReactionButton({
           }
         }
 
+        .rb-pulse-beat {
+          animation: rb-pulse-beat ${Math.round(ms * 1.5)}ms ${easing};
+        }
+        @keyframes rb-pulse-beat {
+          0% { transform: scale(1); }
+          14% { transform: scale(1.25); }
+          28% { transform: scale(1); }
+          42% { transform: scale(1.25); }
+          70% { transform: scale(1); }
+          100% { transform: scale(1); }
+        }
+
+        .rb-spin-bloom {
+          animation: rb-spin-bloom ${Math.round(ms * 1.3)}ms ${easing};
+        }
+        @keyframes rb-spin-bloom {
+          0% { transform: scale(0.8) rotate(0deg); }
+          60% { transform: scale(1.2) rotate(100deg); }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .rb-jiggle {
+          animation: rb-jiggle ${Math.round(ms * 1.2)}ms ${easing};
+        }
+        @keyframes rb-jiggle {
+          0% { transform: rotate(0deg); }
+          25% { transform: rotate(-12deg); }
+          50% { transform: rotate(12deg); }
+          75% { transform: rotate(-6deg); }
+          100% { transform: rotate(0deg); }
+        }
+
         .rb-ring {
           position: absolute;
           inset: -6px;
@@ -313,6 +380,25 @@ export function ReactionButton({
             transform: translate(-50%, -50%) scale(1.5);
             opacity: 0;
           }
+        }
+
+        .rb-bloom {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 90%;
+          height: 90%;
+          transform: translate(-50%, -50%);
+          border-radius: 9999px;
+          background: rgba(var(--rb-accent-rgb), 0.3);
+          filter: blur(8px);
+          opacity: 0;
+          animation: rb-bloom-anim ${Math.round(ms * 1.1)}ms ${easing};
+        }
+        @keyframes rb-bloom-anim {
+          0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+          40% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.6; }
+          100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
         }
 
         .rb-tt-glow {
@@ -428,6 +514,30 @@ export function ReactionButton({
         .rb-spark-6 {
           --a: 300deg;
         }
+
+        .rb-dust {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 4px;
+          height: 4px;
+          background: rgba(var(--rb-accent-rgb), 0.85);
+          border-radius: 9999px;
+          transform: translate(-50%, -50%);
+          opacity: 0;
+          animation: rb-dust ${Math.round(ms * 1.4)}ms ${easing};
+        }
+        @keyframes rb-dust {
+          0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+          20% { transform: translate(calc(-50% + var(--dx) * 0.3), calc(-50% + var(--dy) * 0.3)) scale(1); opacity: 0.9; }
+          100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) - 20px)) scale(0); opacity: 0; }
+        }
+        .rb-dust-1 { --dx: -15px; --dy: -15px; }
+        .rb-dust-2 { --dx: 15px; --dy: -18px; }
+        .rb-dust-3 { --dx: -10px; --dy: -25px; }
+        .rb-dust-4 { --dx: 10px; --dy: -12px; }
+        .rb-dust-5 { --dx: -18px; --dy: -8px; }
+        .rb-dust-6 { --dx: 18px; --dy: -20px; }
 
         .rb-yt-soft {
           animation: rb-yt-soft ${Math.round(ms * 1.15)}ms ${easing};
