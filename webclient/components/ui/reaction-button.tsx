@@ -4,7 +4,16 @@ import { useEffect, useMemo, useState } from "react"
 import { Heart, Loader2, Star } from "lucide-react"
 
 type ReactionKind = "like" | "favorite"
-export type ReactionVariant = "tiktok" | "youtube" | "spring" | "soft"
+export type ReactionVariant =
+  | "youtube"
+  | "youtube_ripple"
+  | "youtube_spark"
+  | "youtube_glow"
+  | "youtube_soft"
+  | "tiktok"
+  | "tiktok_burst"
+  | "spring"
+  | "soft"
 
 type ReactionButtonProps = {
   kind: ReactionKind
@@ -25,15 +34,25 @@ type ReactionButtonProps = {
 }
 
 const BASE_MS: Record<ReactionVariant, number> = {
-  tiktok: 220,
   youtube: 260,
+  youtube_ripple: 290,
+  youtube_spark: 290,
+  youtube_glow: 310,
+  youtube_soft: 320,
+  tiktok: 220,
+  tiktok_burst: 230,
   spring: 240,
   soft: 200,
 }
 
 const EASING: Record<ReactionVariant, string> = {
-  tiktok: "cubic-bezier(0.2, 0.9, 0.2, 1)",
   youtube: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  youtube_ripple: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  youtube_spark: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  youtube_glow: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  youtube_soft: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+  tiktok: "cubic-bezier(0.2, 0.9, 0.2, 1)",
+  tiktok_burst: "cubic-bezier(0.2, 0.9, 0.2, 1)",
   spring: "cubic-bezier(0.16, 1, 0.3, 1)",
   soft: "cubic-bezier(0.2, 0.8, 0.2, 1)",
 }
@@ -69,11 +88,16 @@ export function ReactionButton({
   const easing = EASING[variant]
 
   const scale = (() => {
-    if (variant === "soft") return active ? 1.06 : 1
     if (variant === "spring") return active ? 1.12 : 1
-    if (variant === "youtube") return active ? 1.1 : 1
-    return active ? 1.12 : 1
+    if (variant === "soft") return active ? 1.06 : 1
+    if (variant === "youtube_soft") return active ? 1.08 : 1
+    if (variant === "youtube_glow") return active ? 1.1 : 1
+    if (variant.startsWith("youtube")) return active ? 1.09 : 1
+    if (variant.startsWith("tiktok")) return active ? 1.12 : 1
+    return active ? 1.1 : 1
   })()
+
+  const accentRgb = kind === "like" ? "248, 113, 113" : "250, 204, 21"
 
   const rootClass = [
     "relative flex items-center justify-center rounded-full bg-black/65 text-white disabled:opacity-40 disabled:cursor-not-allowed",
@@ -88,6 +112,8 @@ export function ReactionButton({
       onClick={onClick}
       className={rootClass}
       style={{
+        // @ts-expect-error - css var
+        "--rb-accent-rgb": accentRgb,
         transform: `scale(${scale})`,
         transitionProperty: "transform",
         transitionDuration: `${ms}ms`,
@@ -95,20 +121,67 @@ export function ReactionButton({
       }}
       title={label || variant}
     >
-      {/* YouTube burst */}
-      {variant === "youtube" && active && (
+      {/* Burst effects (only when toggling to active) */}
+      {(variant === "youtube" ||
+        variant === "youtube_spark" ||
+        variant === "youtube_glow" ||
+        variant === "youtube_ripple" ||
+        variant === "youtube_soft" ||
+        variant === "tiktok_burst") &&
+        active && (
         <span key={burstKey} className="absolute inset-0 pointer-events-none">
-          <span className="rb-ring" />
-          <span className="rb-burst rb-burst-1" />
-          <span className="rb-burst rb-burst-2" />
-          <span className="rb-burst rb-burst-3" />
-          <span className="rb-burst rb-burst-4" />
-          <span className="rb-burst rb-burst-5" />
-          <span className="rb-burst rb-burst-6" />
+          {variant !== "tiktok_burst" && (
+            <span className={`rb-ring ${variant === "youtube_soft" ? "rb-ring--soft" : variant === "youtube_ripple" ? "rb-ring--ripple" : ""}`} />
+          )}
+          {variant === "youtube_glow" && <span className="rb-glow" />}
+          {(variant === "youtube" || variant === "youtube_glow" || variant === "tiktok_burst") && (
+            <>
+              <span className="rb-dot rb-dot-1" />
+              <span className="rb-dot rb-dot-2" />
+              <span className="rb-dot rb-dot-3" />
+              <span className="rb-dot rb-dot-4" />
+              <span className="rb-dot rb-dot-5" />
+              <span className="rb-dot rb-dot-6" />
+            </>
+          )}
+          {variant === "youtube_spark" && (
+            <>
+              <span className="rb-spark rb-spark-1" />
+              <span className="rb-spark rb-spark-2" />
+              <span className="rb-spark rb-spark-3" />
+              <span className="rb-spark rb-spark-4" />
+              <span className="rb-spark rb-spark-5" />
+              <span className="rb-spark rb-spark-6" />
+            </>
+          )}
+          {variant === "tiktok_burst" && (
+            <>
+              <span className="rb-tt-glow" />
+              <span className="rb-dot rb-dot-1" />
+              <span className="rb-dot rb-dot-2" />
+              <span className="rb-dot rb-dot-3" />
+              <span className="rb-dot rb-dot-4" />
+              <span className="rb-dot rb-dot-5" />
+              <span className="rb-dot rb-dot-6" />
+            </>
+          )}
         </span>
       )}
 
-      <span key={animKey} className={`relative flex items-center justify-center ${variant === "tiktok" ? "rb-pop" : variant === "spring" ? "rb-spring" : variant === "youtube" ? "rb-bounce" : "rb-soft"}`}>
+      <span
+        key={animKey}
+        className={`relative flex items-center justify-center ${
+          variant.startsWith("tiktok")
+            ? "rb-pop"
+            : variant === "spring"
+              ? "rb-spring"
+              : variant.startsWith("youtube")
+                ? variant === "youtube_soft"
+                  ? "rb-yt-soft"
+                  : "rb-bounce"
+                : "rb-soft"
+        }`}
+      >
         <span style={{ opacity: loading ? 0.55 : 1, transition: `opacity ${ms}ms ${easing}` }}>
           <Icon kind={kind} active={active} />
         </span>
@@ -195,9 +268,17 @@ export function ReactionButton({
           position: absolute;
           inset: -6px;
           border-radius: 9999px;
-          border: 2px solid rgba(255, 255, 255, 0.38);
+          border: 2px solid rgba(var(--rb-accent-rgb), 0.45);
+          box-shadow: 0 0 0 1px rgba(var(--rb-accent-rgb), 0.12) inset;
           animation: rb-ring ${Math.round(ms * 1.1)}ms ${easing};
           opacity: 0;
+        }
+        .rb-ring--soft {
+          border-color: rgba(var(--rb-accent-rgb), 0.32);
+        }
+        .rb-ring--ripple {
+          border-width: 2px;
+          filter: blur(0.2px);
         }
         @keyframes rb-ring {
           0% {
@@ -210,19 +291,67 @@ export function ReactionButton({
           }
         }
 
-        .rb-burst {
+        .rb-glow {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 70%;
+          height: 70%;
+          transform: translate(-50%, -50%);
+          border-radius: 9999px;
+          background: rgba(var(--rb-accent-rgb), 0.22);
+          filter: blur(10px);
+          opacity: 0;
+          animation: rb-glow ${Math.round(ms * 1.2)}ms ${easing};
+        }
+        @keyframes rb-glow {
+          0% {
+            transform: translate(-50%, -50%) scale(0.7);
+            opacity: 0.55;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.5);
+            opacity: 0;
+          }
+        }
+
+        .rb-tt-glow {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 70%;
+          height: 70%;
+          transform: translate(-50%, -50%);
+          border-radius: 9999px;
+          background: rgba(var(--rb-accent-rgb), 0.28);
+          filter: blur(12px);
+          opacity: 0;
+          animation: rb-tt-glow ${Math.round(ms * 1.05)}ms ${easing};
+        }
+        @keyframes rb-tt-glow {
+          0% {
+            transform: translate(-50%, -50%) scale(0.55);
+            opacity: 0.65;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.35);
+            opacity: 0;
+          }
+        }
+
+        .rb-dot {
           position: absolute;
           left: 50%;
           top: 50%;
           width: 6px;
           height: 6px;
-          background: rgba(255, 255, 255, 0.85);
+          background: rgba(var(--rb-accent-rgb), 0.92);
           border-radius: 9999px;
           transform: translate(-50%, -50%);
-          animation: rb-burst ${Math.round(ms * 1.1)}ms ${easing};
+          animation: rb-dot ${Math.round(ms * 1.1)}ms ${easing};
           opacity: 0;
         }
-        @keyframes rb-burst {
+        @keyframes rb-dot {
           0% {
             transform: translate(-50%, -50%) scale(0.6);
             opacity: 0.8;
@@ -232,32 +361,89 @@ export function ReactionButton({
             opacity: 0;
           }
         }
-        .rb-burst-1 {
+        .rb-dot-1 {
           --dx: -28px;
           --dy: -12px;
         }
-        .rb-burst-2 {
+        .rb-dot-2 {
           --dx: -10px;
           --dy: -30px;
         }
-        .rb-burst-3 {
+        .rb-dot-3 {
           --dx: 12px;
           --dy: -28px;
         }
-        .rb-burst-4 {
+        .rb-dot-4 {
           --dx: 30px;
           --dy: -10px;
         }
-        .rb-burst-5 {
+        .rb-dot-5 {
           --dx: 20px;
           --dy: 24px;
         }
-        .rb-burst-6 {
+        .rb-dot-6 {
           --dx: -22px;
           --dy: 22px;
+        }
+
+        .rb-spark {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 16px;
+          height: 2px;
+          border-radius: 9999px;
+          background: rgba(var(--rb-accent-rgb), 0.95);
+          transform: translate(-50%, -50%) rotate(var(--a)) translateX(0) scaleX(0.2);
+          transform-origin: 50% 50%;
+          opacity: 0;
+          animation: rb-spark ${Math.round(ms * 1.05)}ms ${easing};
+          filter: drop-shadow(0 0 2px rgba(var(--rb-accent-rgb), 0.25));
+        }
+        @keyframes rb-spark {
+          0% {
+            opacity: 0.85;
+            transform: translate(-50%, -50%) rotate(var(--a)) translateX(0) scaleX(0.2);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) rotate(var(--a)) translateX(18px) scaleX(1);
+          }
+        }
+        .rb-spark-1 {
+          --a: 0deg;
+        }
+        .rb-spark-2 {
+          --a: 60deg;
+        }
+        .rb-spark-3 {
+          --a: 120deg;
+        }
+        .rb-spark-4 {
+          --a: 180deg;
+        }
+        .rb-spark-5 {
+          --a: 240deg;
+        }
+        .rb-spark-6 {
+          --a: 300deg;
+        }
+
+        .rb-yt-soft {
+          animation: rb-yt-soft ${Math.round(ms * 1.15)}ms ${easing};
+        }
+        @keyframes rb-yt-soft {
+          0% {
+            transform: scale(1);
+          }
+          55% {
+            transform: scale(1.14);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
       `}</style>
     </button>
   )
 }
-

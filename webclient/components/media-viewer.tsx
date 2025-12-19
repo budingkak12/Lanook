@@ -71,8 +71,25 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
   // === 动效可调参数（你可以直接改这里的数值来调节速度/幅度） ===
   // >1 更慢，<1 更快
-  const REACTION_ANIM_SPEED = 5.0
+  const REACTION_ANIM_SPEED = 1.5
   const PRIMARY_REACTION_VARIANT: ReactionVariant = "youtube"
+  const SHOW_REACTION_VARIANTS_PREVIEW = true
+
+  const REACTION_VARIANTS_PREVIEW: Array<{ id: string; label: string; variant: ReactionVariant; speed: number }> = [
+    { id: "yt", label: "YouTube", variant: "youtube", speed: 1.5 },
+    { id: "yt-slow", label: "YT 3.0x", variant: "youtube", speed: 3.0 },
+    { id: "yt-ripple", label: "YT Ripple", variant: "youtube_ripple", speed: 1.5 },
+    { id: "yt-spark", label: "YT Spark", variant: "youtube_spark", speed: 1.5 },
+    { id: "yt-glow", label: "YT Glow", variant: "youtube_glow", speed: 1.5 },
+    { id: "yt-glow-slow", label: "Glow 3.0x", variant: "youtube_glow", speed: 3.0 },
+    { id: "yt-soft", label: "YT Soft", variant: "youtube_soft", speed: 1.5 },
+    { id: "tt", label: "抖音", variant: "tiktok", speed: 1.5 },
+    { id: "tt-burst", label: "TT Burst", variant: "tiktok_burst", speed: 1.5 },
+    { id: "spring", label: "弹簧", variant: "spring", speed: 1.5 },
+    { id: "soft", label: "柔和", variant: "soft", speed: 1.5 },
+  ]
+
+  const [reactionPreviewActive, setReactionPreviewActive] = useState<Record<string, boolean>>({})
 
   const ROTATE_STEP_DEG = 90
   const ROTATE_ANIMATION_MS = 200
@@ -665,9 +682,56 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 	          </button>
 	        </div>
 
-	        {/* 已选择方案：YouTube + 1.5x，预览区移除 */}
-	      </div>
-	    </div>
+		        {SHOW_REACTION_VARIANTS_PREVIEW && (
+		          <div className="mt-2 w-full max-w-[min(46rem,calc(100vw-2rem))]">
+		            <div className="overflow-x-auto pb-1">
+		              <div className="flex gap-3 px-1">
+		                {REACTION_VARIANTS_PREVIEW.map((item) => {
+		                  const likeKey = `like:${item.id}`
+		                  const favKey = `favorite:${item.id}`
+		                  return (
+		                    <div key={item.id} className="shrink-0 flex flex-col items-center gap-1">
+		                      <ReactionButton
+		                        kind="like"
+		                        active={Boolean(reactionPreviewActive[likeKey])}
+		                        loading={false}
+		                        onClick={() =>
+		                          setReactionPreviewActive((prev) => ({
+		                            ...prev,
+		                            [likeKey]: !prev[likeKey],
+		                          }))
+		                        }
+		                        variant={item.variant}
+		                        speed={item.speed}
+		                        sizeClassName="h-9 w-9"
+		                      />
+		                      <ReactionButton
+		                        kind="favorite"
+		                        active={Boolean(reactionPreviewActive[favKey])}
+		                        loading={false}
+		                        onClick={() =>
+		                          setReactionPreviewActive((prev) => ({
+		                            ...prev,
+		                            [favKey]: !prev[favKey],
+		                          }))
+		                        }
+		                        variant={item.variant}
+		                        speed={item.speed}
+		                        sizeClassName="h-9 w-9"
+		                      />
+		                      <div className="text-[10px] text-white/55">{item.label}</div>
+		                    </div>
+		                  )
+		                })}
+		              </div>
+		            </div>
+		            <div className="text-[10px] text-white/45 text-center">
+		              预览区仅用于挑选动画手感，不会影响真实点赞/收藏状态。
+		            </div>
+		          </div>
+		        )}
+		      </div>
+		    </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
