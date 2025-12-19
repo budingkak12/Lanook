@@ -87,3 +87,15 @@ class ClipEmbedding(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (UniqueConstraint("media_id", "model", name="uq_clip_media_model"),)
+
+
+class FaceProcessingState(Base):
+    __tablename__ = "face_processing_states"
+
+    # 以 media_id 作为主键：每个媒体在一次聚类重建后都有且仅有一条处理结果（含 0 face）。
+    media_id = Column(Integer, ForeignKey("media.id"), primary_key=True)
+    status = Column(String, nullable=False, default="done", server_default="done")  # done/failed
+    face_count = Column(Integer, nullable=False, default=0, server_default="0")
+    pipeline_signature = Column(String, nullable=True)
+    last_error = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

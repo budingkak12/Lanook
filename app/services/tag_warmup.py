@@ -12,7 +12,7 @@ from app.services.exceptions import ServiceError
 
 
 def _build_active_media_query(session: Session) -> tuple[bool, "Session.query"]:
-    """构造“活动媒体”查询，仅包含当前仍属于活动来源的图片媒体。
+    """构造“活动媒体”查询，仅包含当前仍属于活动来源的可打标媒体（image/video）。
 
     说明：
     - 若尚未启用媒体来源表（MediaSource 为空），则退回到 legacy 行为：所有 image 媒体视为活动；
@@ -21,7 +21,7 @@ def _build_active_media_query(session: Session) -> tuple[bool, "Session.query"]:
         * 绑定到 active 且未删除来源的媒体。
     """
     has_any_source = (session.query(func.count(MediaSource.id)).scalar() or 0) > 0
-    query = session.query(Media).filter(Media.media_type == "image")
+    query = session.query(Media).filter(Media.media_type.in_(["image", "video"]))
 
     if has_any_source:
         query = (
@@ -91,4 +91,3 @@ def warmup_rebuild_tags_for_active_media(limit: Optional[int] = None) -> Optiona
         return None
     finally:
         db.close()
-

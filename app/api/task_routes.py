@@ -3,8 +3,8 @@ from datetime import datetime
 from fastapi import APIRouter, Query
 from sqlalchemy import func
 
-from app.db import ClipEmbedding, FaceEmbedding, Media, MediaTag, SessionLocal
-from app.db.models_extra import AssetArtifact, MediaSource
+from app.db import ClipEmbedding, Media, MediaTag, SessionLocal
+from app.db.models_extra import AssetArtifact, FaceProcessingState, MediaSource
 from app.schemas.tasks import (
     ArtifactProgressItem,
     ArtifactTypeModel,
@@ -94,7 +94,11 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
             rows: list[tuple[str, str, int]] = []
             vector_ready_count = 0
             tagged_ready_count = 0
-            faces_ready_count = 0
+            vector_total_media = 0
+            tags_total_media = 0
+            faces_total_media = 0
+            faces_done_count = 0
+            faces_failed_count = 0
         else:
             # 仅统计“仍属于活动媒体路径”的媒体。
             active_media_query = session.query(Media)
@@ -117,6 +121,15 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
 
             total_media = active_media_query.with_entities(func.count(Media.id)).scalar() or 0
 
+            # 统一口径：向量/标签/人脸本质是“图像模型”能力，当前支持 image + video（视频通过抽帧）。
+            ai_media_query = active_media_query.filter(Media.media_type.in_(["image", "video"]))
+            vector_total_media = ai_media_query.with_entities(func.count(Media.id)).scalar() or 0
+            tags_total_media = vector_total_media
+
+            # 人脸聚类仅对“本地路径”执行；SMB/远程媒体不纳入分母（否则永远显示排队）。
+            local_ai_media_query = ai_media_query.filter(~func.lower(Media.absolute_path).like("smb://%"))
+            faces_total_media = local_ai_media_query.with_entities(func.count(Media.id)).scalar() or 0
+
             # 在“活动媒体”子集范围内，统计向量 / 标签 / 人脸覆盖情况。
             active_media_ids_subq = active_media_query.with_entities(Media.id).subquery()
 
@@ -134,9 +147,23 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
                 or 0
             )
 
-            faces_ready_count = (
-                session.query(func.count(func.distinct(FaceEmbedding.media_id)))
-                .filter(FaceEmbedding.media_id.in_(active_media_ids_subq))
+            # 人脸：以“处理状态”作为覆盖口径（含 0 face 的媒体也应视为已处理）。
+            local_media_ids_subq = local_ai_media_query.with_entities(Media.id).subquery()
+            faces_done_count = (
+                session.query(func.count(FaceProcessingState.media_id))
+                .filter(
+                    FaceProcessingState.media_id.in_(local_media_ids_subq),
+                    FaceProcessingState.status == "done",
+                )
+                .scalar()
+                or 0
+            )
+            faces_failed_count = (
+                session.query(func.count(FaceProcessingState.media_id))
+                .filter(
+                    FaceProcessingState.media_id.in_(local_media_ids_subq),
+                    FaceProcessingState.status == "failed",
+                )
                 .scalar()
                 or 0
             )
@@ -193,9 +220,9 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
     items.append(
         ArtifactProgressItem(
             artifact_type=ArtifactTypeModel.VECTOR,
-            total_media=total_media,
+            total_media=vector_total_media,
             ready_count=vector_ready_count,
-            queued_count=max(total_media - vector_ready_count, 0),
+            queued_count=max(vector_total_media - vector_ready_count, 0),
             processing_count=0,
             failed_count=0,
         )
@@ -205,9 +232,9 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
     items.append(
         ArtifactProgressItem(
             artifact_type=ArtifactTypeModel.TAGS,
-            total_media=total_media,
+            total_media=tags_total_media,
             ready_count=tagged_ready_count,
-            queued_count=max(total_media - tagged_ready_count, 0),
+            queued_count=max(tags_total_media - tagged_ready_count, 0),
             processing_count=0,
             failed_count=0,
         )
@@ -217,11 +244,11 @@ def get_asset_pipeline_status() -> AssetPipelineStatusResponse:
     items.append(
         ArtifactProgressItem(
             artifact_type=ArtifactTypeModel.FACES,
-            total_media=total_media,
-            ready_count=faces_ready_count,
-            queued_count=max(total_media - faces_ready_count, 0),
+            total_media=faces_total_media,
+            ready_count=faces_done_count,
+            queued_count=max(faces_total_media - faces_done_count - faces_failed_count, 0),
             processing_count=0,
-            failed_count=0,
+            failed_count=faces_failed_count,
         )
     )
 

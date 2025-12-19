@@ -19,6 +19,7 @@ from types import SimpleNamespace
 
 from app.db import Media, MediaTag, TagDefinition
 from app.services.exceptions import MediaNotFoundError, TagModelNotReadyError, TagRebuildError, TagWhitelistError
+from app.services.model_input_image import resolve_model_input_image_path
 
 
 _MODEL_ALIASES = {
@@ -421,7 +422,8 @@ def _collect_media(
     limit: Optional[int],
 ) -> tuple[List[tuple[Media, Path]], dict[str, int]]:
     stats = {"missing": 0, "out_of_scope": 0}
-    query = db.query(Media).filter(Media.media_type == "image")
+    # 视频属于“抽帧后再走图像模型”的范畴：统一通过 resolve_model_input_image_path 获取可读图像输入。
+    query = db.query(Media).filter(Media.media_type.in_(["image", "video"]))
     if media_ids:
         query = query.filter(Media.id.in_(media_ids))
     query = query.order_by(Media.id.asc())
@@ -429,18 +431,31 @@ def _collect_media(
         query = query.limit(limit)
     rows: List[tuple[Media, Path]] = []
     for media in query.all():
-        try:
-            abs_path = Path(media.absolute_path).expanduser().resolve()
-        except Exception:
+        abs_raw = getattr(media, "absolute_path", None)
+        if not abs_raw or not isinstance(abs_raw, str):
             stats["missing"] += 1
             continue
-        if base_dir and not _is_subpath(abs_path, base_dir):
-            stats["out_of_scope"] += 1
-            continue
-        if not abs_path.exists():
+
+        is_remote = abs_raw.lower().startswith("smb://")
+        if not is_remote:
+            try:
+                origin_path = Path(abs_raw).expanduser().resolve()
+            except Exception:
+                stats["missing"] += 1
+                continue
+            if base_dir and not _is_subpath(origin_path, base_dir):
+                stats["out_of_scope"] += 1
+                continue
+            if not origin_path.exists():
+                stats["missing"] += 1
+                continue
+
+        input_path = resolve_model_input_image_path(media)
+        if input_path is None or not input_path.exists():
             stats["missing"] += 1
             continue
-        rows.append((media, abs_path))
+
+        rows.append((media, input_path))
     return rows, stats
 
 

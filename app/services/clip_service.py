@@ -30,6 +30,7 @@ from transformers.models.chinese_clip.modeling_chinese_clip import ChineseCLIPTe
 from app.db import ClipEmbedding, MEDIA_ROOT_KEY, Media, get_setting
 from app.db.models_extra import MediaSource
 from app.services.exceptions import MediaNotFoundError, ServiceError
+from app.services.model_input_image import resolve_model_input_image_path
 
 
 class ClipSearchError(ServiceError):
@@ -347,7 +348,8 @@ def _ensure_base_dir(base_path: Optional[str]) -> Optional[Path]:
 
 
 def _iter_media(db: Session, media_ids: Optional[Sequence[int]]) -> Iterable[Media]:
-    query = db.query(Media).filter(Media.media_type == "image")
+    # 视频属于“抽帧后再走图像模型”的范畴：统一通过 resolve_model_input_image_path 读取缩略图帧。
+    query = db.query(Media).filter(Media.media_type.in_(["image", "video"]))
     if media_ids:
         query = query.filter(Media.id.in_(media_ids))
     return query.order_by(Media.id.asc()).all()
@@ -405,8 +407,8 @@ def rebuild_embeddings(
         images: list[Image.Image] = []
         alive = []
         for media in batch:
-            path = Path(media.absolute_path)
-            img = _load_image(path)
+            input_path = resolve_model_input_image_path(media)
+            img = _load_image(input_path) if input_path else None
             if img is None:
                 skipped += 1
                 continue
@@ -480,7 +482,7 @@ def build_missing_embeddings(
     )
     query = (
         db.query(Media)
-        .filter(Media.media_type == "image")
+        .filter(Media.media_type.in_(["image", "video"]))
         .outerjoin(subq, Media.id == subq.c.media_id)
         .filter(subq.c.media_id.is_(None))
     )
@@ -537,8 +539,8 @@ def build_missing_embeddings(
         images: list[Image.Image] = []
         alive: list[Media] = []
         for media in batch:
-            path = Path(media.absolute_path)
-            img = _load_image(path)
+            input_path = resolve_model_input_image_path(media)
+            img = _load_image(input_path) if input_path else None
             if img is None:
                 skipped += 1
                 continue
@@ -685,7 +687,8 @@ def search(
             media = db.query(Media).filter(Media.id == image_id).first()
             if not media:
                 raise MediaNotFoundError("媒体不存在，无法做图搜图")
-            img = _load_image(Path(media.absolute_path))
+            input_path = resolve_model_input_image_path(media)
+            img = _load_image(input_path) if input_path else None
             if img is None:
                 raise MediaNotFoundError("找不到图像文件或文件不可读")
             vector = _encode_images(encoder, [img], batch_size=1)[0]

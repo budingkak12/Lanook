@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
-from app.db import MEDIA_ROOT_KEY, SessionLocal, get_setting
+from app.db import MEDIA_ROOT_KEY, SUPPORTED_VIDEO_EXTS, SessionLocal, get_setting
 from app.db.models_extra import MediaSource
 from app.services import face_cluster_service
 from app.services.exceptions import ServiceError
@@ -86,7 +86,8 @@ def warmup_rebuild_face_clusters(
                     total_files += sum(
                         1
                         for p in root_path.rglob("*")
-                        if p.is_file() and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+                        if p.is_file()
+                        and p.suffix.lower() in ({".jpg", ".jpeg", ".png", ".webp", ".bmp"} | set(SUPPORTED_VIDEO_EXTS))
                     )
         except Exception:
             total_files = 0

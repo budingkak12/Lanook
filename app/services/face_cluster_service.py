@@ -13,13 +13,15 @@ from insightface.app import FaceAnalysis
 from insightface.model_zoo import model_zoo
 from sqlalchemy.orm import Session
 
-from app.db import Media
+from app.db import Media, SUPPORTED_VIDEO_EXTS
 from app.db.models import FaceCluster, FaceEmbedding
+from app.db.models_extra import FaceProcessingState
 from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingError
 from app.services.face_cluster_progress import FaceProgress
+from app.services.model_input_image import resolve_model_input_image_path
 
 
-_SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+_SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"} | set(SUPPORTED_VIDEO_EXTS)
 _face_app: FaceAnalysis | None = None
 _face_model_descriptor: str | None = None
 
@@ -138,7 +140,7 @@ def _ensure_media_record(db: Session, file_path: Path) -> Media:
     media = db.query(Media).filter(Media.absolute_path == absolute).first()
     if media:
         return media
-    media_type = "image"
+    media_type = "video" if file_path.suffix.lower() in SUPPORTED_VIDEO_EXTS else "image"
     media = Media(filename=file_path.name, absolute_path=absolute, media_type=media_type)
     db.add(media)
     db.flush()
@@ -173,16 +175,44 @@ def _collect_faces_for_roots(
     """
     detected: list[_DetectedFace] = []
     media_count = 0
+    pipeline_signature = _current_pipeline_signature()
     for root in roots:
         for file_path in _iter_media_files(root):
-            image = _read_image(file_path)
-            if image is None:
+            media = _ensure_media_record(db, file_path)
+            media_count += 1
+
+            input_path = resolve_model_input_image_path(media)
+            if not input_path:
+                db.add(
+                    FaceProcessingState(
+                        media_id=media.id,
+                        status="failed",
+                        face_count=0,
+                        pipeline_signature=pipeline_signature,
+                        last_error="无法生成/读取视频抽帧或缩略图。",
+                    )
+                )
                 if progress:
                     progress.tick()
                 continue
-            media = _ensure_media_record(db, file_path)
-            media_count += 1
+
+            image = _read_image(input_path)
+            if image is None:
+                db.add(
+                    FaceProcessingState(
+                        media_id=media.id,
+                        status="failed",
+                        face_count=0,
+                        pipeline_signature=pipeline_signature,
+                        last_error="解码图像失败。",
+                    )
+                )
+                if progress:
+                    progress.tick()
+                continue
+
             faces = face_app.get(image)
+            accepted_faces = 0
             for idx, face in enumerate(faces):
                 if face.embedding is None:
                     continue
@@ -204,6 +234,17 @@ def _collect_faces_for_roots(
                         face_index=idx,
                     )
                 )
+                accepted_faces += 1
+
+            db.add(
+                FaceProcessingState(
+                    media_id=media.id,
+                    status="done",
+                    face_count=accepted_faces,
+                    pipeline_signature=pipeline_signature,
+                    last_error=None,
+                )
+            )
             if progress:
                 progress.tick()
     return detected, media_count
@@ -323,6 +364,7 @@ def rebuild_clusters(
 
     db.query(FaceEmbedding).delete(synchronize_session=False)
     db.query(FaceCluster).delete(synchronize_session=False)
+    db.query(FaceProcessingState).delete(synchronize_session=False)
     db.commit()
 
     detected, media_count = _collect_faces_for_roots(db, [root], face_app, progress=progress)
@@ -357,6 +399,7 @@ def rebuild_clusters_for_paths(
 
     db.query(FaceEmbedding).delete(synchronize_session=False)
     db.query(FaceCluster).delete(synchronize_session=False)
+    db.query(FaceProcessingState).delete(synchronize_session=False)
     db.commit()
 
     detected, media_count = _collect_faces_for_roots(db, roots, face_app, progress=progress)
