@@ -213,15 +213,17 @@ export const TaggedCapsuleInput = forwardRef<HTMLInputElement, TaggedCapsuleInpu
               <button
                 key={s.name}
                 type="button"
-                className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent/60"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handlePick(s.name)}
               >
-                <span className="text-xs text-muted-foreground">#</span>
-                <div className="min-w-0 flex-1">
-                  {s.displayName ? <div className="font-medium truncate">{s.displayName}</div> : null}
-                  <div className="text-xs text-muted-foreground truncate">{s.name}</div>
-                </div>
+                <TagPill
+                  prefix={tone === "destructive" ? "-" : undefined}
+                  name={s.name}
+                  displayName={s.displayName ?? s.name}
+                  variant={tone === "destructive" ? "destructive" : "primary"}
+                  className="w-full"
+                />
               </button>
             ))}
           </div>

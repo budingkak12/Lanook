@@ -10,7 +10,6 @@ import {
   SearchStandaloneButton,
 } from "@/components/search/search-capsule"
 import { TaggedCapsuleInput, type TagOption } from "@/components/search/tagged-capsule-input"
-import { TabLikeButton } from "@/components/ui/tab-like-button"
 
 // --- 类型定义 ---
 type SearchIntentViewProps = {
@@ -31,7 +30,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [isLoadingTags, setIsLoadingTags] = useState(false)
   const [tagError, setTagError] = useState<string | null>(null)
-  const [preset, setPreset] = useState<"capsule" | "soft" | "stacked" | "tray">("soft")
 
   // 用于点击容器聚焦 Input
   const wantInputRef = useRef<HTMLInputElement>(null)
@@ -125,25 +123,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
 
-          {/* 样式试验区：方便你在同一页对比挑选 */}
-          <section className="space-y-2">
-            <div className="text-xs text-muted-foreground">标签输入样式预设（用于挑选最协调的一种）</div>
-            <div className="flex flex-wrap gap-2">
-              <TabLikeButton active={preset === "soft"} className="h-8 px-3" onClick={() => setPreset("soft")}>
-                柔和输入框
-              </TabLikeButton>
-              <TabLikeButton active={preset === "capsule"} className="h-8 px-3" onClick={() => setPreset("capsule")}>
-                胶囊经典
-              </TabLikeButton>
-              <TabLikeButton active={preset === "stacked"} className="h-8 px-3" onClick={() => setPreset("stacked")}>
-                两行标签
-              </TabLikeButton>
-              <TabLikeButton active={preset === "tray"} className="h-8 px-3" onClick={() => setPreset("tray")}>
-                标签区+输入区
-              </TabLikeButton>
-            </div>
-          </section>
-          
           {/* --- 想看 (Want) --- */}
           <section className="space-y-2">
             <div className="flex items-center gap-2 mb-1">
@@ -159,7 +138,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               onTagsChange={setWantTags}
               allTags={allTags}
               placeholder="描述画面，例：夕阳 海边"
-              preset={preset}
+              preset="soft"
               onSubmit={handleRunSearch}
             />
           </section>
@@ -179,7 +158,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               onTagsChange={setNotWantTags}
               allTags={allTags}
               placeholder="排除内容，例：#nsfw"
-              preset={preset}
+              preset="soft"
               onSubmit={handleRunSearch}
             />
           </section>

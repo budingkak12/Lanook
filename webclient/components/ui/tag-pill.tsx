@@ -36,27 +36,28 @@ export function TagPill({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full min-w-0 overflow-hidden items-center gap-1.5 rounded-full border px-2 py-1 whitespace-nowrap",
+        // 让英文字符（g/y/p 等）不被裁剪：提高垂直内边距与行高，不使用 leading-none。
+        "inline-flex max-w-full min-w-0 overflow-hidden items-center gap-1.5 rounded-full border px-2.5 py-1.5 whitespace-nowrap",
         variantClassName,
         className,
       )}
     >
       {layout === "stacked" ? (
         <span className="min-w-0 flex flex-col leading-none">
-          <span className="truncate text-[11px] font-medium">
+          <span className="truncate text-[11px] font-medium leading-tight">
             {prefix ? <span className="mr-0.5 text-muted-foreground">{prefix}</span> : null}
             {displayName}
           </span>
-          <span className="mt-0.5 truncate text-[10px] text-muted-foreground font-mono">{name}</span>
+          <span className="mt-0.5 truncate text-[11px] text-muted-foreground font-mono leading-tight">{name}</span>
         </span>
       ) : (
         <span className="inline-flex items-center gap-1 min-w-0">
-          <span className="truncate text-xs font-medium leading-none">
+          <span className="truncate text-xs font-medium leading-tight">
             {prefix ? <span className="mr-0.5 text-muted-foreground">{prefix}</span> : null}
             {displayName}
           </span>
           <span className="text-[10px] text-muted-foreground/70">·</span>
-          <span className="truncate text-[10px] text-muted-foreground font-mono leading-none">{name}</span>
+          <span className="truncate text-[11px] text-muted-foreground font-mono leading-tight">{name}</span>
         </span>
       )}
       {right ? <span className="shrink-0">{right}</span> : null}
@@ -67,7 +68,7 @@ export function TagPill({
           className="ml-0.5 -mr-0.5 shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/35 transition-colors"
           aria-label="移除标签"
         >
-          <X className="size-3" />
+          <X className="size-3.5" />
         </button>
       ) : null}
     </span>
