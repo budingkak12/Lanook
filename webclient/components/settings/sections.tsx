@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { SettingsExpand, SettingsPanel, SettingsRow } from "@/components/settings/list-ui"
+import { SettingsExpand, SettingsPanel, SettingsRow, SettingsSecondaryCard } from "@/components/settings/list-ui"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { SettingsSelectableSection } from "@/components/settings/selectable-section"
 
@@ -291,60 +291,47 @@ export function StorageSection({
       />
       <SettingsExpand open={open}>
         <SettingsPanel>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {fileScan}
+            {tasks}
+            {mediaManagement}
 
-            <div className="border-t border-[rgb(228_231_234)] pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Settings className="w-4 h-4" />
-                <h4 className="text-sm font-medium">任务与进度</h4>
-              </div>
-              {tasks}
-            </div>
-
-            <div className="border-t border-[rgb(228_231_234)] pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <HardDrive className="w-4 h-4" />
-                <h4 className="text-sm font-medium">媒体路径管理</h4>
-              </div>
-              {mediaManagement}
-            </div>
-
-            <div className="border-t border-[rgb(228_231_234)] pt-4">
-              <div className="border border-[rgb(228_231_234)] rounded-lg p-3 sm:p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <h4 className="font-medium flex items-center gap-2 text-sm">
-                      <RotateCcw className="w-4 h-4" />
-                      重置媒体库
-                    </h4>
-                    <p className="text-xs text-[rgb(120_123_124)]">清除当前媒体库设置，重新选择媒体文件夹</p>
+            <SettingsSecondaryCard>
+              <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <RotateCcw className="w-5 h-5 text-muted-foreground" />
+                    <span>重置媒体库</span>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={onReset}
-                    disabled={isResetting}
-                    className="w-full sm:w-auto"
-                  >
-                    {isResetting ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        重置中...
-                      </>
-                    ) : (
-                      <>
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        重置
-                      </>
-                    )}
-                  </Button>
+                  <div className="mt-1 text-xs text-muted-foreground">清除当前媒体库设置，重新选择媒体文件夹。</div>
                 </div>
-                <div className="text-xs text-[rgb(120_123_124)] bg-[rgb(240_242_244)] p-2 rounded">
-                  <strong>注意：</strong>重置后，软件将回到初始状态。这将清空所有数据库信息（点赞、标签等），但不会删除媒体文件夹内的实际文件。
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={onReset}
+                  disabled={isResetting}
+                  className="w-full sm:w-auto"
+                >
+                  {isResetting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      重置中...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      重置
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="px-4 pb-4">
+                <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">注意：</span>
+                  重置后软件将回到初始状态。这将清空数据库信息（点赞、标签等），但不会删除媒体文件夹内的实际文件。
                 </div>
               </div>
-            </div>
+            </SettingsSecondaryCard>
           </div>
         </SettingsPanel>
       </SettingsExpand>

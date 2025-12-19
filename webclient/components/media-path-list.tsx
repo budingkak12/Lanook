@@ -126,7 +126,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
   
   const containerClassName =
     mode === 'settings'
-      ? 'bg-white border border-gray-200 rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-lg space-y-2 w-full'
+      ? 'space-y-2 w-full'
       : 'p-3 sm:p-4 space-y-2 w-full'
 
   return (
@@ -158,25 +158,25 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
-                    className="flex items-center justify-between p-2 sm:p-3 w-full bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 group cursor-pointer"
+                    className="flex items-center justify-between p-2 sm:p-3 w-full bg-card border border-border/50 rounded-xl hover:border-border hover:bg-muted/20 transition-all duration-200 group cursor-pointer"
                     onClick={() => setSelectedSource(source)}
                   >
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <div className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-6 h-6 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                         </svg>
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="text-sm font-medium text-black truncate">
+                        <div className="text-sm font-medium text-foreground truncate">
                           {source.displayName || '未命名路径'}
                         </div>
-                        <div className="text-xs text-gray-600 truncate" title={source.rootPath}>
+                        <div className="text-xs text-muted-foreground truncate" title={source.rootPath}>
                           {source.rootPath}
                         </div>
                         {/* 设置模式下显示最后扫描时间 */}
                         {mode === 'settings' && source.lastScanAt && (
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-muted-foreground mt-1">
                             最后扫描: {new Date(source.lastScanAt).toLocaleString('zh-CN', {
                               year: 'numeric',
                               month: '2-digit',
@@ -189,7 +189,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                       </div>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <div className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded border border-gray-200">
+                      <div className="text-xs px-2 py-1 bg-muted/40 text-muted-foreground rounded-lg border border-border/50">
                         {renderSourceTypeLabel(source)}
                       </div>
                       <Button
@@ -200,7 +200,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                           handleDeleteSource(source.id)
                         }}
                         disabled={deletingId === source.id}
-                        className="h-8 w-8 p-0 hover:bg-red-500/20 hover:text-red-400 text-muted-foreground group-hover:text-foreground flex-shrink-0"
+                        className="h-8 w-8 p-0 hover:bg-red-500/20 hover:text-red-500 text-muted-foreground group-hover:text-foreground flex-shrink-0"
                       >
                         {deletingId === source.id ? (
                           <div className="w-4 h-4 animate-spin border border-current border-t-transparent rounded-full" />
@@ -229,9 +229,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 </div>
               )}
               {mediaSources.length > 0 && (
-                <div>
-                  可以返回上一步继续添加更多路径
-                </div>
+                null
               )}
             </div>
           </div>
@@ -268,17 +266,17 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
             <div className="space-y-4">
               {/* 基本信息 */}
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">路径名称</div>
-                <div className="text-base font-medium text-black break-all">
+                <div className="text-sm text-muted-foreground">路径名称</div>
+                <div className="text-base font-medium text-foreground break-all">
                   {selectedSource.displayName || '未命名路径'}
                 </div>
               </div>
 
               {/* 完整路径 */}
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">完整路径</div>
-                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <code className="text-sm text-black break-all font-mono">
+                <div className="text-sm text-muted-foreground">完整路径</div>
+                <div className="p-3 bg-muted/10 border border-border/50 rounded-xl">
+                  <code className="text-sm text-foreground break-all font-mono">
                     {selectedSource.rootPath}
                   </code>
                 </div>
@@ -287,7 +285,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
               {/* 其他信息 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <div className="text-sm text-gray-600">类型</div>
+                  <div className="text-sm text-muted-foreground">类型</div>
                   <div className="text-sm font-medium">
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded border border-blue-200">
                       {renderSourceTypeLabel(selectedSource)}
@@ -295,21 +293,21 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm text-gray-600">ID</div>
-                  <div className="text-sm font-medium text-black">
+                  <div className="text-sm text-muted-foreground">ID</div>
+                  <div className="text-sm font-medium text-foreground">
                     #{selectedSource.id}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-sm text-gray-600">扫描策略</div>
-                  <div className="text-sm font-medium text-black">
+                  <div className="text-sm text-muted-foreground">扫描策略</div>
+                  <div className="text-sm font-medium text-foreground">
                     {renderScanStrategyLabel(selectedSource)}
                   </div>
                 </div>
                 {selectedSource.scanStrategy === 'scheduled' && (
                   <div className="space-y-2">
-                    <div className="text-sm text-gray-600">扫描间隔</div>
-                    <div className="text-sm font-medium text-black">
+                    <div className="text-sm text-muted-foreground">扫描间隔</div>
+                    <div className="text-sm font-medium text-foreground">
                       {formatInterval(selectedSource.scanIntervalSeconds)}
                     </div>
                   </div>
@@ -317,8 +315,8 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 {/* 设置模式下显示最后扫描时间 */}
                 {mode === 'settings' && selectedSource.lastScanAt && (
                   <div className="space-y-2">
-                    <div className="text-sm text-gray-600">最后扫描</div>
-                    <div className="text-sm font-medium text-black">
+                    <div className="text-sm text-muted-foreground">最后扫描</div>
+                    <div className="text-sm font-medium text-foreground">
                       {new Date(selectedSource.lastScanAt).toLocaleString('zh-CN', {
                         year: 'numeric',
                         month: '2-digit',
@@ -331,8 +329,8 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 )}
                 {selectedSource.lastScanStartedAt && (
                   <div className="space-y-2">
-                    <div className="text-sm text-gray-600">最近扫描开始</div>
-                    <div className="text-sm font-medium text-black">
+                    <div className="text-sm text-muted-foreground">最近扫描开始</div>
+                    <div className="text-sm font-medium text-foreground">
                       {new Date(selectedSource.lastScanStartedAt).toLocaleString('zh-CN', {
                         year: 'numeric',
                         month: '2-digit',
@@ -345,8 +343,8 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 )}
                 {selectedSource.lastScanFinishedAt && (
                   <div className="space-y-2">
-                    <div className="text-sm text-gray-600">最近扫描结束</div>
-                    <div className="text-sm font-medium text-black">
+                    <div className="text-sm text-muted-foreground">最近扫描结束</div>
+                    <div className="text-sm font-medium text-foreground">
                       {new Date(selectedSource.lastScanFinishedAt).toLocaleString('zh-CN', {
                         year: 'numeric',
                         month: '2-digit',
@@ -359,7 +357,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 )}
                 {(selectedSource.failureCount ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <div className="text-sm text-gray-600">连续失败次数</div>
+                    <div className="text-sm text-muted-foreground">连续失败次数</div>
                     <div className="text-sm font-medium text-red-600">
                       {selectedSource.failureCount}
                     </div>
@@ -367,7 +365,7 @@ export function MediaPathList({ mode = 'init', onRefresh }: MediaPathListProps =
                 )}
                 {selectedSource.lastError && (
                   <div className="space-y-2">
-                    <div className="text-sm text-gray-600">最后一次错误</div>
+                    <div className="text-sm text-muted-foreground">最后一次错误</div>
                     <div className="text-xs font-mono bg-red-50 text-red-700 px-3 py-2 rounded border border-red-200 break-all">
                       {selectedSource.lastError}
                     </div>
