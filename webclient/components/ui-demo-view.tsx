@@ -14,6 +14,8 @@ import { useTheme } from "next-themes"
 import { Switch } from "@/components/ui/switch"
 import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
+import { InfoNote } from "@/components/ui/info-note"
+import { InsetCard } from "@/components/ui/inset-card"
 
 const switchColorCandidates = [
   { id: "c1", label: "#0eb83a / rgb(14, 184, 58)", className: "data-[state=checked]:bg-[#0eb83a]" },
@@ -193,6 +195,45 @@ export function UiDemoView() {
         </p>
         <div className="w-full lg:w-1/2">
           <StorageSettingsBlockDemo />
+        </div>
+      </section>
+
+      {/* 备注提示块 / Notes */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">备注提示块 / Info Note</h2>
+        <p className="text-xs text-[rgb(120_123_124)]">
+          用于“说明/提示/注意事项”这类文本，避免零散手写 border/bg，保证跨页面一致。
+        </p>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <InfoNote>
+            这是默认提示块：适合放在 SettingsSecondaryCard 内，作为补充说明（例如“不会移动/删除你的文件”）。
+          </InfoNote>
+          <InfoNote title="注意" variant="warning">
+            这是 warning：用于提醒用户有行为影响，但不至于危险（例如“仅在局域网内可访问”）。
+          </InfoNote>
+          <InfoNote title="危险操作" variant="danger">
+            这是 danger：用于高风险操作提示（例如“重置会清空数据库信息”）。
+          </InfoNote>
+        </div>
+      </section>
+
+      {/* 内嵌小块 / Inset Card */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">内嵌小块 / Inset Card</h2>
+        <p className="text-xs text-[rgb(120_123_124)]">
+          用于内层盒子（SettingsSecondaryCard）里继续分组，典型场景：任务与进度、资产处理进度小块。
+        </p>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <InsetCard title="媒体索引进度" description="muted 背景，用于分组容器">
+            <div className="text-xs text-muted-foreground">这里放一些统计项（例如已入库/总发现/剩余）。</div>
+          </InsetCard>
+          <InsetCard title="缩略图" variant="surface" description="surface 背景，用于更“卡片感”的小块">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <span>已完成 120</span>
+              <span>排队 30</span>
+              <span>处理中 2</span>
+            </div>
+          </InsetCard>
         </div>
       </section>
 

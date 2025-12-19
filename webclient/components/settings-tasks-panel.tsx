@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Activity, Database, Gauge, ImageIcon, Settings, Sparkles, Users } from "lucide-react"
 
 import { SettingsSecondaryCard } from "@/components/settings/list-ui"
+import { InsetCard } from "@/components/ui/inset-card"
 import { useToast } from "@/hooks/use-toast"
 import {
   type ArtifactProgressItem,
@@ -125,16 +126,12 @@ export function SettingsTasksPanel() {
 
       <div className="px-4 pb-4 space-y-3">
         {/* 媒体索引进度 */}
-        <div className="rounded-xl border border-border/50 bg-muted/10 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Gauge className="w-4 h-4 text-muted-foreground" />
-            <span>媒体索引进度</span>
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            显示当前媒体库的整体索引情况（数据库已入库 vs 文件系统已发现）。
-          </div>
-
-          <div className="mt-3 space-y-2 text-sm">
+        <InsetCard
+          title="媒体索引进度"
+          description="显示当前媒体库的整体索引情况（数据库已入库 vs 文件系统已发现）。"
+          icon={<Gauge className="w-4 h-4" />}
+        >
+          <div className="space-y-2 text-sm">
             {scanStatus ? (
               <>
                 <div className="flex flex-wrap gap-3">
@@ -174,47 +171,40 @@ export function SettingsTasksPanel() {
               </div>
             )}
           </div>
-        </div>
+        </InsetCard>
 
         {/* 资产处理进度：缩略图 / 以文搜图 / 标签筛选 / 人脸聚类 */}
-        <div className="rounded-xl border border-border/50 bg-muted/10 p-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Database className="w-4 h-4 text-muted-foreground" />
-            <span>资产处理进度</span>
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            包括缩略图、以文搜图、标签筛选、人脸聚类等后台任务的整体完成度。
-          </div>
-
-          <div className="mt-3 space-y-3 text-sm">
+        <InsetCard
+          title="资产处理进度"
+          description="包括缩略图、以文搜图、标签筛选、人脸聚类等后台任务的整体完成度。"
+          icon={<Database className="w-4 h-4" />}
+        >
+          <div className="space-y-3 text-sm">
             {assetStatus ? (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {assetStatus.items
                     .filter((item) => ["thumbnail", "vector", "tags", "faces"].includes(item.artifact_type))
                     .map((item) => (
-                      <div
+                      <InsetCard
                         key={item.artifact_type}
-                        className="rounded-xl border border-border/50 bg-card/60 p-3 flex flex-col gap-1.5"
+                        variant="surface"
+                        className="p-3"
+                        title={artifactLabel(item)}
+                        icon={artifactIcon(item.artifact_type)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 text-foreground">
-                            <span className="text-muted-foreground">{artifactIcon(item.artifact_type)}</span>
-                            <span className="text-xs font-medium">{artifactLabel(item)}</span>
-                          </div>
                           <span className="text-xs text-muted-foreground">
                             {formatPercent(item.ready_count, item.total_media)}
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                           <span>已完成 {item.ready_count}</span>
                           <span>排队 {item.queued_count}</span>
                           <span>处理中 {item.processing_count}</span>
-                          {item.failed_count > 0 ? (
-                            <span className="text-red-500">失败 {item.failed_count}</span>
-                          ) : null}
+                          {item.failed_count > 0 ? <span className="text-red-500">失败 {item.failed_count}</span> : null}
                         </div>
-                      </div>
+                      </InsetCard>
                     ))}
                 </div>
                 <div className="text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -233,7 +223,7 @@ export function SettingsTasksPanel() {
               </div>
             )}
           </div>
-        </div>
+        </InsetCard>
       </div>
     </SettingsSecondaryCard>
   )

@@ -17,6 +17,7 @@ import { type MediaSource } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { HardDrive, Plus } from 'lucide-react'
 import { SearchStandaloneButton } from "@/components/search/search-capsule"
+import { InfoNote } from "@/components/ui/info-note"
 
 interface SettingsMediaManagementProps {
   className?: string
@@ -59,9 +60,9 @@ export function SettingsMediaManagement({ className }: SettingsMediaManagementPr
 
         <div className="px-4 pb-4 space-y-4">
           {/* 说明文字 */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 px-3 py-2 text-sm text-muted-foreground">
+          <InfoNote>
             支持本机文件夹与 SMB/NAS。路径添加后会在后台索引，不会移动/删除你的文件。
-          </div>
+          </InfoNote>
 
           {/* 媒体路径列表 */}
           <MediaPathList
