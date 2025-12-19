@@ -16,6 +16,8 @@ import { TabLikeButton } from "@/components/ui/tab-like-button"
 import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"
 import { InfoNote } from "@/components/ui/info-note"
 import { InsetCard } from "@/components/ui/inset-card"
+import { TagPill } from "@/components/ui/tag-pill"
+import { cn } from "@/lib/utils"
 
 const switchColorCandidates = [
   { id: "c1", label: "#0eb83a / rgb(14, 184, 58)", className: "data-[state=checked]:bg-[#0eb83a]" },
@@ -23,6 +25,24 @@ const switchColorCandidates = [
 
 export function UiDemoView() {
   const [searchText, setSearchText] = useState("")
+  const [tagInputText, setTagInputText] = useState("")
+  const [tagInputTextWrap, setTagInputTextWrap] = useState("")
+  const [demoTags, setDemoTags] = useState<Array<{ name: string; display_name: string }>>([
+    { name: "1girl", display_name: "1个女孩" },
+    { name: "solo", display_name: "单人" },
+    { name: "school_uniform", display_name: "校服" },
+  ])
+  const [demoTagsWrap, setDemoTagsWrap] = useState<Array<{ name: string; display_name: string }>>([
+    { name: "1girl", display_name: "1个女孩" },
+    { name: "solo", display_name: "单人" },
+    { name: "school_uniform", display_name: "校服" },
+    { name: "black_hair", display_name: "黑发" },
+    { name: "smile", display_name: "微笑" },
+    { name: "outdoors", display_name: "户外" },
+    { name: "blue_sky", display_name: "蓝天" },
+    { name: "full_body", display_name: "全身" },
+    { name: "long_hair", display_name: "长发" },
+  ])
   const [demoLoading, setDemoLoading] = useState(false)
   const [demoError, setDemoError] = useState<string | null>(null)
   const { theme, setTheme } = useTheme()
@@ -135,6 +155,62 @@ export function UiDemoView() {
               </p>
             </div>
           </section>
+
+      {/* 标签输入框 / Tagged input demo */}
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-[rgb(74_77_78)]">标签输入框 / Tagged Input</h2>
+        <p className="text-xs text-[rgb(120_123_124)]">
+          展示“输入框内的标签（原文+译文）”的视觉效果：TagPill + SearchCapsuleInput 组合。
+        </p>
+
+        <div className="w-full max-w-3xl space-y-3">
+          <InsetCard title="单行（可删除，横向挤压）" description="适合标签数量不多的场景">
+            <div className={cn(searchCapsuleWrapperClass, "h-11 px-2 gap-2")}>
+              {demoTags.map((tag) => (
+                <TagPill
+                  key={tag.name}
+                  name={tag.name}
+                  displayName={tag.display_name}
+                  onRemove={() => setDemoTags((prev) => prev.filter((t) => t.name !== tag.name))}
+                />
+              ))}
+              <SearchCapsuleInput
+                value={tagInputText}
+                onChange={(e) => setTagInputText(e.target.value)}
+                placeholder="输入更多标签…"
+                className="px-2 min-w-[8rem]"
+              />
+            </div>
+          </InsetCard>
+
+          <InsetCard title="多标签可换行（可删除）" description="更适合标签很多时的可读性">
+            <div
+              className={cn(
+                searchCapsuleWrapperClass,
+                "h-auto min-h-11 px-2 py-2 gap-2 flex-wrap items-start overflow-visible rounded-xl",
+              )}
+            >
+              {demoTagsWrap.map((tag) => (
+                <TagPill
+                  key={tag.name}
+                  name={tag.name}
+                  displayName={tag.display_name}
+                  onRemove={() => setDemoTagsWrap((prev) => prev.filter((t) => t.name !== tag.name))}
+                />
+              ))}
+              <SearchCapsuleInput
+                value={tagInputTextWrap}
+                onChange={(e) => setTagInputTextWrap(e.target.value)}
+                placeholder="输入更多标签…"
+                className="px-2 h-7 min-w-[10rem] flex-1"
+              />
+            </div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              标签里：左侧展示译文（更醒目），右侧展示原文（等宽+更淡）；点击标签右侧 × 可删除。
+            </div>
+          </InsetCard>
+        </div>
+      </section>
 
       {/* 主题预览切换 / Theme Preview Switch */}
       <section className="space-y-2">
