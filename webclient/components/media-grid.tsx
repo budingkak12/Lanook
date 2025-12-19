@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react"
+import { useMemo, useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react"
 import type { MediaItem } from "@/app/(main)/types"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { apiFetch, batchDeleteMedia, friendlyDeleteError, resolveApiUrl } from "@/lib/api"
+import { FloatingDeleteButton } from "@/components/media-grid/floating-delete-button"
+import { SelectionPreviewDialog } from "@/components/media-grid/selection-preview-dialog"
 
 type MediaGridProps = {
   sessionId?: string | null
@@ -36,6 +38,18 @@ type MediaGridProps = {
    * 调试/无后端时使用，走内置假数据，不触发任何接口。
    */
   mockMode?: boolean
+  /**
+   * 多选交互模式：
+   * - legacy：沿用旧的“勾选框 + 顶部删除栏”逻辑；
+   * - desktop：支持 Shift 区间选择 + 拖拽框选（所见即可选），并通过悬浮按钮触发“测试删除弹窗”。
+   */
+  selectionBehavior?: "legacy" | "desktop"
+  /**
+   * 删除行为：
+   * - backend：调用后端批量删除接口；
+   * - preview：不调用后端，仅弹窗预览选中项（用于联调/确认选择范围）。
+   */
+  deleteBehavior?: "backend" | "preview"
 }
 
 type MediaListItem = {
@@ -69,7 +83,16 @@ export type MediaGridHandle = {
 }
 
 export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function MediaGrid(
-  { sessionId = null, tag = null, queryText = null, onMediaClick, onItemsChange, mockMode = false },
+  {
+    sessionId = null,
+    tag = null,
+    queryText = null,
+    onMediaClick,
+    onItemsChange,
+    mockMode = false,
+    selectionBehavior = "legacy",
+    deleteBehavior = "backend",
+  },
   ref,
 ) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
@@ -77,22 +100,47 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [isInitialLoading, setIsInitialLoading] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [selectionBox, setSelectionBox] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const { toast } = useToast()
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const fetchingRef = useRef(false)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const tileRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const anchorIndexRef = useRef<number | null>(null)
+  const dragStateRef = useRef<{
+    active: boolean
+    pointerId: number
+    startX: number
+    startY: number
+    additive: boolean
+    subtractive: boolean
+  } | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const pendingBoxRef = useRef<{ minX: number; minY: number; maxX: number; maxY: number } | null>(null)
 
   const resetSelection = useCallback(() => {
     setSelectedIds(new Set())
     setIsSelectionMode(false)
     setShowDeleteDialog(false)
+    setShowPreviewDialog(false)
+    anchorIndexRef.current = null
   }, [])
+
+  const isDesktopSelection = selectionBehavior === "desktop"
+  const isPreviewDelete = deleteBehavior === "preview"
 
   const generateMockItems = useCallback((offset: number, limit: number): MediaItem[] => {
     const mockTotal = 60
@@ -361,6 +409,10 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     if (selectedIds.size === 0 || isDeleting) {
       return
     }
+    if (isPreviewDelete) {
+      setShowPreviewDialog(true)
+      return
+    }
     if (mockMode) {
       toast({ title: "当前为动画预览模式", description: "已跳过删除接口调用" })
       setShowDeleteDialog(false)
@@ -420,7 +472,195 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
   const handleCancelSelection = () => {
     setSelectedIds(new Set())
     setIsSelectionMode(false)
+    anchorIndexRef.current = null
   }
+
+  const selectedItems = useMemo(() => {
+    if (selectedIds.size === 0) return []
+    return mediaItems.filter((item) => selectedIds.has(item.id))
+  }, [mediaItems, selectedIds])
+
+  const toggleSelectOne = useCallback(
+    (id: string, index: number) => {
+      if (!isSelectionMode) setIsSelectionMode(true)
+      anchorIndexRef.current = index
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        if (next.size === 0) setIsSelectionMode(false)
+        return next
+      })
+    },
+    [isSelectionMode],
+  )
+
+  const selectRange = useCallback(
+    (fromIndex: number, toIndex: number, additive: boolean) => {
+      const start = Math.min(fromIndex, toIndex)
+      const end = Math.max(fromIndex, toIndex)
+      const ids = mediaItems.slice(start, end + 1).map((item) => item.id)
+      if (!isSelectionMode) setIsSelectionMode(true)
+      setSelectedIds((prev) => {
+        if (additive) {
+          const next = new Set(prev)
+          for (const id of ids) next.add(id)
+          return next
+        }
+        return new Set(ids)
+      })
+    },
+    [isSelectionMode, mediaItems],
+  )
+
+  const handleTileClick = useCallback(
+    (item: MediaItem, index: number, e: React.MouseEvent) => {
+      if (!isDesktopSelection) {
+        if (!isSelectionMode) {
+          onMediaClick(item)
+          return
+        }
+        toggleSelectOne(item.id, index)
+        return
+      }
+
+      const hasModifier = e.shiftKey || e.metaKey || e.ctrlKey
+      if (e.shiftKey) {
+        const anchor = anchorIndexRef.current ?? index
+        if (anchorIndexRef.current == null) anchorIndexRef.current = anchor
+        selectRange(anchor, index, e.metaKey || e.ctrlKey)
+        return
+      }
+      if (e.metaKey || e.ctrlKey) {
+        toggleSelectOne(item.id, index)
+        return
+      }
+      if (selectedIds.size > 0) {
+        toggleSelectOne(item.id, index)
+        return
+      }
+      if (!hasModifier) {
+        onMediaClick(item)
+      }
+    },
+    [isDesktopSelection, isSelectionMode, onMediaClick, selectRange, selectedIds.size, toggleSelectOne],
+  )
+
+  const scheduleSelectionUpdate = useCallback(() => {
+    if (!pendingBoxRef.current) return
+    if (rafRef.current != null) return
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null
+      const box = pendingBoxRef.current
+      if (!box) return
+      const { minX, minY, maxX, maxY } = box
+
+      const hits: string[] = []
+      tileRefs.current.forEach((el, id) => {
+        const rect = el.getBoundingClientRect()
+        const intersects = !(rect.right < minX || rect.left > maxX || rect.bottom < minY || rect.top > maxY)
+        if (intersects) hits.push(id)
+      })
+
+      const dragState = dragStateRef.current
+      const additive = !!dragState?.additive
+      const subtractive = !!dragState?.subtractive
+
+      setSelectedIds((prev) => {
+        if (!additive && !subtractive) return new Set(hits)
+        const next = new Set(prev)
+        if (subtractive) {
+          for (const id of hits) next.delete(id)
+        } else {
+          for (const id of hits) next.add(id)
+        }
+        return next
+      })
+    })
+  }, [])
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDesktopSelection) return
+      if (e.button !== 0) return
+      const target = e.target as HTMLElement
+      if (target.closest("[data-media-tile='true']")) return
+
+      const container = scrollContainerRef.current
+      if (!container) return
+      container.setPointerCapture(e.pointerId)
+      e.preventDefault()
+
+      dragStateRef.current = {
+        active: true,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        additive: e.shiftKey,
+        subtractive: e.altKey,
+      }
+
+      if (!isSelectionMode) setIsSelectionMode(true)
+
+      const rect = container.getBoundingClientRect()
+      const left = e.clientX - rect.left + container.scrollLeft
+      const top = e.clientY - rect.top + container.scrollTop
+      setSelectionBox({ left, top, width: 0, height: 0 })
+
+      pendingBoxRef.current = { minX: e.clientX, minY: e.clientY, maxX: e.clientX, maxY: e.clientY }
+      scheduleSelectionUpdate()
+
+      document.body.style.userSelect = "none"
+    },
+    [isDesktopSelection, isSelectionMode, scheduleSelectionUpdate],
+  )
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const state = dragStateRef.current
+      if (!state?.active || state.pointerId !== e.pointerId) return
+      const container = scrollContainerRef.current
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      const minX = Math.min(state.startX, e.clientX)
+      const minY = Math.min(state.startY, e.clientY)
+      const maxX = Math.max(state.startX, e.clientX)
+      const maxY = Math.max(state.startY, e.clientY)
+
+      pendingBoxRef.current = { minX, minY, maxX, maxY }
+      scheduleSelectionUpdate()
+
+      const left = minX - rect.left + container.scrollLeft
+      const top = minY - rect.top + container.scrollTop
+      const width = Math.max(maxX - minX, 0)
+      const height = Math.max(maxY - minY, 0)
+      setSelectionBox({ left, top, width, height })
+    },
+    [scheduleSelectionUpdate],
+  )
+
+  const stopDragSelect = useCallback(
+    (e: React.PointerEvent) => {
+      const state = dragStateRef.current
+      if (!state?.active || state.pointerId !== e.pointerId) return
+      dragStateRef.current = null
+      pendingBoxRef.current = null
+      setSelectionBox(null)
+      if (rafRef.current != null) {
+        window.cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+      try {
+        scrollContainerRef.current?.releasePointerCapture(e.pointerId)
+      } catch {
+        // ignore
+      }
+      document.body.style.userSelect = ""
+      if (selectedIds.size === 0) setIsSelectionMode(false)
+    },
+    [selectedIds.size],
+  )
 
   useEffect(() => {
     onItemsChange?.(mediaItems)
@@ -484,7 +724,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
   return (
     <div className="h-full flex flex-col">
-      {isSelectionMode && (
+      {isSelectionMode && !isDesktopSelection && (
         <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" onClick={handleCancelSelection}>
@@ -496,7 +736,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => setShowDeleteDialog(true)}
+            onClick={() => (isPreviewDelete ? setShowPreviewDialog(true) : setShowDeleteDialog(true))}
             disabled={selectedIds.size === 0}
           >
             <Trash2 className="w-4 h-4 mr-2" />
@@ -505,7 +745,25 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto pt-0">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto pt-0 relative"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragSelect}
+        onPointerCancel={stopDragSelect}
+      >
+        {selectionBox && (
+          <div
+            className="absolute z-30 rounded-md border border-primary/60 bg-primary/10"
+            style={{
+              left: selectionBox.left,
+              top: selectionBox.top,
+              width: selectionBox.width,
+              height: selectionBox.height,
+            }}
+          />
+        )}
         {isInitialLoading && mediaItems.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">正在加载媒体...</div>
         ) : error && mediaItems.length === 0 ? (
@@ -524,21 +782,18 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
               {mediaItems.map((item, index) => (
                 <div
                   key={`${item.id}-${item.thumbnailUrl ?? ""}`}
-                  className="group relative aspect-square overflow-hidden bg-muted cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                  onClick={() => {
-                    if (!isSelectionMode) {
-                      console.log('🖱️ [MediaGrid] 点击缩略图')
-                      console.log('📸 点击的item:', {
-                        id: item.id,
-                        mediaId: item.mediaId,
-                        filename: item.filename,
-                        type: item.type
-                      })
-                      console.log('📊 当前索引(index):', index)
-                      console.log('📊 mediaItems总数:', mediaItems.length)
-                      onMediaClick(item)
+                  ref={(el) => {
+                    if (!el) {
+                      tileRefs.current.delete(item.id)
+                      return
                     }
+                    tileRefs.current.set(item.id, el)
                   }}
+                  data-media-tile="true"
+                  className={`group relative aspect-square overflow-hidden bg-muted cursor-pointer transition-all ${
+                    selectedIds.has(item.id) ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary"
+                  }`}
+                  onClick={(e) => handleTileClick(item, index, e)}
                 >
                   <img
                     src={item.thumbnailUrl ? resolveApiUrl(item.thumbnailUrl) : (item.resourceUrl ? resolveApiUrl(item.resourceUrl) : "/file.svg")}
@@ -585,22 +840,55 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         )}
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除选中的 {selectedIds.size} 个项目吗？此操作无法撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-            <AlertDialogAction disabled={isDeleting} onClick={() => void handleDeleteSelected()}>
-              {isDeleting ? "删除中..." : "删除"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isDesktopSelection ? (
+        <>
+          <FloatingDeleteButton
+            count={selectedIds.size}
+            onClick={() => (isPreviewDelete ? setShowPreviewDialog(true) : setShowDeleteDialog(true))}
+          />
+          {isPreviewDelete ? (
+            <SelectionPreviewDialog
+              open={showPreviewDialog}
+              onOpenChange={setShowPreviewDialog}
+              items={selectedItems}
+            />
+          ) : (
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>确认删除</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    确定要删除选中的 {selectedIds.size} 个项目吗？此操作无法撤销。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+                  <AlertDialogAction disabled={isDeleting} onClick={() => void handleDeleteSelected()}>
+                    {isDeleting ? "删除中..." : "删除"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </>
+      ) : (
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除选中的 {selectedIds.size} 个项目吗？此操作无法撤销。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+              <AlertDialogAction disabled={isDeleting} onClick={() => void handleDeleteSelected()}>
+                {isDeleting ? "删除中..." : "删除"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 })

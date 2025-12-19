@@ -733,6 +733,8 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
             tag={appliedTag}
             queryText={appliedQuery}
             sessionId={null}
+            selectionBehavior="desktop"
+            deleteBehavior="preview"
             onMediaClick={onMediaClick}
           />
         )}

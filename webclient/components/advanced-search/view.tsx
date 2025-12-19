@@ -327,6 +327,8 @@ export function AdvancedSearchView() {
               queryText={appliedQuery}
               tag={null}
               sessionId={null}
+              selectionBehavior="desktop"
+              deleteBehavior="preview"
               onMediaClick={(media) => console.log("[advanced search] media click", media.mediaId)}
             />
           ) : (

@@ -199,6 +199,8 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                   tag={appliedTag}
                   queryText={appliedQuery}
                   sessionId={null}
+                  selectionBehavior="desktop"
+                  deleteBehavior="preview"
                   onMediaClick={handleSearchMediaClick}
                 />
             </div>
