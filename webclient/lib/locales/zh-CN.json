@@ -109,6 +109,11 @@
       },
       "close": "知道了"
     },
+    "stepHeading": {
+      "language": "选择语言",
+      "addSource": "添加媒体来源",
+      "pathList": "媒体路径清单"
+    },
     "step1": {
       "title": "1. 添加你的媒体路径",
       "description": ""

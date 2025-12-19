@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
@@ -12,6 +12,7 @@ import { MediaPathList } from "@/components/media-path-list"
 import { SettingsGroup, SettingsPanel } from "@/components/settings/list-ui"
 import { InitializationFooterNav } from "@/components/init/initialization-footer-nav"
 import { InitializationHeader } from "@/components/init/initialization-header"
+import { InitializationStepTitle } from "@/components/init/initialization-step-title"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -65,6 +66,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   }, [searchParams, steps.length])
 
   const [currentStep, setCurrentStep] = useState(initialStep)
+  const [stepDirection, setStepDirection] = useState<1 | -1>(1)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isStartingInitialization, setIsStartingInitialization] = useState(false)
   const [isExiting, setIsExiting] = useState(false)
@@ -72,6 +74,21 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   useEffect(() => {
     setCurrentStep(initialStep)
   }, [initialStep])
+
+  const stepSlideVariants = {
+    enter: (direction: 1 | -1) => ({
+      x: direction > 0 ? 28 : -28,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: 1 | -1) => ({
+      x: direction > 0 ? -28 : 28,
+      opacity: 0,
+    }),
+  }
 
   const handleEnterHome = () => {
     // 初始化结束后，清理 URL 中的 forceInit 参数并回到首页
@@ -92,6 +109,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
   const handleNextStep = async () => {
     if (currentStep < steps.length) {
+      setStepDirection(1)
       setCurrentStep(currentStep + 1)
     } else if (currentStep === steps.length && onInitialized) {
       // 在最后一步，调用后端API启动初始化；mock 模式下直接跳转以便调试动画
@@ -148,6 +166,7 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
   const handlePrevStep = () => {
     if (isStartingInitialization || isExiting) return
     if (currentStep > 1) {
+      setStepDirection(-1)
       setCurrentStep((step) => Math.max(1, step - 1))
     }
   }
@@ -193,6 +212,12 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
             steps={steps}
             currentStep={currentStep}
             onStepClick={(stepId) => {
+              if (isStartingInitialization || isExiting) return
+              if (stepId === currentStep) {
+                setIsSidebarOpen(false)
+                return
+              }
+              setStepDirection(stepId > currentStep ? 1 : -1)
               setCurrentStep(stepId)
               setIsSidebarOpen(false) // 点击步骤后自动关闭侧边栏
             }}
@@ -219,62 +244,62 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
             {/* Step Content */}
             {currentStepData && (
-              <>
-                {currentStep === 1 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80">选择语言</h2>
-                    </div>
-                    <SettingsGroup>
-                      <SettingsPanel>
-                        <LanguageSelector />
-                      </SettingsPanel>
-                    </SettingsGroup>
-                  </>
-                ) : currentStep === 2 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80">{t('init.step2.title')}</h2>
-                    </div>
-                    {/* 第二步：两个独立的大盒子（本机文件夹 / 局域网设备），由内部组件各自渲染 */}
-                    <div className="space-y-3">
-                      <MediaSourceSelector />
-                    </div>
-                  </>
-                ) : currentStep === 3 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80 text-center">媒体路径清单</h2>
-                    </div>
-                    <SettingsGroup>
-                      <SettingsPanel>
-                        <MediaPathList />
-                      </SettingsPanel>
-                    </SettingsGroup>
-                  </>
-                ) : currentStep === 4 ? (
-                  <>
-                    {/* 页面顶部小标题 */}
-                    <div className="text-center pb-4">
-                      <h2 className="text-lg font-medium text-muted-foreground/80 text-center">完成</h2>
-                    </div>
+              <AnimatePresence mode="wait" initial={false} custom={stepDirection}>
+                <motion.div
+                  key={currentStep}
+                  custom={stepDirection}
+                  variants={stepSlideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  layout
+                  className="w-full"
+                >
+                  {currentStep === 1 ? (
+                    <>
+                      <InitializationStepTitle>{t("init.stepHeading.language")}</InitializationStepTitle>
+                      <SettingsGroup>
+                        <SettingsPanel>
+                          <LanguageSelector />
+                        </SettingsPanel>
+                      </SettingsGroup>
+                    </>
+                  ) : currentStep === 2 ? (
+                    <>
+                      <InitializationStepTitle>{t("init.stepHeading.addSource")}</InitializationStepTitle>
+                      {/* 第二步：两个独立的大盒子（本机文件夹 / 局域网设备），由内部组件各自渲染 */}
+                      <div className="space-y-3">
+                        <MediaSourceSelector />
+                      </div>
+                    </>
+                  ) : currentStep === 3 ? (
+                    <>
+                      <InitializationStepTitle>{t("init.stepHeading.pathList")}</InitializationStepTitle>
+                      <SettingsGroup>
+                        <SettingsPanel>
+                          <MediaPathList />
+                        </SettingsPanel>
+                      </SettingsGroup>
+                    </>
+                  ) : currentStep === 4 ? (
+                    <>
+                      <InitializationStepTitle>完成</InitializationStepTitle>
+                      <StepContent
+                        content={currentStepData.content}
+                        isLastStep={currentStep === steps.length}
+                        onEnterHome={handleEnterHome}
+                      />
+                    </>
+                  ) : (
                     <StepContent
                       content={currentStepData.content}
                       isLastStep={currentStep === steps.length}
                       onEnterHome={handleEnterHome}
                     />
-                  </>
-                ) : (
-                  <StepContent
-                    content={currentStepData.content}
-                    isLastStep={currentStep === steps.length}
-                    onEnterHome={handleEnterHome}
-                  />
-                )}
-              </>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             )}
 
           </motion.div>

@@ -109,6 +109,11 @@
       },
       "close": "Got it"
     },
+    "stepHeading": {
+      "language": "Select Language",
+      "addSource": "Add Media Source",
+      "pathList": "Media Path List"
+    },
     "step1": {
       "title": "1. Add Your Media Path",
       "description": ""

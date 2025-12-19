@@ -600,7 +600,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
         transition={{ duration: 0.3, delay: 0.1 }}
         style={{ height: '600px' }}
       >
-        <SettingsSecondaryCard className="h-full flex flex-col w-full p-4 space-y-2">
+        <SettingsSecondaryCard className={`h-full flex flex-col w-full p-4 space-y-2 ${mode === "init" ? "mt-0" : ""}`}>
           {/* 本机文件夹板块标题 */}
           <h3 className="text-lg font-medium text-foreground mb-3">
             选择媒体路径
