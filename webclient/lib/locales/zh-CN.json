@@ -96,7 +96,19 @@
     "selectLanguage": "选择语言",
     "chinese": "语言",
     "english": "Language",
+    "prevStep": "上一步",
     "nextStep": "下一步",
+    "enterHome": "进入首页",
+    "help": {
+      "ariaLabel": "初始化说明",
+      "title": "初始化说明",
+      "items": {
+        "scan": "我们将会扫描你所选的路径里面的所有图片和视频，以便你使用该软件进行预览/管理/AI 搜图相关事宜。",
+        "noAssetChange": "这并不会复制/删除/移动你的媒体资产。",
+        "manageLater": "后续你可以在设置页面增加/删除媒体路径。"
+      },
+      "close": "知道了"
+    },
     "step1": {
       "title": "1. 添加你的媒体路径",
       "description": ""

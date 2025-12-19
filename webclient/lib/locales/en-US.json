@@ -96,7 +96,19 @@
     "selectLanguage": "Select Language",
     "chinese": "语言",
     "english": "Language",
+    "prevStep": "Previous",
     "nextStep": "Next Step",
+    "enterHome": "Enter Home",
+    "help": {
+      "ariaLabel": "Initialization help",
+      "title": "Initialization",
+      "items": {
+        "scan": "We will scan all images and videos under the path(s) you select, so you can browse/manage/search with AI.",
+        "noAssetChange": "This will not copy/delete/move your media assets.",
+        "manageLater": "You can add/remove media paths later in Settings."
+      },
+      "close": "Got it"
+    },
     "step1": {
       "title": "1. Add Your Media Path",
       "description": ""

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, ArrowRight, HardDrive, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { StepNavigation } from "@/components/step-navigation"
 import { StepContent } from "@/components/step-content"
@@ -11,7 +10,8 @@ import { LanguageSelector } from "@/components/language-selector"
 import { MediaSourceSelector } from "@/components/media-source-selector"
 import { MediaPathList } from "@/components/media-path-list"
 import { SettingsGroup, SettingsPanel } from "@/components/settings/list-ui"
-import { SearchStandaloneButton } from "@/components/search/search-capsule"
+import { InitializationFooterNav } from "@/components/init/initialization-footer-nav"
+import { InitializationHeader } from "@/components/init/initialization-header"
 import { apiFetch } from "@/lib/api"
 import { useToast } from "@/hooks/use-toast"
 
@@ -156,56 +156,13 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.header
-        initial={{ y: 0, opacity: 1 }}
-        animate={isExiting ? { y: "-120%", opacity: 0 } : { y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: "easeInOut" }}
-        className="fixed top-0 left-0 right-0 z-[10000] border-b border-border/50 relative overflow-hidden"
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, transform: 'translateZ(0)' }}
-      >
-        {/* 上半部分 */}
-        <div
-          className="absolute inset-x-0 top-0 h-1/2 backdrop-blur-sm bg-card/50"
-        />
-        {/* 下半部分 */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-sm bg-muted/50"
-        />
-        {/* 中间分割线 */}
-        <div className="absolute inset-x-0 top-1/2 h-px bg-border/70" />
-
-        {/* 内容 */}
-        <div className="relative z-10 bg-card/20 backdrop-blur-md">
-          <div className="pr-4 pl-2 lg:pl-4 py-2 flex items-center justify-between">
-            <div className="flex items-center gap-2 lg:gap-4">
-              {/* 移动端菜单按钮 */}
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden hover:opacity-70 transition-opacity"
-              >
-                <div className="flex flex-col justify-center items-center w-5 h-5">
-                  <div className="w-4 h-0.5 bg-foreground mb-1"></div>
-                  <div className="w-4 h-0.5 bg-foreground mb-1"></div>
-                  <div className="w-4 h-0.5 bg-foreground"></div>
-                </div>
-              </button>
-              <h1 className="text-xl font-normal text-foreground ml-0 pl-0 lg:ml-0 lg:pl-0">{t('init.welcome')}</h1>
-            </div>
-
-            {/* 初始化流程统一使用亮色主题，这里不提供切换入口 */}
-            <div className="flex items-center gap-2" />
-          </div>
-        </div>
-
-        {/* 底部阴影 */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 100%)'
-          }}
-        />
-      </motion.header>
+      <InitializationHeader
+        title={t("init.welcome")}
+        isExiting={isExiting}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
+        showHelp={currentStep === 2 || currentStep === 3}
+      />
 
       <div className="flex py-2 pt-16">
         {/* Mobile Sidebar Overlay */}
@@ -324,31 +281,13 @@ export function InitializationView({ onInitialized }: InitializationViewProps) {
         </main>
       </div>
 
-    {/* Fixed Bottom Navigation Buttons：上一步 + 下一步（图标按钮） */}
-    <div className="fixed bottom-8 right-4 z-[99999] flex gap-3">
-      <SearchStandaloneButton
-        onClick={handlePrevStep}
-        disabled={isStartingInitialization || currentStep <= 1}
-        icon={<ArrowLeft className="w-4 h-4" />}
-        wrapperClassName="shadow-md shadow-primary/10"
-        className="px-4"
-        aria-label="上一步"
+      <InitializationFooterNav
+        isLastStep={currentStep >= steps.length}
+        isLoading={isStartingInitialization}
+        disablePrev={isStartingInitialization || currentStep <= 1}
+        onPrev={handlePrevStep}
+        onNext={handleNextStep}
       />
-      <SearchStandaloneButton
-        onClick={handleNextStep}
-        disabled={isStartingInitialization}
-        icon={
-          isStartingInitialization ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ArrowRight className="w-4 h-4" />
-          )
-        }
-        wrapperClassName="shadow-lg shadow-primary/20"
-        className="px-4"
-        aria-label={currentStep < steps.length ? t("init.nextStep") : "进入首页"}
-      />
-    </div>
     </div>
   )
 }
