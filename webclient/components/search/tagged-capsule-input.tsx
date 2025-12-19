@@ -208,24 +208,39 @@ export const TaggedCapsuleInput = forwardRef<HTMLInputElement, TaggedCapsuleInpu
         )}
 
         {open && lastToken && suggestions.length > 0 ? (
-          <div className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden max-h-48 overflow-y-auto z-20">
-            {suggestions.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent/60"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handlePick(s.name)}
+          <div className="absolute left-0 right-0 top-full mt-2 z-20">
+            {/* 外层负责圆角裁剪，避免滚动条在顶部/底部“顶出”圆角 */}
+            <div className="rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden">
+              <div
+                className={cn(
+                  "overscroll-contain overflow-y-auto",
+                  // 根据视口高度尽可能展示更多联想项（避免永远固定 12rem 高度）。
+                  // 仍保留上限，避免在超大屏下过长影响视线。
+                  "max-h-[min(60dvh,32rem)]",
+                  // 让滚动条不要贴边，看起来更“在框里”
+                  "box-border pr-1",
+                )}
+                style={{ scrollbarGutter: "stable" }}
               >
-                <TagPill
-                  prefix={tone === "destructive" ? "-" : undefined}
-                  name={s.name}
-                  displayName={s.displayName ?? s.name}
-                  variant={tone === "destructive" ? "destructive" : "primary"}
-                  className="w-full"
-                />
-              </button>
-            ))}
+                {suggestions.map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent/60"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handlePick(s.name)}
+                  >
+                    <TagPill
+                      prefix={tone === "destructive" ? "-" : undefined}
+                      name={s.name}
+                      displayName={s.displayName ?? s.name}
+                      variant={tone === "destructive" ? "destructive" : "primary"}
+                      className="w-full"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
       </div>
