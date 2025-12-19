@@ -13,7 +13,7 @@ interface Props {
 
 export function InitLanSource({ onDone }: Props) {
   const { toast } = useToast()
-  const [host, setHost] = useState("172.29.45.119")
+  const [host, setHost] = useState("172.29.45.60")
   const [share, setShare] = useState("")
   const [subPath, setSubPath] = useState("")
   const [anonymous, setAnonymous] = useState(true)
@@ -96,7 +96,7 @@ export function InitLanSource({ onDone }: Props) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={host}
             onChange={(e) => setHost(e.target.value)}
-            placeholder="172.29.45.119 或 nas.local"
+            placeholder="172.29.45.60 或 nas.local"
           />
         </div>
 
