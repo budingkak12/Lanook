@@ -85,6 +85,29 @@
     - `variant="muted"`：默认分组背景（更像“块”）。
     - `variant="surface"`：更像“小卡片”的子块（背景更接近 `bg-card`）。
 
+### 6) 标签输入（TagPill / TaggedCapsuleInput）
+
+用于“输入框里混排标签 + 自由文本，并且输入时联想标签”的场景（搜索页、标签筛选、批量打标等）。
+
+- 标签胶囊 `TagPill`
+  - 代码位置：`webclient/components/ui/tag-pill.tsx`
+  - 说明：
+    - 展示：译文（醒目） + 原文（等宽更淡）
+    - 支持：右侧 `×` 删除、`variant`（default/primary/destructive）、`prefix`（如排除标签显示 `-`）
+
+- 标签联想输入框 `TaggedCapsuleInput`
+  - 代码位置：`webclient/components/search/tagged-capsule-input.tsx`
+  - 特性：
+    - 输入框内部可显示多个标签（可删除）
+    - 输入时只联想标签（`allTags`），点击联想项把标签加入输入框
+    - 仍允许用户输入自由文本（不强制走联想）
+    - `wrap` 控制单行/换行布局
+  - 使用：
+    - `import { TaggedCapsuleInput } from "@/components/search/tagged-capsule-input"`
+  - 推荐用法：
+    - 搜索页：`tone="primary"` 作为“想看”；`tone="destructive"` 作为“不想看”
+    - `onSubmit` 里触发搜索（Enter）
+
 ## 在业务页面里如何选择用哪个按钮？
 
 - 想要“设置页同款胶囊外观”的按钮：用 `SearchStandaloneButton`

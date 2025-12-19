@@ -1,41 +1,20 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, useRef } from "react"
-import { Eye, EyeOff, Search as SearchIcon, X, RotateCcw } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState, useRef } from "react"
+import { Eye, EyeOff, Search as SearchIcon, RotateCcw } from "lucide-react"
 
 import type { MediaItem } from "@/app/(main)/types"
 import { MediaGrid } from "@/components/media-grid"
 import { getAllTags, type TagItem } from "@/lib/api"
 import {
-  SearchCapsuleInput,
   SearchStandaloneButton,
-  searchCapsuleWrapperClass,
 } from "@/components/search/search-capsule"
-import { cn } from "@/lib/utils"
+import { TaggedCapsuleInput, type TagOption } from "@/components/search/tagged-capsule-input"
+import { TabLikeButton } from "@/components/ui/tab-like-button"
 
 // --- 类型定义 ---
-type TagOption = {
-  name: string
-  displayName?: string | null
-}
-
 type SearchIntentViewProps = {
   variant?: "main" | "demo"
-}
-
-const formatDisplayText = (opt: TagOption) =>
-  opt.displayName ? `${opt.displayName} · ${opt.name}` : opt.name
-
-const getLastToken = (value: string): string => {
-  const parts = value.split(/\s+/).map((t) => t.trim()).filter(Boolean)
-  return parts[parts.length - 1] ?? ""
-}
-
-const removeLastToken = (value: string): string => {
-  const parts = value.split(/\s+/).map((t) => t.trim()).filter(Boolean)
-  if (parts.length === 0) return ""
-  parts.pop()
-  return parts.join(" ")
 }
 
 export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
@@ -52,6 +31,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [isLoadingTags, setIsLoadingTags] = useState(false)
   const [tagError, setTagError] = useState<string | null>(null)
+  const [preset, setPreset] = useState<"capsule" | "soft" | "stacked" | "tray">("soft")
 
   // 用于点击容器聚焦 Input
   const wantInputRef = useRef<HTMLInputElement>(null)
@@ -59,24 +39,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
 
   const handleSearchMediaClick = useCallback((media: MediaItem) => {
     console.log("[search] media click", media.mediaId)
-  }, [])
-
-  // 输入时始终让光标附近内容可见（处理长文本在部分浏览器中不自动滚动的问题）
-  const handleWantInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setWantInput(e.target.value)
-    const el = e.currentTarget
-    // 下一帧再设置 scrollLeft，避免与浏览器默认行为冲突
-    requestAnimationFrame(() => {
-      el.scrollLeft = el.scrollWidth
-    })
-  }, [])
-
-  const handleNotWantInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setNotWantInput(e.target.value)
-    const el = e.currentTarget
-    requestAnimationFrame(() => {
-      el.scrollLeft = el.scrollWidth
-    })
   }, [])
 
   useEffect(() => {
@@ -101,52 +63,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
       })
     return () => {
       mounted = false
-    }
-  }, [])
-
-  const filterSuggestions = useMemo(() => {
-    return (kw: string) => {
-      const key = kw.trim().toLowerCase()
-      if (key.length === 0) return [] as TagOption[]
-      return allTags
-        .filter((t) => formatDisplayText(t).toLowerCase().includes(key))
-        .slice(0, 10)
-    }
-  }, [allTags])
-
-  const wantLastToken = useMemo(() => getLastToken(wantInput), [wantInput])
-  const notWantLastToken = useMemo(() => getLastToken(notWantInput), [notWantInput])
-
-  const wantSuggestions = useMemo(
-    () => filterSuggestions(wantLastToken),
-    [filterSuggestions, wantLastToken],
-  )
-  const notWantSuggestions = useMemo(
-    () => filterSuggestions(notWantLastToken),
-    [filterSuggestions, notWantLastToken],
-  )
-
-  const handlePickTag = useCallback(
-    (field: "want" | "notWant", tagName: string) => {
-      if (!tagName.trim()) return
-      if (field === "want") {
-        setWantTags((prev) => (prev.includes(tagName) ? prev : [...prev, tagName]))
-        setWantInput((prev) => removeLastToken(prev))
-        wantInputRef.current?.focus()
-      } else {
-        setNotWantTags((prev) => (prev.includes(tagName) ? prev : [...prev, tagName]))
-        setNotWantInput((prev) => removeLastToken(prev))
-        notWantInputRef.current?.focus()
-      }
-    },
-    [],
-  )
-
-  const handleRemoveTag = useCallback((field: "want" | "notWant", index: number) => {
-    if (field === "want") {
-      setWantTags((prev) => prev.filter((_, i) => i !== index))
-    } else {
-      setNotWantTags((prev) => prev.filter((_, i) => i !== index))
     }
   }, [])
 
@@ -184,24 +100,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
     setRefreshVersion((prev) => prev + 1)
   }, [wantInput, notWantInput, wantTags, notWantTags])
 
-  // 统一的键盘事件处理：支持 Enter 搜索，支持 Backspace 删除标签
-  const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>, field: "want" | "notWant", inputValue: string) => {
-    if (e.key === "Enter") {
-      if (e.nativeEvent.isComposing) return
-      e.preventDefault()
-      // 如果有联想词，Enter 可能会选词，这里简化为直接搜索
-      // 实际场景通常需要判断是否正在选词
-      handleRunSearch()
-    } else if (e.key === "Backspace" && inputValue === "") {
-      // 当输入框为空时按退格，删除最后一个标签
-      if (field === "want" && wantTags.length > 0) {
-        setWantTags(prev => prev.slice(0, -1))
-      } else if (field === "notWant" && notWantTags.length > 0) {
-        setNotWantTags(prev => prev.slice(0, -1))
-      }
-    }
-  }
-
   const hasActiveQuery = useMemo(
     () => (appliedTag === null && !appliedQuery ? false : true),
     [appliedTag, appliedQuery],
@@ -226,6 +124,25 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+
+          {/* 样式试验区：方便你在同一页对比挑选 */}
+          <section className="space-y-2">
+            <div className="text-xs text-muted-foreground">标签输入样式预设（用于挑选最协调的一种）</div>
+            <div className="flex flex-wrap gap-2">
+              <TabLikeButton active={preset === "soft"} className="h-8 px-3" onClick={() => setPreset("soft")}>
+                柔和输入框
+              </TabLikeButton>
+              <TabLikeButton active={preset === "capsule"} className="h-8 px-3" onClick={() => setPreset("capsule")}>
+                胶囊经典
+              </TabLikeButton>
+              <TabLikeButton active={preset === "stacked"} className="h-8 px-3" onClick={() => setPreset("stacked")}>
+                两行标签
+              </TabLikeButton>
+              <TabLikeButton active={preset === "tray"} className="h-8 px-3" onClick={() => setPreset("tray")}>
+                标签区+输入区
+              </TabLikeButton>
+            </div>
+          </section>
           
           {/* --- 想看 (Want) --- */}
           <section className="space-y-2">
@@ -233,74 +150,18 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               <Eye className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">想看</span>
             </div>
-
-            <div
-              className={cn(
-                "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
-                searchCapsuleWrapperClass,
-                // 覆盖胶囊默认的 flex 布局，避免影响内部 input 的宽度计算；
-                // 其它状态（包含 focus-within 边框色）完全沿用 demo 中的默认实现。
-                "block",
-              )}
-              onClick={() => wantInputRef.current?.focus()}
-            >
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* 标签 (Chips) - 使用 Primary 色 */}
-                {wantTags.map((tag, idx) => {
-                  const opt = allTags.find((t) => t.name === tag)
-                  const label = opt ? formatDisplayText(opt) : tag
-                  return (
-                    <span
-                      key={`want-${idx}`}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium animate-in fade-in zoom-in duration-200"
-                    >
-                      <span className="max-w-[120px] truncate">{label}</span>
-                      <button
-                        type="button"
-                        className="rounded-full hover:bg-primary/20 p-0.5 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveTag("want", idx)
-                        }}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )
-                })}
-                
-                {/* 输入框 */}
-                <SearchCapsuleInput
-                  ref={wantInputRef}
-                  value={wantInput}
-                  onChange={handleWantInputChange}
-                  onKeyDown={(e) => handleInputKeyDown(e, "want", wantInput)}
-                  placeholder={wantTags.length > 0 ? "" : "描述画面，例：夕阳 海边"}
-                  className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
-                  autoComplete="off"
-                />
-              </div>
-
-              {/* 联想下拉菜单 */}
-              {wantLastToken && wantSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden max-h-48 overflow-y-auto z-20">
-                  {wantSuggestions.map((s) => (
-                    <button
-                      key={s.name}
-                      type="button"
-                      className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => handlePickTag("want", s.name)}
-                    >
-                      <span className="text-xs text-muted-foreground">#</span>
-                      <div className="min-w-0 flex-1">
-                        {s.displayName && <div className="font-medium truncate">{s.displayName}</div>}
-                        <div className="text-xs text-muted-foreground truncate">{s.name}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <TaggedCapsuleInput
+              ref={wantInputRef}
+              tone="primary"
+              tags={wantTags}
+              value={wantInput}
+              onChange={setWantInput}
+              onTagsChange={setWantTags}
+              allTags={allTags}
+              placeholder="描述画面，例：夕阳 海边"
+              preset={preset}
+              onSubmit={handleRunSearch}
+            />
           </section>
 
           {/* --- 不想看 (Not Want) --- */}
@@ -309,72 +170,18 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
               <EyeOff className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">不想看</span>
             </div>
-
-            <div
-              className={cn(
-                "group relative min-h-[44px] w-full px-2 py-1.5 cursor-text",
-                searchCapsuleWrapperClass,
-                "block",
-              )}
-              onClick={() => notWantInputRef.current?.focus()}
-            >
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* 标签 (Chips) - 使用 Destructive 色 (红/警示) 表示排除 */}
-                {notWantTags.map((tag, idx) => {
-                  const opt = allTags.find((t) => t.name === tag)
-                  const label = opt ? formatDisplayText(opt) : tag
-                  return (
-                    <span
-                      key={`notWant-${idx}`}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md bg-destructive/10 text-destructive px-2 py-0.5 text-xs font-medium animate-in fade-in zoom-in duration-200"
-                    >
-                      <span className="max-w-[120px] truncate">-{label}</span>
-                      <button
-                        type="button"
-                        className="rounded-full hover:bg-destructive/20 p-0.5 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleRemoveTag("notWant", idx)
-                        }}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  )
-                })}
-                
-                {/* 输入框 */}
-                <SearchCapsuleInput
-                  ref={notWantInputRef}
-                  value={notWantInput}
-                  onChange={handleNotWantInputChange}
-                  onKeyDown={(e) => handleInputKeyDown(e, "notWant", notWantInput)}
-                  placeholder={notWantTags.length > 0 ? "" : "排除内容，例：#nsfw"}
-                  className="flex-1 min-w-[80px] bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-transparent h-9 px-0"
-                  autoComplete="off"
-                />
-              </div>
-
-              {/* 联想下拉菜单 */}
-              {notWantLastToken && notWantSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-2 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden max-h-48 overflow-y-auto z-20">
-                  {notWantSuggestions.map((s) => (
-                    <button
-                      key={s.name}
-                      type="button"
-                      className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                      onClick={() => handlePickTag("notWant", s.name)}
-                    >
-                      <span className="text-xs text-muted-foreground">#</span>
-                      <div className="min-w-0 flex-1">
-                        {s.displayName && <div className="font-medium truncate">{s.displayName}</div>}
-                        <div className="text-xs text-muted-foreground truncate">{s.name}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <TaggedCapsuleInput
+              ref={notWantInputRef}
+              tone="destructive"
+              tags={notWantTags}
+              value={notWantInput}
+              onChange={setNotWantInput}
+              onTagsChange={setNotWantTags}
+              allTags={allTags}
+              placeholder="排除内容，例：#nsfw"
+              preset={preset}
+              onSubmit={handleRunSearch}
+            />
           </section>
 
           {/* 按钮区域：使用统一的独立按钮组件（默认小号，宽度可通过 className 控制） */}

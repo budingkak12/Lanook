@@ -155,15 +155,16 @@ export async function getAllTags(): Promise<TagItem[]> {
   fetchingAllTags = (async () => {
     try {
       const resp = await apiFetch("/tags?with_translation=true")
-      if (!resp.ok) return []
-      const data = (await resp.json()) as { tags?: TagItem[] }
+      const ensured = await ensureOk(resp)
+      const data = (await ensured.json()) as { tags?: TagItem[] }
       const sanitized = (data.tags ?? []).filter(
         (tag): tag is TagItem => typeof tag?.name === "string" && tag.name.trim().length > 0,
       )
       cachedAllTags = sanitized
       return cachedAllTags
     } catch {
-      return []
+      // 这里必须抛错：调用方需要知道标签加载失败，否则会表现为“无联想结果”且无提示。
+      throw new Error("获取标签失败：无法连接到后端或响应异常")
     } finally {
       fetchingAllTags = null
     }
