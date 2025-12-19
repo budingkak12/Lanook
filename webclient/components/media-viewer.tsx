@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import type { MediaItem } from "@/app/(main)/types"
-import { X, Heart, Star, Trash2, ChevronLeft, ChevronRight, RotateCw } from "lucide-react"
+import { X, Trash2, ChevronLeft, ChevronRight, RotateCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { batchDeleteMedia, friendlyDeleteError, setFavorite, setLike, resolveApiUrl } from "@/lib/api"
+import { ReactionButton, type ReactionVariant } from "@/components/ui/reaction-button"
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Keyboard } from 'swiper/modules'
 import 'swiper/css'
@@ -60,11 +61,31 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   const [isMobile, setIsMobile] = useState(false)
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set())
   const [rotation, setRotation] = useState(0)
+  const [rotationTransitionEnabled, setRotationTransitionEnabled] = useState(true)
+  // 动效预览区已关闭：保留唯一选定方案（YouTube 1.5x）
   const swiperRef = useRef<any>(null)
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({})
   const { toast } = useToast()
   const PrevIcon = ChevronLeft
   const NextIcon = ChevronRight
+
+  // === 动效可调参数（你可以直接改这里的数值来调节速度/幅度） ===
+  // >1 更慢，<1 更快
+  const REACTION_ANIM_SPEED = 5.0
+  const PRIMARY_REACTION_VARIANT: ReactionVariant = "youtube"
+
+  const ROTATE_STEP_DEG = 90
+  const ROTATE_ANIMATION_MS = 200
+
+  const mediaId = useMemo(() => media.mediaId, [media.mediaId])
+
+  // 避免 rotation 数值无限增长：超过阈值后“无动画”归一化到 0~359
+  useEffect(() => {
+    if (rotation <= 3600) return
+    setRotationTransitionEnabled(false)
+    setRotation(rotation % 360)
+    queueMicrotask(() => setRotationTransitionEnabled(true))
+  }, [rotation])
 
   // 检测移动端设备
   useEffect(() => {
@@ -182,7 +203,10 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     setIsLiked(Boolean(media.liked))
     setIsFavorited(Boolean(media.favorited))
+    // 切换媒体时不要出现“回弹旋转”的动画：先关掉 transition，归零后再恢复。
+    setRotationTransitionEnabled(false)
     setRotation(0)
+    queueMicrotask(() => setRotationTransitionEnabled(true))
     setLikeLoading(false)
     setFavoriteLoading(false)
     setIsDeleting(false)
@@ -254,77 +278,54 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   }, [allMedia, currentSlideIndex])
 
   
-  const toggleLike = async () => {
-    console.log('🔄 toggleLike called', { likeLoading, isLiked, mediaId: media.mediaId })
-
-    if (likeLoading) {
-      console.log('⚠️ likeLoading is true, returning early')
-      return
-    }
+  const toggleLike = useCallback(async () => {
+    if (likeLoading || isDeleting) return
 
     const target = !isLiked
-    console.log('🎯 Target state:', target)
-
     setLikeLoading(true)
     setIsLiked(target)
 
     try {
-      console.log('📡 Calling setLike API:', media.mediaId, target)
-      await setLike(media.mediaId, target)
-      console.log('✅ setLike API call successful')
-      onMediaUpdate(media.mediaId, { liked: target })
-      toast({
-        title: target ? "已点赞" : "已取消点赞",
-      })
+      await setLike(mediaId, target)
+      onMediaUpdate(mediaId, { liked: target })
+      toast({ title: target ? "已点赞" : "已取消点赞" })
     } catch (err) {
-      console.error('❌ setLike API call failed:', err)
+      // 避免 Next dev “Console Error”覆盖层打断操作体验：这里保留轻量日志即可。
+      console.warn("[MediaViewer] setLike failed:", err)
       const message = err instanceof Error ? err.message : "操作失败，请稍后重试"
       setIsLiked(!target)
       toast({
-        title: "点赞失败",
+        title: target ? "点赞失败" : "取消点赞失败",
         description: message,
       })
     } finally {
       setLikeLoading(false)
-      console.log('🏁 toggleLike finished')
     }
-  }
+  }, [isDeleting, isLiked, likeLoading, mediaId, onMediaUpdate, toast])
 
-  const toggleFavorite = async () => {
-    console.log('🔄 toggleFavorite called', { favoriteLoading, isFavorited, mediaId: media.mediaId })
-
-    if (favoriteLoading) {
-      console.log('⚠️ favoriteLoading is true, returning early')
-      return
-    }
+  const toggleFavorite = useCallback(async () => {
+    if (favoriteLoading || isDeleting) return
 
     const target = !isFavorited
-    console.log('🎯 Target favorite state:', target)
-
     setFavoriteLoading(true)
     setIsFavorited(target)
 
     try {
-      console.log('📡 Calling setFavorite API:', media.mediaId, target)
-      await setFavorite(media.mediaId, target)
-      console.log('✅ setFavorite API call successful')
-      onMediaUpdate(media.mediaId, { favorited: target })
-      toast({
-        title: target ? "已收藏" : "已取消收藏",
-      })
+      await setFavorite(mediaId, target)
+      onMediaUpdate(mediaId, { favorited: target })
+      toast({ title: target ? "已收藏" : "已取消收藏" })
     } catch (err) {
-      console.error('❌ setFavorite API call failed:', err)
+      console.warn("[MediaViewer] setFavorite failed:", err)
       const message = err instanceof Error ? err.message : "操作失败，请稍后重试"
       setIsFavorited(!target)
       toast({
-        title: "收藏失败",
+        title: target ? "收藏失败" : "取消收藏失败",
         description: message,
       })
     } finally {
       setFavoriteLoading(false)
-      console.log('🏁 toggleFavorite finished')
     }
-  }
+  }, [favoriteLoading, isDeleting, isFavorited, mediaId, onMediaUpdate, toast])
 
   // PC 端键盘快捷键：左右切图，下键点赞，Esc 关闭；移动端不触发
   useEffect(() => {
@@ -347,16 +348,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     }
 
     window.addEventListener("keydown", handleKeyDown)
-
-    // 为移动端添加背景点击关闭
-    const viewerElement = document.querySelector('.fixed.inset-0')
-    if (viewerElement) {
-      viewerElement.addEventListener('click', (e) => {
-        if (e.target === viewerElement) {
-          handleClose()
-        }
-      })
-    }
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
@@ -398,9 +389,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     }
   }
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = useCallback(() => {
     void toggleLike()
-  }
+  }, [toggleLike])
 
   const handleSlideChange = (swiper: any) => {
     const newIndex = swiper.activeIndex
@@ -416,7 +407,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     setCurrentSlideIndex(newIndex)
     onIndexChange(newIndex)
+    setRotationTransitionEnabled(false)
     setRotation(0)
+    queueMicrotask(() => setRotationTransitionEnabled(true))
 
     // 更新当前媒体项
     if (allMedia[newIndex]) {
@@ -461,7 +454,15 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   }
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-background flex flex-col animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[99999] bg-background flex flex-col animate-in fade-in duration-200"
+      onClick={(e) => {
+        // 移动端：点背景关闭（仅当点击到背景本身）
+        if (isMobile && e.target === e.currentTarget) {
+          handleClose()
+        }
+      }}
+    >
       {/* Close & Delete Controls */}
       <div className="pointer-events-none absolute inset-0 flex justify-between items-start p-6 z-[99940]">
         <button
@@ -520,7 +521,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
             <SwiperSlide key={`${mediaItem.id}-${index}`} className="flex items-center justify-center bg-background">
               <div
                 className="w-full h-full flex items-center justify-center"
-                onDoubleClick={handleDoubleClick}
               >
                 {mediaItem.type === "image" ? (
                   <>
@@ -536,6 +536,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                     <img
                       src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
                       alt="Media"
+                      onDoubleClick={handleDoubleClick}
                       className={`transition-opacity duration-300 ${
                         loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'
                       }`}
@@ -547,7 +548,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                         minWidth: '1px',
                         minHeight: '1px',
                         transform: `rotate(${rotation}deg)`,
-                        transition: 'transform 0.2s ease'
+                        transitionProperty: "transform",
+                        transitionDuration: `${rotationTransitionEnabled ? ROTATE_ANIMATION_MS : 0}ms`,
+                        transitionTimingFunction: "cubic-bezier(0.2, 0.8, 0.2, 1)",
                       }}
                       onError={(e) => {
                         const target = e.currentTarget
@@ -569,6 +572,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                     src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url)}
                     controls
                     className="object-contain"
+                    onDoubleClick={handleDoubleClick}
                     style={{
                       maxWidth: '100vw',
                       height: '100vh',
@@ -627,34 +631,43 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
     
     {/* Bottom Actions */}
-    <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center z-[99940]">
-      <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
-        <button
-          type="button"
-          disabled={likeLoading || isDeleting}
-          onClick={() => void toggleLike()}
-          className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white transition-transform ${isLiked ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
-        >
-          <Heart className={`w-6 h-6 ${isLiked ? "fill-current text-red-400" : "text-white"}`} />
-        </button>
-        <button
-          type="button"
-          disabled={favoriteLoading || isDeleting}
-          onClick={() => void toggleFavorite()}
-          className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white transition-transform ${isFavorited ? "scale-110" : "hover:scale-105"} disabled:opacity-40 disabled:cursor-not-allowed`}
-        >
-          <Star className={`w-6 h-6 ${isFavorited ? "fill-current text-yellow-400" : "text-white"}`} />
-        </button>
-        <button
-          type="button"
-          disabled={isDeleting}
-          onClick={() => setRotation((prev) => (prev + 90) % 360)}
-          className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <RotateCw className="w-6 h-6" />
-        </button>
-      </div>
-    </div>
+	    <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center z-[99940]">
+	      <div className="flex flex-col items-center gap-2">
+	        <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
+	          <ReactionButton
+	            kind="like"
+	            active={isLiked}
+	            loading={likeLoading}
+	            onClick={() => void toggleLike()}
+	            variant={PRIMARY_REACTION_VARIANT}
+	            speed={REACTION_ANIM_SPEED}
+	            className={isDeleting ? "pointer-events-none" : ""}
+	          />
+	          <ReactionButton
+	            kind="favorite"
+	            active={isFavorited}
+	            loading={favoriteLoading}
+	            onClick={() => void toggleFavorite()}
+	            variant={PRIMARY_REACTION_VARIANT}
+	            speed={REACTION_ANIM_SPEED}
+	            className={isDeleting ? "pointer-events-none" : ""}
+	          />
+	          <button
+	            type="button"
+	            disabled={isDeleting}
+	            onClick={() => {
+	              setRotationTransitionEnabled(true)
+	              setRotation((prev) => prev + ROTATE_STEP_DEG)
+	            }}
+	            className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+	          >
+	            <RotateCw className="w-6 h-6" />
+	          </button>
+	        </div>
+
+	        {/* 已选择方案：YouTube + 1.5x，预览区移除 */}
+	      </div>
+	    </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

@@ -47,7 +47,23 @@ export function resolveApiUrl(path: string): string {
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const url = resolveApiUrl(path)
   console.log(`API请求: ${url}`)
-  return fetch(url, init)
+  return fetch(url, init).catch((err) => {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`网络请求失败：${message} (${url})`)
+  })
+}
+
+async function apiFetchWithTimeout(path: string, init: RequestInit | undefined, timeoutMs: number): Promise<Response> {
+  if (init?.signal) {
+    return apiFetch(path, init)
+  }
+  const controller = new AbortController()
+  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await apiFetch(path, { ...init, signal: controller.signal })
+  } finally {
+    globalThis.clearTimeout(timer)
+  }
 }
 
 // ===== 通用 JSON 工具 =====
@@ -119,10 +135,10 @@ export async function deleteMedia(mediaId: number, deleteFile = true): Promise<v
 async function setTag(mediaId: number, tag: string, enabled: boolean): Promise<void> {
   const payload = { media_id: mediaId, tag }
   if (enabled) {
-    const response = await apiFetch("/tag", buildJsonRequestInit("POST", payload))
+    const response = await apiFetchWithTimeout("/tag", buildJsonRequestInit("POST", payload), 8000)
     await ensureOk(response)
   } else {
-    const response = await apiFetch("/tag", buildJsonRequestInit("DELETE", payload))
+    const response = await apiFetchWithTimeout("/tag", buildJsonRequestInit("DELETE", payload), 8000)
     await ensureOk(response)
   }
 }
