@@ -31,7 +31,7 @@ export function SettingsView() {
   const [serverInfo, setServerInfo] = useState<NetworkInfo | null>(null)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copiedText, setCopiedText] = useState<string | null>(null)
   const [isResetting, setIsResetting] = useState(false)
 
   const toggleSection = (key: SettingsSectionKey) => {
@@ -82,12 +82,12 @@ export function SettingsView() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      setCopied(true)
+      setCopiedText(text)
       toast({
         title: t("toast.clipboard.copied.title"),
         description: t("toast.clipboard.copied.description"),
       })
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => setCopiedText(null), 2000)
     } catch {
       toast({
         title: t("toast.clipboard.copyFailed.title"),
@@ -151,7 +151,7 @@ export function SettingsView() {
               serverInfo={serverInfo}
               qrCodeUrl={qrCodeUrl}
               isLoading={isLoading}
-              copied={copied}
+              copiedText={copiedText}
               onRefresh={() => fetchServerInfo()}
               onCopy={(text) => copyToClipboard(text)}
             />

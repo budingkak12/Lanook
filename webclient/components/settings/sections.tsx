@@ -124,7 +124,7 @@ export function NetworkSection({
   serverInfo,
   qrCodeUrl,
   isLoading,
-  copied,
+  copiedText,
   onRefresh,
   onCopy,
 }: {
@@ -134,7 +134,7 @@ export function NetworkSection({
   serverInfo: NetworkInfo | null
   qrCodeUrl: string
   isLoading: boolean
-  copied: boolean
+  copiedText: string | null
   onRefresh: () => void
   onCopy: (text: string) => void
 }) {
@@ -171,81 +171,89 @@ export function NetworkSection({
               <>
                 <div className="flex justify-center">
                   {qrCodeUrl ? (
-                    <div className="text-center space-y-2">
+                    <div className="text-center space-y-2 rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
                       <img
                         src={qrCodeUrl}
                         alt={t("settings.network.qrCode.alt")}
-                        className="border border-[rgb(228_231_234)] rounded-lg shadow-sm"
+                        className="mx-auto border border-border/50 rounded-lg bg-card"
                       />
-                      <p className="text-sm text-[rgb(120_123_124)]">{t("settings.network.qrCode.description")}</p>
+                      <p className="text-sm text-muted-foreground">{t("settings.network.qrCode.description")}</p>
                     </div>
                   ) : (
-                    <div className="w-64 h-64 border border-[rgb(228_231_234)] rounded-lg flex items-center justify-center bg-[rgb(240_242_244)]">
-                      <div className="text-center text-[rgb(120_123_124)]">
+                    <div className="w-72 max-w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+                      <div className="aspect-square w-full rounded-lg border border-border/50 bg-card flex items-center justify-center">
+                        <div className="text-center text-muted-foreground">
                         <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">{t("settings.network.qrCode.scanning")}</p>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t("settings.network.connection.ip")}</label>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 px-3 py-2 bg-[rgb(240_242_244)] rounded text-sm">{serverInfo.ip}</code>
-                      <Button variant="outline" size="sm" onClick={() => onCopy(serverInfo.ip)}>
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      </Button>
+                <SelectableListCard className="border border-border/50">
+                  <SelectableListItem
+                    selected={false}
+                    showCheck={false}
+                    onSelect={() => onCopy(serverInfo.ip)}
+                    right={copiedText === serverInfo.ip ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-muted-foreground">{t("settings.network.connection.ip")}</div>
+                      <div className="mt-0.5 text-sm font-mono text-foreground truncate">{serverInfo.ip}</div>
                     </div>
-                  </div>
+                  </SelectableListItem>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t("settings.network.connection.port")}</label>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 px-3 py-2 bg-[rgb(240_242_244)] rounded text-sm">{serverInfo.port}</code>
-                      <Button variant="outline" size="sm" onClick={() => onCopy(serverInfo.port.toString())}>
-                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      </Button>
+                  <SelectableListItem
+                    selected={false}
+                    showCheck={false}
+                    onSelect={() => onCopy(serverInfo.port.toString())}
+                    right={copiedText === serverInfo.port.toString() ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-muted-foreground">{t("settings.network.connection.port")}</div>
+                      <div className="mt-0.5 text-sm font-mono text-foreground truncate">{serverInfo.port}</div>
                     </div>
-                  </div>
-                </div>
+                  </SelectableListItem>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t("settings.network.connection.fullAddress")}</label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-[rgb(240_242_244)] rounded text-sm break-all">
-                      {serverInfo.display_url}
-                    </code>
-                    <Button variant="outline" size="sm" onClick={() => onCopy(serverInfo.display_url)}>
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
+                  <SelectableListItem
+                    selected={false}
+                    showCheck={false}
+                    onSelect={() => onCopy(serverInfo.display_url)}
+                    right={copiedText === serverInfo.display_url ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-muted-foreground">{t("settings.network.connection.fullAddress")}</div>
+                      <div className="mt-0.5 text-sm font-mono text-foreground break-all line-clamp-2">
+                        {serverInfo.display_url}
+                      </div>
+                    </div>
+                  </SelectableListItem>
+                </SelectableListCard>
 
-                <div className="border border-[rgb(228_231_234)] rounded-lg p-3 bg-[rgb(240_242_244)]">
-                  <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
-                    <Settings className="w-4 h-4" />
+                <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+                  <h4 className="font-medium mb-2 flex items-center gap-2 text-sm text-foreground">
+                    <Settings className="w-4 h-4 text-muted-foreground" />
                     {t("settings.network.usage.title")}
                   </h4>
-                  <div className="space-y-2 text-sm text-[rgb(74_77_78)]">
+                  <div className="space-y-2 text-sm text-foreground">
                     <p className="flex items-start gap-2">
-                      <span className="font-medium">1.</span>
-                      {t("settings.network.usage.step1")}
+                      <span className="font-medium text-muted-foreground">1.</span>
+                      <span className="text-muted-foreground">{t("settings.network.usage.step1")}</span>
                     </p>
                     <p className="flex items-start gap-2">
-                      <span className="font-medium">2.</span>
-                      {t("settings.network.usage.step2")}
+                      <span className="font-medium text-muted-foreground">2.</span>
+                      <span className="text-muted-foreground">{t("settings.network.usage.step2")}</span>
                     </p>
                     <p className="flex items-start gap-2">
-                      <span className="font-medium">3.</span>
-                      {t("settings.network.usage.step3")}
+                      <span className="font-medium text-muted-foreground">3.</span>
+                      <span className="text-muted-foreground">{t("settings.network.usage.step3")}</span>
                     </p>
                   </div>
                 </div>
               </>
             ) : (
-              <div className="text-center py-6 text-[rgb(120_123_124)]">
+              <div className="text-center py-6 text-muted-foreground">
                 <Wifi className="w-10 h-10 mx-auto mb-3 opacity-50" />
                 <p className="text-xs">{t("settings.network.loading")}</p>
               </div>

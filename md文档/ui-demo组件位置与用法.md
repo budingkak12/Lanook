@@ -51,6 +51,8 @@
     - `import { SelectableListCard, SelectableListItem } from "@/components/ui/selectable-list"`
   - 推荐：用于“单选/多选的设置项列表”，让选中态与交互风格统一。
 
+补充：也可用于“展示型字段（非输入框）”的统一样式（例如设置页里 IP/端口/完整地址这种只读信息），通过 `showCheck={false}` + `right` 放图标实现“点击整行复制”等交互。
+
 ### 4) 基础 Button（仅 ui-demo 顶部返回按钮用到）
 
 - 代码位置：`webclient/components/ui/button.tsx`
@@ -63,4 +65,3 @@
   - 适合：初始化流程底部按钮、弹窗确认按钮、轻量操作按钮。
 - 想要通用的按钮样式（表单/工具栏/页面按钮）：用 `Button`
   - 适合：常规页面按钮、导航/返回、非胶囊风格区域。
-
