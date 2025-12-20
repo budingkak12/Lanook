@@ -481,21 +481,23 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
       }}
     >
       {/* Close & Delete Controls */}
-      <div className="pointer-events-none absolute inset-0 flex justify-between items-start p-6 z-[99940]">
+      <div className="absolute inset-x-0 top-0 flex justify-between items-start p-6 z-[99940]">
         <button
           type="button"
           onClick={handleClose}
-          className="pointer-events-auto text-foreground/80 hover:text-foreground transition-colors"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 backdrop-blur-md border border-white/40 shadow-lg shadow-black/5 text-slate-700 hover:text-black hover:scale-105 transition-all active:scale-95"
+          title="关闭"
         >
-          <X className="w-7 h-7" />
+          <X className="w-6 h-6" />
         </button>
         <button
           type="button"
           disabled={isDeleting}
           onClick={() => setShowDeleteDialog(true)}
-          className="pointer-events-auto text-foreground/80 hover:text-foreground transition-colors disabled:opacity-50"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 backdrop-blur-md border border-white/40 shadow-lg shadow-black/5 text-slate-700 hover:text-red-500 hover:scale-105 transition-all active:scale-95 disabled:opacity-50"
+          title="删除"
         >
-          <Trash2 className="w-7 h-7" />
+          <Trash2 className="w-6 h-6" />
         </button>
       </div>
 
@@ -516,7 +518,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           resistanceRatio={0.85}
           watchSlidesProgress={true}
           loop={false}
-          // 桌面端缩短切换动画，移动端保持原速度
           speed={isMobile ? 300 : 140}
           touchEventsTarget='container'
           allowTouchMove={true}
@@ -529,16 +530,10 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           centeredSlides={true}
           centeredSlidesBounds={true}
           className="w-full h-full"
-          style={{
-            width: '100%',
-            height: '100%'
-          }}
         >
           {allMedia.map((mediaItem, index) => (
             <SwiperSlide key={`${mediaItem.id}-${index}`} className="flex items-center justify-center bg-background">
-              <div
-                className="w-full h-full flex items-center justify-center"
-              >
+              <div className="w-full h-full flex items-center justify-center">
                 {mediaItem.type === "image" ? (
                   <>
                     <div
@@ -554,15 +549,12 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                       src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
                       alt="Media"
                       onDoubleClick={handleDoubleClick}
-                      className={`transition-opacity duration-300 ${loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'
-                        }`}
+                      className={`transition-opacity duration-300 ${loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'}`}
                       style={{
                         height: '100vh',
                         width: 'auto',
                         maxWidth: '100vw',
                         objectFit: 'contain',
-                        minWidth: '1px',
-                        minHeight: '1px',
                         transform: `rotate(${rotation}deg)`,
                         transitionProperty: "transform",
                         transitionDuration: `${rotationTransitionEnabled ? ROTATE_ANIMATION_MS : 0}ms`,
@@ -580,38 +572,15 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                   </>
                 ) : (
                   <video
-                    ref={(el) => {
-                      if (el) {
-                        videoRefs.current[mediaItem.id] = el
-                      }
-                    }}
+                    ref={(el) => { if (el) videoRefs.current[mediaItem.id] = el }}
                     src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url)}
                     controls
                     className="object-contain"
                     onDoubleClick={handleDoubleClick}
-                    style={{
-                      maxWidth: '100vw',
-                      height: '100vh',
-                      objectFit: 'contain'
-                    }}
+                    style={{ maxWidth: '100vw', height: '100vh', objectFit: 'contain' }}
                     playsInline
                     muted
                     loop
-                    onPlay={(e) => {
-                      // 确保只有一个视频在播放
-                      const currentVideo = e.currentTarget
-                      if (currentSlideIndex !== index) {
-                        currentVideo.pause()
-                      }
-                    }}
-                    onEnded={() => {
-                      // 视频结束时自动切换到下一个
-                      if (currentSlideIndex === index && currentSlideIndex < allMedia.length - 1) {
-                        setTimeout(() => {
-                          handleNext()
-                        }, 500)
-                      }
-                    }}
                   />
                 )}
               </div>
@@ -626,110 +595,91 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
             type="button"
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="absolute left-6 top-1/2 -translate-y-1/2 z-[99930] text-white/80 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="absolute left-6 top-1/2 -translate-y-1/2 z-[99930] flex h-14 w-14 items-center justify-center rounded-full bg-white/70 backdrop-blur-md border border-white/50 shadow-xl shadow-black/5 text-slate-600 hover:text-black hover:scale-110 transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/5 backdrop-blur-sm">
-              <PrevIcon className="w-6 h-6" />
-            </span>
+            <ChevronLeft className="w-8 h-8" />
           </button>
           <button
             type="button"
             onClick={handleNext}
             disabled={currentIndex >= allMedia.length - 1}
-            className="absolute right-6 top-1/2 -translate-y-1/2 z-[99930] text-white/80 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="absolute right-6 top-1/2 -translate-y-1/2 z-[99930] flex h-14 w-14 items-center justify-center rounded-full bg-white/70 backdrop-blur-md border border-white/50 shadow-xl shadow-black/5 text-slate-600 hover:text-black hover:scale-110 transition-all active:scale-90 disabled:opacity-20 disabled:cursor-not-allowed"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-white/5 backdrop-blur-sm">
-              <NextIcon className="w-6 h-6" />
-            </span>
+            <ChevronRight className="w-8 h-8" />
           </button>
         </>
       )}
 
-
       {/* Bottom Actions */}
-      <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center z-[99940]">
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
-            <ReactionButton
-              kind="like"
-              active={isLiked}
-              loading={likeLoading}
-              onClick={() => void toggleLike()}
-              variant={PRIMARY_REACTION_VARIANT}
-              speed={REACTION_ANIM_SPEED}
-              className={isDeleting ? "pointer-events-none" : ""}
-            />
-            <ReactionButton
-              kind="favorite"
-              active={isFavorited}
-              loading={favoriteLoading}
-              onClick={() => void toggleFavorite()}
-              variant={PRIMARY_REACTION_VARIANT}
-              speed={REACTION_ANIM_SPEED}
-              className={isDeleting ? "pointer-events-none" : ""}
-            />
-            <button
-              type="button"
-              disabled={isDeleting}
-              onClick={() => {
-                setRotationTransitionEnabled(true)
-                setRotation((prev) => prev + ROTATE_STEP_DEG)
-              }}
-              className="relative flex h-11 w-11 items-center justify-center text-slate-400 hover:text-slate-500 hover:scale-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <RotateCw className="w-8 h-8" />
-            </button>
-          </div>
+      <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex flex-col items-center gap-2 z-[99940]">
+        <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
+          <ReactionButton
+            kind="like"
+            active={isLiked}
+            loading={likeLoading}
+            onClick={() => void toggleLike()}
+            variant={PRIMARY_REACTION_VARIANT}
+            speed={REACTION_ANIM_SPEED}
+            className={isDeleting ? "pointer-events-none" : ""}
+          />
+          <ReactionButton
+            kind="favorite"
+            active={isFavorited}
+            loading={favoriteLoading}
+            onClick={() => void toggleFavorite()}
+            variant={PRIMARY_REACTION_VARIANT}
+            speed={REACTION_ANIM_SPEED}
+            className={isDeleting ? "pointer-events-none" : ""}
+          />
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={() => {
+              setRotationTransitionEnabled(true)
+              setRotation((prev) => prev + ROTATE_STEP_DEG)
+            }}
+            className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/80 backdrop-blur-md border border-white/40 shadow-lg shadow-black/5 text-slate-700 hover:text-black hover:scale-110 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RotateCw className="w-6 h-6" />
+          </button>
+        </div>
 
-          {SHOW_REACTION_VARIANTS_PREVIEW && (
-            <div className="mt-2 w-full max-w-[min(46rem,calc(100vw-2rem))]">
-              <div className="overflow-x-auto pb-1">
-                <div className="flex gap-3 px-1">
-                  {REACTION_VARIANTS_PREVIEW.map((item) => {
-                    const likeKey = `like:${item.id}`
-                    const favKey = `favorite:${item.id}`
-                    return (
-                      <div key={item.id} className="shrink-0 flex flex-col items-center gap-1">
-                        <ReactionButton
-                          kind="like"
-                          active={Boolean(reactionPreviewActive[likeKey])}
-                          loading={false}
-                          onClick={() =>
-                            setReactionPreviewActive((prev) => ({
-                              ...prev,
-                              [likeKey]: !prev[likeKey],
-                            }))
-                          }
-                          variant={item.variant}
-                          speed={item.speed}
-                          sizeClassName="h-9 w-9"
-                        />
-                        <ReactionButton
-                          kind="favorite"
-                          active={Boolean(reactionPreviewActive[favKey])}
-                          loading={false}
-                          onClick={() =>
-                            setReactionPreviewActive((prev) => ({
-                              ...prev,
-                              [favKey]: !prev[favKey],
-                            }))
-                          }
-                          variant={item.variant}
-                          speed={item.speed}
-                          sizeClassName="h-9 w-9"
-                        />
-                        <div className="text-[10px] text-white/55">{item.label}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="text-[10px] text-white/45 text-center">
-                预览区仅用于挑选动画手感，不会影响真实点赞/收藏状态。
+        {SHOW_REACTION_VARIANTS_PREVIEW && (
+          <div className="w-full max-w-[min(46rem,calc(100vw-2rem))] mt-2">
+            <div className="overflow-x-auto pb-1">
+              <div className="flex gap-3 px-1">
+                {REACTION_VARIANTS_PREVIEW.map((item) => {
+                  const likeKey = `like:${item.id}`
+                  const favKey = `favorite:${item.id}`
+                  return (
+                    <div key={item.id} className="shrink-0 flex flex-col items-center gap-1">
+                      <ReactionButton
+                        kind="like"
+                        active={Boolean(reactionPreviewActive[likeKey])}
+                        onClick={() => setReactionPreviewActive(p => ({ ...p, [likeKey]: !p[likeKey] }))}
+                        variant={item.variant}
+                        speed={item.speed}
+                        sizeClassName="h-9 w-9"
+                      />
+                      <ReactionButton
+                        kind="favorite"
+                        active={Boolean(reactionPreviewActive[favKey])}
+                        onClick={() => setReactionPreviewActive(p => ({ ...p, [favKey]: !p[favKey] }))}
+                        variant={item.variant}
+                        speed={item.speed}
+                        sizeClassName="h-9 w-9"
+                      />
+                      <div className="text-[10px] text-white/55">{item.label}</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
-          )}
-        </div>
+            <div className="text-[10px] text-white/45 text-center mt-1">
+              预览区仅用于挑选动画手感，不会影响真实点赞/收藏状态。
+            </div>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

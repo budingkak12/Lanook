@@ -71,9 +71,9 @@ const EASING: Record<ReactionVariant, string> = {
 
 function Icon({ kind, active }: { kind: ReactionKind; active: boolean }) {
   if (kind === "like") {
-    return <Heart className={`h-8 w-8 transition-colors ${active ? "fill-current text-red-500" : "text-slate-400 hover:text-slate-500"}`} />
+    return <Heart className={`h-6 w-6 transition-colors ${active ? "fill-current text-red-500" : "text-neutral-500"}`} />
   }
-  return <Star className={`h-8 w-8 transition-colors ${active ? "fill-current text-yellow-500" : "text-slate-400 hover:text-slate-500"}`} />
+  return <Star className={`h-6 w-6 transition-colors ${active ? "fill-current text-yellow-500" : "text-neutral-500"}`} />
 }
 
 export function ReactionButton({
@@ -115,7 +115,7 @@ export function ReactionButton({
   const accentRgb = kind === "like" ? "239, 68, 68" : "234, 179, 8"
 
   const rootClass = [
-    "relative flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed",
+    "relative flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed rounded-full bg-white/80 backdrop-blur-sm border border-neutral-200/60 shadow-sm hover:bg-white transition-all active:scale-95",
     sizeClassName,
     className,
   ].join(" ")
