@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import { Eye, EyeOff, Search as SearchIcon, RotateCcw } from "lucide-react"
 
-import type { MediaItem } from "@/app/(main)/types"
 import { MediaGrid } from "@/components/media-grid"
+import { MediaCollectionView } from "@/components/media-collection-view"
 import { getAllTags, type TagItem } from "@/lib/api"
 import {
   SearchStandaloneButton,
@@ -34,10 +34,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   // 用于点击容器聚焦 Input
   const wantInputRef = useRef<HTMLInputElement>(null)
   const notWantInputRef = useRef<HTMLInputElement>(null)
-
-  const handleSearchMediaClick = useCallback((media: MediaItem) => {
-    console.log("[search] media click", media.mediaId)
-  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -194,15 +190,22 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
         <div className="flex-1 overflow-y-auto">
           {hasActiveQuery ? (
             <div className="p-0 h-full">
-                <MediaGrid
-                  key={refreshVersion}
-                  tag={appliedTag}
-                  queryText={appliedQuery}
-                  sessionId={null}
-                  selectionBehavior="desktop"
-                  deleteBehavior="preview"
-                  onMediaClick={handleSearchMediaClick}
-                />
+              <MediaCollectionView
+                className="h-full"
+                renderList={({ listRef, onMediaClick, onItemsChange }) => (
+                  <MediaGrid
+                    ref={listRef}
+                    key={refreshVersion}
+                    tag={appliedTag}
+                    queryText={appliedQuery}
+                    sessionId={null}
+                    selectionBehavior="desktop"
+                    deleteBehavior="preview"
+                    onMediaClick={onMediaClick}
+                    onItemsChange={onItemsChange}
+                  />
+                )}
+              />
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 gap-4">

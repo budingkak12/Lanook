@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Filter, PanelsTopLeft, Percent, Rocket, Shuffle, Sparkles } from "lucide-react"
 
 import { MediaGrid } from "@/components/media-grid"
+import { MediaCollectionView } from "@/components/media-collection-view"
 import { Button } from "@/components/ui/button"
 import { getAllTags, type TagItem } from "@/lib/api"
 import {
@@ -322,14 +323,21 @@ export function AdvancedSearchView() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {hasActiveQuery ? (
-            <MediaGrid
-              key={refreshVersion}
-              queryText={appliedQuery}
-              tag={null}
-              sessionId={null}
-              selectionBehavior="desktop"
-              deleteBehavior="preview"
-              onMediaClick={(media) => console.log("[advanced search] media click", media.mediaId)}
+            <MediaCollectionView
+              className="h-full"
+              renderList={({ listRef, onMediaClick, onItemsChange }) => (
+                <MediaGrid
+                  ref={listRef}
+                  key={refreshVersion}
+                  queryText={appliedQuery}
+                  tag={null}
+                  sessionId={null}
+                  selectionBehavior="desktop"
+                  deleteBehavior="preview"
+                  onMediaClick={onMediaClick}
+                  onItemsChange={onItemsChange}
+                />
+              )}
             />
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 gap-3">
