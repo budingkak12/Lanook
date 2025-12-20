@@ -675,9 +675,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                 setRotationTransitionEnabled(true)
                 setRotation((prev) => prev + ROTATE_STEP_DEG)
               }}
-              className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+              className="relative flex h-11 w-11 items-center justify-center text-slate-400 hover:text-slate-500 hover:scale-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <RotateCw className="w-6 h-6" />
+              <RotateCw className="w-8 h-8" />
             </button>
           </div>
 
