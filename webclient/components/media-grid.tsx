@@ -275,14 +275,24 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         const nextItems = normalizeItems(data.items)
         let addedCount = 0
         setMediaItems((prev) => {
+          const seen = new Set(prev.map((item) => item.id))
+          const uniqueNext = nextItems.filter((item) => !seen.has(item.id))
           if (mode === "replace") {
-            addedCount = nextItems.length
-            return nextItems
+            const uniqueReplace: MediaItem[] = []
+            const replaceSeen = new Set<string>()
+            for (const item of nextItems) {
+              if (replaceSeen.has(item.id)) continue
+              replaceSeen.add(item.id)
+              uniqueReplace.push(item)
+            }
+            addedCount = uniqueReplace.length
+            return uniqueReplace
           }
-          addedCount = nextItems.length
-          return [...prev, ...nextItems]
+          addedCount = uniqueNext.length
+          return [...prev, ...uniqueNext]
         })
-        setHasMore(data.hasMore)
+        // 防御：追加模式下如果服务端返回空数组，无论 hasMore 如何都停止继续加载，避免无限轮询。
+        setHasMore(mode === "append" && nextItems.length === 0 ? false : data.hasMore)
         setError(null)
         return addedCount
       } catch (err) {
@@ -781,7 +791,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-px">
               {mediaItems.map((item, index) => (
                 <div
-                  key={`${item.id}-${item.thumbnailUrl ?? ""}`}
+                  key={item.id}
                   ref={(el) => {
                     if (!el) {
                       tileRefs.current.delete(item.id)

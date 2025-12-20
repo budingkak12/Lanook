@@ -387,8 +387,23 @@ def _search_media_by_text(
     if not combined:
         return PageResponse(items=[], offset=offset, hasMore=False)
 
-    sorted_ids = sorted(combined.items(), key=lambda kv: (-kv[1], kv[0]))
-    page_slice = sorted_ids[offset : offset + limit + 1]
+    # 关键点：offset/limit 必须基于“活动媒体”口径计算，否则前端用 mediaItems.length 作为 offset 时
+    # 会出现“返回少于 limit 但 hasMore=true”导致无限请求/重复项的问题。
+    sorted_pairs = sorted(combined.items(), key=lambda kv: (-kv[1], kv[0]))
+    candidate_ids = [mid for mid, _ in sorted_pairs]
+
+    active_ids = {
+        int(mid)
+        for (mid,) in _filter_active_media(
+            db.query(Media.id).filter(Media.id.in_(candidate_ids))
+        ).all()
+    }
+    filtered_pairs = [pair for pair in sorted_pairs if pair[0] in active_ids]
+
+    if not filtered_pairs or offset >= len(filtered_pairs):
+        return PageResponse(items=[], offset=offset, hasMore=False)
+
+    page_slice = filtered_pairs[offset : offset + limit + 1]
     has_more = len(page_slice) > limit
     page_ids = [mid for mid, _ in page_slice[:limit]]
 
