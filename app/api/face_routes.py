@@ -69,9 +69,9 @@ def list_face_clusters(  # noqa: D417 - FastAPI query params
         FaceClusterModel(
             id=cluster.id,
             label=cluster.label,
-            faceCount=cluster.face_count,
-            representativeMediaId=cluster.representative_media_id,
-            representativeFaceId=cluster.representative_face_id,
+            faceCount=int(getattr(cluster, "_active_face_count", cluster.face_count) or 0),
+            representativeMediaId=getattr(cluster, "_active_rep_media_id", cluster.representative_media_id),
+            representativeFaceId=getattr(cluster, "_active_rep_face_id", cluster.representative_face_id),
         )
         for cluster in clusters
     ]
@@ -116,9 +116,9 @@ def get_cluster_media(
     cluster_payload = FaceClusterModel(
         id=cluster.id,
         label=cluster.label,
-        faceCount=cluster.face_count,
-        representativeMediaId=cluster.representative_media_id,
-        representativeFaceId=cluster.representative_face_id,
+        faceCount=int(getattr(cluster, "_active_face_count", cluster.face_count) or 0),
+        representativeMediaId=getattr(cluster, "_active_rep_media_id", cluster.representative_media_id),
+        representativeFaceId=getattr(cluster, "_active_rep_face_id", cluster.representative_face_id),
     )
 
     has_more = offset + len(items) < total

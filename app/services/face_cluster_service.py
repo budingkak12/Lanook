@@ -11,10 +11,12 @@ import hdbscan
 import onnxruntime as ort
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import model_zoo
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.db import Media, SUPPORTED_VIDEO_EXTS
 from app.db.models import FaceCluster, FaceEmbedding
+from app.db.models_extra import MediaSource
 from app.db.models_extra import FaceProcessingState
 from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingError
 from app.services.face_cluster_progress import FaceProgress
@@ -32,6 +34,18 @@ _FACE_MODEL_ROOT = os.environ.get("FACE_CLUSTER_MODEL_ROOT", "~/.insightface")
 _FACE_MODEL_PROVIDERS = os.environ.get("FACE_CLUSTER_ORT_PROVIDERS", "CPUExecutionProvider")
 _MIN_DET_SCORE = 0.6
 _MIN_FACE_SIZE = 48  # pixels
+
+
+def _apply_active_media_source_filter(query):
+    """过滤掉已删除/停用来源的媒体（保留 legacy: source_id 为空）。"""
+    return query.outerjoin(MediaSource, Media.source_id == MediaSource.id).filter(
+        (Media.source_id.is_(None))
+        | (
+            (MediaSource.id.isnot(None))
+            & (MediaSource.deleted_at.is_(None))
+            & ((MediaSource.status.is_(None)) | (MediaSource.status == "active"))
+        )
+    )
 
 
 def _get_face_app() -> FaceAnalysis:
@@ -411,10 +425,45 @@ def rebuild_clusters_for_paths(
 
 
 def list_clusters(db: Session, offset: int = 0, limit: int = 50) -> tuple[list[FaceCluster], int]:
-    base_query = db.query(FaceCluster).order_by(FaceCluster.face_count.desc(), FaceCluster.id.asc())
-    total = base_query.count()
-    items = base_query.offset(max(offset, 0)).limit(max(limit, 1)).all()
-    return items, total
+    """仅返回仍包含“活动媒体”的人脸聚类。
+
+    说明：FaceCluster.face_count 是聚类重建时的快照；媒体路径被删除后，
+    为避免前端出现“空白封面/点开全是 404 缩略图”，这里按 MediaSource 状态实时过滤。
+    """
+    # 子查询：每个 cluster 统计当前活动媒体下的人脸数 / 代表媒体 / 代表人脸
+    base_faces = (
+        db.query(FaceEmbedding)
+        .join(Media, FaceEmbedding.media_id == Media.id)
+    )
+    base_faces = _apply_active_media_source_filter(base_faces)
+
+    stats_subq = (
+        base_faces.with_entities(
+            FaceEmbedding.cluster_id.label("cluster_id"),
+            func.count(FaceEmbedding.id).label("active_face_count"),
+            func.min(FaceEmbedding.media_id).label("rep_media_id"),
+            func.min(FaceEmbedding.id).label("rep_face_id"),
+        )
+        .group_by(FaceEmbedding.cluster_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(FaceCluster, stats_subq.c.active_face_count, stats_subq.c.rep_media_id, stats_subq.c.rep_face_id)
+        .join(stats_subq, stats_subq.c.cluster_id == FaceCluster.id)
+        .order_by(stats_subq.c.active_face_count.desc(), FaceCluster.id.asc())
+    )
+    total = query.count()
+    rows = query.offset(max(offset, 0)).limit(max(limit, 1)).all()
+
+    # 兼容旧接口：FaceCluster 仍返回原对象，但由上层决定是否覆盖字段
+    clusters = [row[0] for row in rows]
+    # 通过给对象临时挂载属性把统计带回去（避免改动太大）
+    for cluster, face_cnt, rep_media_id, rep_face_id in rows:
+        setattr(cluster, "_active_face_count", int(face_cnt or 0))
+        setattr(cluster, "_active_rep_media_id", int(rep_media_id) if rep_media_id is not None else None)
+        setattr(cluster, "_active_rep_face_id", int(rep_face_id) if rep_face_id is not None else None)
+    return clusters, total
 
 
 def get_cluster_or_404(db: Session, cluster_id: int) -> FaceCluster:
@@ -426,11 +475,55 @@ def get_cluster_or_404(db: Session, cluster_id: int) -> FaceCluster:
 
 def list_cluster_media(db: Session, cluster_id: int, offset: int = 0, limit: int = 100) -> tuple[FaceCluster, List[FaceEmbedding], int]:
     cluster = get_cluster_or_404(db, cluster_id)
-    base_query = (
+    base_faces = (
         db.query(FaceEmbedding)
+        .join(Media, FaceEmbedding.media_id == Media.id)
         .filter(FaceEmbedding.cluster_id == cluster.id)
+    )
+    base_faces = _apply_active_media_source_filter(base_faces)
+
+    # 统计（活动媒体口径）
+    active_face_count = int(base_faces.count())
+
+    # 返回“媒体去重”的列表（一个 media 只展示一次），否则前端分页/去重会出现空白与 hasMore 口径混乱。
+    media_id_query = (
+        base_faces.with_entities(FaceEmbedding.media_id)
+        .distinct()
         .order_by(FaceEmbedding.media_id.asc())
     )
-    total = base_query.count()
-    faces = base_query.offset(max(offset, 0)).limit(max(limit, 1)).all()
-    return cluster, faces, total
+    total_media = media_id_query.count()
+    rep_media_id = int(media_id_query.first()[0]) if total_media > 0 else None
+
+    rep_face_id = None
+    if rep_media_id is not None:
+        rep_face_id_row = (
+            base_faces.with_entities(func.min(FaceEmbedding.id))
+            .filter(FaceEmbedding.media_id == rep_media_id)
+            .first()
+        )
+        if rep_face_id_row and rep_face_id_row[0] is not None:
+            rep_face_id = int(rep_face_id_row[0])
+
+    setattr(cluster, "_active_face_count", active_face_count)
+    setattr(cluster, "_active_rep_media_id", rep_media_id)
+    setattr(cluster, "_active_rep_face_id", rep_face_id)
+
+    media_ids = [int(mid) for (mid,) in media_id_query.offset(max(offset, 0)).limit(max(limit, 1)).all()]
+    if not media_ids:
+        return cluster, [], total_media
+
+    # 取每个 media 的一条 face（用于兼容旧接口返回 FaceEmbedding 列表）
+    rep_face_ids = (
+        base_faces.with_entities(func.min(FaceEmbedding.id))
+        .filter(FaceEmbedding.media_id.in_(media_ids))
+        .group_by(FaceEmbedding.media_id)
+        .all()
+    )
+    face_ids = [int(fid) for (fid,) in rep_face_ids]
+    faces = (
+        db.query(FaceEmbedding)
+        .filter(FaceEmbedding.id.in_(face_ids))
+        .order_by(FaceEmbedding.media_id.asc())
+        .all()
+    )
+    return cluster, faces, total_media
