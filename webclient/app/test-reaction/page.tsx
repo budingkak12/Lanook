@@ -32,11 +32,11 @@ export default function ReactionTestPage() {
     }
 
     return (
-        <div className="min-h-screen bg-neutral-950 p-8 text-neutral-200">
+        <div className="min-h-screen bg-white p-8 text-neutral-900">
             <div className="mx-auto max-w-4xl space-y-12">
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold text-white">Reaction Button Gallery</h1>
-                    <p className="text-neutral-400">
+                    <h1 className="text-3xl font-bold text-black">Reaction Button Gallery</h1>
+                    <p className="text-neutral-600">
                         点击图标查看动画效果。挑选你最喜欢的一款。
                     </p>
                 </div>
@@ -45,9 +45,9 @@ export default function ReactionTestPage() {
                     {VARIANTS.map((variant) => (
                         <div
                             key={variant}
-                            className="flex flex-col items-center gap-6 rounded-2xl bg-neutral-900/50 p-6 ring-1 ring-white/5"
+                            className="flex flex-col items-center gap-6 rounded-2xl bg-neutral-100/50 p-6 ring-1 ring-neutral-200"
                         >
-                            <h3 className="font-mono text-sm font-medium text-emerald-400">{variant}</h3>
+                            <h3 className="font-mono text-sm font-medium text-emerald-600">{variant}</h3>
 
                             <div className="flex items-center gap-8">
                                 {/* Heart / Like Version */}

@@ -71,9 +71,9 @@ const EASING: Record<ReactionVariant, string> = {
 
 function Icon({ kind, active }: { kind: ReactionKind; active: boolean }) {
   if (kind === "like") {
-    return <Heart className={`h-6 w-6 ${active ? "fill-current text-red-400" : "text-white"}`} />
+    return <Heart className={`h-8 w-8 transition-colors ${active ? "fill-current text-red-500" : "text-slate-400 hover:text-slate-500"}`} />
   }
-  return <Star className={`h-6 w-6 ${active ? "fill-current text-yellow-400" : "text-white"}`} />
+  return <Star className={`h-8 w-8 transition-colors ${active ? "fill-current text-yellow-500" : "text-slate-400 hover:text-slate-500"}`} />
 }
 
 export function ReactionButton({
@@ -83,7 +83,7 @@ export function ReactionButton({
   onClick,
   variant,
   speed = 1,
-  sizeClassName = "h-11 w-11 sm:h-12 sm:w-12",
+  sizeClassName = "h-11 w-11",
   className = "",
   label,
 }: ReactionButtonProps) {
@@ -112,10 +112,10 @@ export function ReactionButton({
     return active ? 1.1 : 1
   })()
 
-  const accentRgb = kind === "like" ? "248, 113, 113" : "250, 204, 21"
+  const accentRgb = kind === "like" ? "239, 68, 68" : "234, 179, 8"
 
   const rootClass = [
-    "relative flex items-center justify-center rounded-full bg-black/65 text-white disabled:opacity-40 disabled:cursor-not-allowed",
+    "relative flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed",
     sizeClassName,
     className,
   ].join(" ")
@@ -220,11 +220,11 @@ export function ReactionButton({
         <span style={{ opacity: loading ? 0.55 : 1, transition: `opacity ${ms}ms ${easing}` }}>
           <Icon kind={kind} active={active} />
         </span>
-        {loading && <Loader2 className="absolute h-6 w-6 animate-spin text-white/90" />}
+        {loading && <Loader2 className="absolute h-6 w-6 animate-spin text-slate-400" />}
       </span>
 
       {label ? (
-        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-white/70 whitespace-nowrap">
+        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-neutral-400 whitespace-nowrap">
           {label}
         </span>
       ) : null}
