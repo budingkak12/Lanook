@@ -201,26 +201,25 @@ export function ReactionButton({
       <span
         key={animKey}
         className={`relative flex items-center justify-center ${variant.startsWith("tiktok")
-            ? "rb-pop"
-            : variant === "spring"
-              ? "rb-spring"
-              : variant.startsWith("youtube")
-                ? variant === "youtube_soft"
-                  ? "rb-yt-soft"
-                  : "rb-bounce"
-                : variant === "pulse_beat"
-                  ? "rb-pulse-beat"
-                  : variant === "spin_bloom"
-                    ? "rb-spin-bloom"
-                    : variant === "jiggle"
-                      ? "rb-jiggle"
-                      : "rb-soft"
+          ? "rb-pop"
+          : variant === "spring"
+            ? "rb-spring"
+            : variant.startsWith("youtube")
+              ? variant === "youtube_soft"
+                ? "rb-yt-soft"
+                : "rb-bounce"
+              : variant === "pulse_beat"
+                ? "rb-pulse-beat"
+                : variant === "spin_bloom"
+                  ? "rb-spin-bloom"
+                  : variant === "jiggle"
+                    ? "rb-jiggle"
+                    : "rb-soft"
           }`}
       >
-        <span style={{ opacity: loading ? 0.55 : 1, transition: `opacity ${ms}ms ${easing}` }}>
+        <span>
           <Icon kind={kind} active={active} />
         </span>
-        {loading && <Loader2 className="absolute h-6 w-6 animate-spin text-slate-400" />}
       </span>
 
       {label ? (
@@ -335,17 +334,17 @@ export function ReactionButton({
           position: absolute;
           inset: -6px;
           border-radius: 9999px;
-          border: 2px solid rgba(var(--rb-accent-rgb), 0.45);
-          box-shadow: 0 0 0 1px rgba(var(--rb-accent-rgb), 0.12) inset;
+          border: 3px solid rgba(var(--rb-accent-rgb), 0.65);
+          box-shadow: 0 0 0 1px rgba(var(--rb-accent-rgb), 0.2) inset;
           animation: rb-ring ${Math.round(ms * 1.1)}ms ${easing};
           opacity: 0;
         }
         .rb-ring--soft {
-          border-color: rgba(var(--rb-accent-rgb), 0.32);
+          border-color: rgba(var(--rb-accent-rgb), 0.42);
         }
         .rb-ring--ripple {
-          border-width: 2px;
-          filter: blur(0.2px);
+          border-width: 4px;
+          filter: blur(0.4px);
         }
         @keyframes rb-ring {
           0% {
@@ -362,22 +361,22 @@ export function ReactionButton({
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 70%;
-          height: 70%;
+          width: 80%;
+          height: 80%;
           transform: translate(-50%, -50%);
           border-radius: 9999px;
-          background: rgba(var(--rb-accent-rgb), 0.22);
-          filter: blur(10px);
+          background: rgba(var(--rb-accent-rgb), 0.45);
+          filter: blur(12px);
           opacity: 0;
           animation: rb-glow ${Math.round(ms * 1.2)}ms ${easing};
         }
         @keyframes rb-glow {
           0% {
-            transform: translate(-50%, -50%) scale(0.7);
-            opacity: 0.55;
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 0.85;
           }
           100% {
-            transform: translate(-50%, -50%) scale(1.5);
+            transform: translate(-50%, -50%) scale(1.8);
             opacity: 0;
           }
         }
@@ -429,13 +428,14 @@ export function ReactionButton({
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 6px;
-          height: 6px;
-          background: rgba(var(--rb-accent-rgb), 0.92);
+          width: 7px;
+          height: 7px;
+          background: rgba(var(--rb-accent-rgb), 1);
           border-radius: 9999px;
           transform: translate(-50%, -50%);
           animation: rb-dot ${Math.round(ms * 1.1)}ms ${easing};
           opacity: 0;
+          box-shadow: 0 0 4px rgba(var(--rb-accent-rgb), 0.4);
         }
         @keyframes rb-dot {
           0% {

@@ -71,9 +71,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
 
   // === 动效可调参数（你可以直接改这里的数值来调节速度/幅度） ===
   // >1 更慢，<1 更快
-  const REACTION_ANIM_SPEED = 1.5
-  const PRIMARY_REACTION_VARIANT: ReactionVariant = "youtube"
-  const SHOW_REACTION_VARIANTS_PREVIEW = true
+  const REACTION_ANIM_SPEED = 1.0
+  const PRIMARY_REACTION_VARIANT: ReactionVariant = "youtube_glow"
+  const SHOW_REACTION_VARIANTS_PREVIEW = false
 
   const REACTION_VARIANTS_PREVIEW: Array<{ id: string; label: string; variant: ReactionVariant; speed: number }> = [
     { id: "yt", label: "YouTube", variant: "youtube", speed: 1.5 },
@@ -115,7 +115,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  
+
   // 视频播放管理函数
   const pauseAllVideos = useCallback(() => {
     Object.values(videoRefs.current).forEach(video => {
@@ -294,7 +294,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     }
   }, [allMedia, currentSlideIndex])
 
-  
+
   const toggleLike = useCallback(async () => {
     if (likeLoading || isDeleting) return
 
@@ -554,9 +554,8 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
                       src={resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")}
                       alt="Media"
                       onDoubleClick={handleDoubleClick}
-                      className={`transition-opacity duration-300 ${
-                        loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'
-                      }`}
+                      className={`transition-opacity duration-300 ${loadedImages.has(resolveApiUrl(mediaItem.resourceUrl || mediaItem.url || "/file.svg")) ? 'opacity-100' : 'opacity-0'
+                        }`}
                       style={{
                         height: '100vh',
                         width: 'auto',
@@ -646,92 +645,92 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
         </>
       )}
 
-    
-    {/* Bottom Actions */}
-	    <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center z-[99940]">
-	      <div className="flex flex-col items-center gap-2">
-	        <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
-	          <ReactionButton
-	            kind="like"
-	            active={isLiked}
-	            loading={likeLoading}
-	            onClick={() => void toggleLike()}
-	            variant={PRIMARY_REACTION_VARIANT}
-	            speed={REACTION_ANIM_SPEED}
-	            className={isDeleting ? "pointer-events-none" : ""}
-	          />
-	          <ReactionButton
-	            kind="favorite"
-	            active={isFavorited}
-	            loading={favoriteLoading}
-	            onClick={() => void toggleFavorite()}
-	            variant={PRIMARY_REACTION_VARIANT}
-	            speed={REACTION_ANIM_SPEED}
-	            className={isDeleting ? "pointer-events-none" : ""}
-	          />
-	          <button
-	            type="button"
-	            disabled={isDeleting}
-	            onClick={() => {
-	              setRotationTransitionEnabled(true)
-	              setRotation((prev) => prev + ROTATE_STEP_DEG)
-	            }}
-	            className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-	          >
-	            <RotateCw className="w-6 h-6" />
-	          </button>
-	        </div>
 
-		        {SHOW_REACTION_VARIANTS_PREVIEW && (
-		          <div className="mt-2 w-full max-w-[min(46rem,calc(100vw-2rem))]">
-		            <div className="overflow-x-auto pb-1">
-		              <div className="flex gap-3 px-1">
-		                {REACTION_VARIANTS_PREVIEW.map((item) => {
-		                  const likeKey = `like:${item.id}`
-		                  const favKey = `favorite:${item.id}`
-		                  return (
-		                    <div key={item.id} className="shrink-0 flex flex-col items-center gap-1">
-		                      <ReactionButton
-		                        kind="like"
-		                        active={Boolean(reactionPreviewActive[likeKey])}
-		                        loading={false}
-		                        onClick={() =>
-		                          setReactionPreviewActive((prev) => ({
-		                            ...prev,
-		                            [likeKey]: !prev[likeKey],
-		                          }))
-		                        }
-		                        variant={item.variant}
-		                        speed={item.speed}
-		                        sizeClassName="h-9 w-9"
-		                      />
-		                      <ReactionButton
-		                        kind="favorite"
-		                        active={Boolean(reactionPreviewActive[favKey])}
-		                        loading={false}
-		                        onClick={() =>
-		                          setReactionPreviewActive((prev) => ({
-		                            ...prev,
-		                            [favKey]: !prev[favKey],
-		                          }))
-		                        }
-		                        variant={item.variant}
-		                        speed={item.speed}
-		                        sizeClassName="h-9 w-9"
-		                      />
-		                      <div className="text-[10px] text-white/55">{item.label}</div>
-		                    </div>
-		                  )
-		                })}
-		              </div>
-		            </div>
-		            <div className="text-[10px] text-white/45 text-center">
-		              预览区仅用于挑选动画手感，不会影响真实点赞/收藏状态。
-		            </div>
-		          </div>
-		        )}
-		      </div>
-		    </div>
+      {/* Bottom Actions */}
+      <div className="absolute bottom-20 sm:bottom-10 left-0 right-0 p-3 sm:p-6 flex items-center justify-center z-[99940]">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-2 sm:py-3 rounded-full bg-white/60 backdrop-blur-md shadow-lg shadow-black/10 border border-white/40">
+            <ReactionButton
+              kind="like"
+              active={isLiked}
+              loading={likeLoading}
+              onClick={() => void toggleLike()}
+              variant={PRIMARY_REACTION_VARIANT}
+              speed={REACTION_ANIM_SPEED}
+              className={isDeleting ? "pointer-events-none" : ""}
+            />
+            <ReactionButton
+              kind="favorite"
+              active={isFavorited}
+              loading={favoriteLoading}
+              onClick={() => void toggleFavorite()}
+              variant={PRIMARY_REACTION_VARIANT}
+              speed={REACTION_ANIM_SPEED}
+              className={isDeleting ? "pointer-events-none" : ""}
+            />
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => {
+                setRotationTransitionEnabled(true)
+                setRotation((prev) => prev + ROTATE_STEP_DEG)
+              }}
+              className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/65 text-white hover:scale-105 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <RotateCw className="w-6 h-6" />
+            </button>
+          </div>
+
+          {SHOW_REACTION_VARIANTS_PREVIEW && (
+            <div className="mt-2 w-full max-w-[min(46rem,calc(100vw-2rem))]">
+              <div className="overflow-x-auto pb-1">
+                <div className="flex gap-3 px-1">
+                  {REACTION_VARIANTS_PREVIEW.map((item) => {
+                    const likeKey = `like:${item.id}`
+                    const favKey = `favorite:${item.id}`
+                    return (
+                      <div key={item.id} className="shrink-0 flex flex-col items-center gap-1">
+                        <ReactionButton
+                          kind="like"
+                          active={Boolean(reactionPreviewActive[likeKey])}
+                          loading={false}
+                          onClick={() =>
+                            setReactionPreviewActive((prev) => ({
+                              ...prev,
+                              [likeKey]: !prev[likeKey],
+                            }))
+                          }
+                          variant={item.variant}
+                          speed={item.speed}
+                          sizeClassName="h-9 w-9"
+                        />
+                        <ReactionButton
+                          kind="favorite"
+                          active={Boolean(reactionPreviewActive[favKey])}
+                          loading={false}
+                          onClick={() =>
+                            setReactionPreviewActive((prev) => ({
+                              ...prev,
+                              [favKey]: !prev[favKey],
+                            }))
+                          }
+                          variant={item.variant}
+                          speed={item.speed}
+                          sizeClassName="h-9 w-9"
+                        />
+                        <div className="text-[10px] text-white/55">{item.label}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="text-[10px] text-white/45 text-center">
+                预览区仅用于挑选动画手感，不会影响真实点赞/收藏状态。
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
