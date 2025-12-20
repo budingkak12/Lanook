@@ -320,6 +320,7 @@ def thumb_path_for_fingerprint(fingerprint: str) -> Path:
 
 def generate_thumbnail(src: Path, dest: Path, *, max_size=(480, 480)) -> bool:
     from PIL import Image
+    from PIL import ImageOps
     import av  # type: ignore
 
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -327,7 +328,7 @@ def generate_thumbnail(src: Path, dest: Path, *, max_size=(480, 480)) -> bool:
     try:
         if ext in SUPPORTED_IMAGE_EXTS:
             with Image.open(src) as img:
-                im = img.copy()
+                im = ImageOps.exif_transpose(img).copy()
                 im.thumbnail(max_size, Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
                 if im.mode not in {"RGB", "L"}:
                     im = im.convert("RGB")
@@ -338,9 +339,18 @@ def generate_thumbnail(src: Path, dest: Path, *, max_size=(480, 480)) -> bool:
                 video_stream = next((s for s in container.streams if s.type == "video"), None)
                 if video_stream is None:
                     return False
+                rotate_deg = 0
+                try:
+                    rotate_raw = (video_stream.metadata or {}).get("rotate")
+                    if rotate_raw is not None:
+                        rotate_deg = int(str(rotate_raw).strip() or "0") % 360
+                except Exception:
+                    rotate_deg = 0
                 # 取首帧
                 for frame in container.decode(video_stream):
                     pil = frame.to_image()
+                    if rotate_deg in {90, 180, 270}:
+                        pil = pil.rotate(-rotate_deg, expand=True)
                     pil.thumbnail(max_size, Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
                     if pil.mode not in {"RGB", "L"}:
                         pil = pil.convert("RGB")

@@ -20,6 +20,7 @@ from typing import Optional
 
 from PIL import Image
 from PIL import ImageDraw, ImageFont
+from PIL import ImageOps
 import av  # type: ignore
 
 from app.db import Media
@@ -97,7 +98,8 @@ def _should_regenerate_local(src_path: str, thumb_path: Path) -> bool:
 
 def _save_image_thumbnail(img: Image.Image, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    im = img.copy()
+    # 关键：应用 EXIF Orientation（手机竖拍常见），否则缩略图会“被旋转”但原图在浏览器里可能是正确的。
+    im = ImageOps.exif_transpose(img).copy()
     im.thumbnail(MAX_THUMB_SIZE, _LANCZOS)
     if im.mode not in {"RGB", "L"}:
         im = im.convert("RGB")
@@ -124,6 +126,13 @@ def _extract_frame_to_thumb(container, dest: Path, target_seconds: float) -> boo
         video_stream = next((s for s in container.streams if s.type == "video"), None)
         if video_stream is None:
             return False
+        rotate_deg = 0
+        try:
+            rotate_raw = (video_stream.metadata or {}).get("rotate")
+            if rotate_raw is not None:
+                rotate_deg = int(str(rotate_raw).strip() or "0") % 360
+        except Exception:
+            rotate_deg = 0
         video_stream.thread_type = "AUTO"
 
         # 多时间点尝试，兼容关键帧太靠前/靠后或 moov 位置差异
@@ -149,6 +158,8 @@ def _extract_frame_to_thumb(container, dest: Path, target_seconds: float) -> boo
                 if frame is None:
                     continue
                 pil = frame.to_image()
+                if rotate_deg in {90, 180, 270}:
+                    pil = pil.rotate(-rotate_deg, expand=True)
                 _save_image_thumbnail(pil, dest)
                 return True
             except av.AVError:
