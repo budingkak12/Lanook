@@ -86,10 +86,22 @@ def _is_readonly_error(exc: OperationalError) -> bool:
 
 
 def _filter_active_media(query: Query) -> Query:
-    return query.outerjoin(MediaSource, Media.source_id == MediaSource.id).filter(
-        (Media.source_id.is_(None))
-        | (MediaSource.status == "active")
-        | (MediaSource.status.is_(None))
+    """仅返回“活动来源”的媒体。
+
+    约定：
+    - legacy 数据允许 source_id 为空；
+    - 来源被删除（deleted_at 非空）或停用（status != active）后，其媒体不应出现在列表/搜索结果中。
+    """
+    return (
+        query.outerjoin(MediaSource, Media.source_id == MediaSource.id)
+        .filter(
+            (Media.source_id.is_(None))
+            | (
+                (MediaSource.id.isnot(None))
+                & (MediaSource.deleted_at.is_(None))
+                & ((MediaSource.status.is_(None)) | (MediaSource.status == "active"))
+            )
+        )
     )
 
 
@@ -151,7 +163,7 @@ def _to_media_item(
 
 
 def _require_media(db: Session, media_id: int) -> Media:
-    media = db.query(Media).filter(Media.id == media_id).first()
+    media = _filter_active_media(db.query(Media).filter(Media.id == media_id)).first()
     if not media:
         raise MediaNotFoundError("media not found")
     if not media.absolute_path or not isinstance(media.absolute_path, str):
@@ -629,7 +641,7 @@ def _resolve_media_by_key(db: Session, key: str) -> Media:
     if key.isdigit():
         media = _require_media(db, int(key))
     else:
-        media = db.query(Media).filter(Media.fingerprint == key).first()
+        media = _filter_active_media(db.query(Media).filter(Media.fingerprint == key)).first()
         if not media:
             raise MediaNotFoundError("media not found")
     return media

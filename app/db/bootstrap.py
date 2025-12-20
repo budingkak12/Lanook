@@ -384,6 +384,14 @@ def _ensure_cache_views() -> None:
             COALESCE(c.updated_at, m.created_at)        AS cache_updated_at
         FROM media AS m
         LEFT JOIN media_cache_state AS c ON c.media_id = m.id
+        LEFT JOIN media_sources AS s ON s.id = m.source_id
+        WHERE
+            m.source_id IS NULL
+            OR (
+                s.id IS NOT NULL
+                AND s.deleted_at IS NULL
+                AND (s.status IS NULL OR s.status = 'active')
+            )
         """
     )
 
