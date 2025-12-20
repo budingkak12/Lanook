@@ -21,6 +21,17 @@
 - “扫描”的真实语义、资产处理与 AI（标签/向量/人脸等）如何触发与落库、以及**视频如何通过抽帧复用图像模型**：统一以 `资产处理与扫描设计记录.md` 为准。
 - 本文件仅保留项目总览与协作约束，避免重复维护两份设计说明。
 
+## 媒体来源删除后的展示口径（必须遵守）
+我们对“删除媒体路径”的实现是 **soft-delete**（`media_sources.deleted_at` 置为非空，同时 `status` 变为 `inactive`），因此：
+
+- 数据库里历史 `media` 记录可能仍存在，但 **任何前端/客户端可见的数据**（列表、搜索、详情、缩略图、人脸分组、任务进度、标签聚合等）都必须过滤掉已删除/停用来源的媒体。
+- 唯一口径（active media）：
+  - legacy 兼容：`media.source_id IS NULL` 视为活动媒体；
+  - 否则：`media_sources.deleted_at IS NULL` 且 `media_sources.status IN (NULL,'active')` 才允许展示。
+- 代码要求：
+  - 后端所有涉及 `Media` 或 `FaceEmbedding.media_id` 的查询必须复用统一过滤器，禁止散落 copy/paste 条件；
+  - 统一过滤器位置：`app/services/query_filters.py`（`apply_active_media_filter` 等）。
+
 smb 源连接信息
 ### 1. Samba/SMB 连接
 - **协议**: `smb://`

@@ -16,7 +16,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Query, Session
 
 from app.db import Media, MediaTag, TagDefinition
-from app.db.models_extra import MediaSource
+from app.services.query_filters import apply_active_media_filter
 from app.services import media_cache
 from app.schemas.media import DeleteBatchResp, FailedItemModel, MediaItem, MediaMetadata, PageResponse
 from app.services.asset_pipeline import (
@@ -92,17 +92,7 @@ def _filter_active_media(query: Query) -> Query:
     - legacy 数据允许 source_id 为空；
     - 来源被删除（deleted_at 非空）或停用（status != active）后，其媒体不应出现在列表/搜索结果中。
     """
-    return (
-        query.outerjoin(MediaSource, Media.source_id == MediaSource.id)
-        .filter(
-            (Media.source_id.is_(None))
-            | (
-                (MediaSource.id.isnot(None))
-                & (MediaSource.deleted_at.is_(None))
-                & ((MediaSource.status.is_(None)) | (MediaSource.status == "active"))
-            )
-        )
-    )
+    return apply_active_media_filter(query, join_source=True)
 
 
 def _ensure_fingerprint(db: Session, media: Media) -> Optional[str]:

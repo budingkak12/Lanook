@@ -10,6 +10,7 @@ from app.db.models_extra import MediaSource
 from app.services import face_cluster_service
 from app.services.exceptions import ServiceError
 from app.services.face_cluster_progress import FaceProgressState, get_face_progress
+from app.services.query_filters import apply_active_source_filter
 
 
 def _resolve_local_scan_roots(session: Session) -> List[str]:
@@ -23,14 +24,7 @@ def _resolve_local_scan_roots(session: Session) -> List[str]:
 
     has_any_source = (session.query(MediaSource).count() or 0) > 0
     if has_any_source:
-        active_sources = (
-            session.query(MediaSource)
-            .filter(
-                (MediaSource.deleted_at.is_(None))
-                & (MediaSource.status.is_(None) | (MediaSource.status == "active"))
-            )
-            .all()
-        )
+        active_sources = apply_active_source_filter(session.query(MediaSource)).all()
         for src in active_sources:
             if not src.root_path:
                 continue

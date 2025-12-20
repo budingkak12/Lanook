@@ -31,6 +31,7 @@ from app.db import ClipEmbedding, MEDIA_ROOT_KEY, Media, get_setting
 from app.db.models_extra import MediaSource
 from app.services.exceptions import MediaNotFoundError, ServiceError
 from app.services.model_input_image import resolve_model_input_image_path
+from app.services.query_filters import apply_active_media_filter
 
 
 class ClipSearchError(ServiceError):
@@ -495,19 +496,7 @@ def build_missing_embeddings(
     if only_active_sources:
         has_any_source = (db.query(func.count(MediaSource.id)).scalar() or 0) > 0
         if has_any_source:
-            query = (
-                query.outerjoin(MediaSource, Media.source_id == MediaSource.id)
-                .filter(
-                    (Media.source_id.is_(None))
-                    |
-                    (
-                        (Media.source_id.isnot(None))
-                        & (MediaSource.id.isnot(None))
-                        & (MediaSource.deleted_at.is_(None))
-                        & (MediaSource.status.is_(None) | (MediaSource.status == "active"))
-                    )
-                )
-            )
+            query = apply_active_media_filter(query, join_source=True)
 
     query = query.order_by(Media.id.asc())
 

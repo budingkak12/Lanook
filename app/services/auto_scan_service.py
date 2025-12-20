@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Set
 
-from sqlalchemy import or_
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
@@ -25,6 +24,7 @@ from app.db.models_extra import MediaSource
 from app.services.access_layer import SourceAccessLayer, classify_media_type, detect_source_type
 from app.services.media_initializer import get_configured_media_root
 from app.services.scan_service import scan_source_once
+from app.services.query_filters import apply_active_source_filter
 
 
 _STATE_ATTR = "auto_scan_service"
@@ -409,11 +409,7 @@ class AutoScanService:
             _add(media_root)
 
         with SessionLocal() as session:
-            rows = (
-                session.query(MediaSource)
-                .filter(or_(MediaSource.status.is_(None), MediaSource.status == "active"))
-                .all()
-            )
+            rows = apply_active_source_filter(session.query(MediaSource)).all()
             for row in rows:
                 _add(row.root_path)
 

@@ -11,16 +11,16 @@ import hdbscan
 import onnxruntime as ort
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import model_zoo
-from sqlalchemy import and_, func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db import Media, SUPPORTED_VIDEO_EXTS
 from app.db.models import FaceCluster, FaceEmbedding
-from app.db.models_extra import MediaSource
 from app.db.models_extra import FaceProcessingState
 from app.services.exceptions import FaceClusterNotFoundError, FaceProcessingError
 from app.services.face_cluster_progress import FaceProgress
 from app.services.model_input_image import resolve_model_input_image_path
+from app.services.query_filters import apply_active_media_filter
 
 
 _SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"} | set(SUPPORTED_VIDEO_EXTS)
@@ -36,16 +36,6 @@ _MIN_DET_SCORE = 0.6
 _MIN_FACE_SIZE = 48  # pixels
 
 
-def _apply_active_media_source_filter(query):
-    """过滤掉已删除/停用来源的媒体（保留 legacy: source_id 为空）。"""
-    return query.outerjoin(MediaSource, Media.source_id == MediaSource.id).filter(
-        (Media.source_id.is_(None))
-        | (
-            (MediaSource.id.isnot(None))
-            & (MediaSource.deleted_at.is_(None))
-            & ((MediaSource.status.is_(None)) | (MediaSource.status == "active"))
-        )
-    )
 
 
 def _get_face_app() -> FaceAnalysis:
@@ -435,7 +425,7 @@ def list_clusters(db: Session, offset: int = 0, limit: int = 50) -> tuple[list[F
         db.query(FaceEmbedding)
         .join(Media, FaceEmbedding.media_id == Media.id)
     )
-    base_faces = _apply_active_media_source_filter(base_faces)
+    base_faces = apply_active_media_filter(base_faces, media_cls=Media, join_source=True)
 
     stats_subq = (
         base_faces.with_entities(
@@ -480,7 +470,7 @@ def list_cluster_media(db: Session, cluster_id: int, offset: int = 0, limit: int
         .join(Media, FaceEmbedding.media_id == Media.id)
         .filter(FaceEmbedding.cluster_id == cluster.id)
     )
-    base_faces = _apply_active_media_source_filter(base_faces)
+    base_faces = apply_active_media_filter(base_faces, media_cls=Media, join_source=True)
 
     # 统计（活动媒体口径）
     active_face_count = int(base_faces.count())

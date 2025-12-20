@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Media, SessionLocal
 from app.db.models_extra import MediaSource
+from app.services.query_filters import apply_active_media_filter
 from app.services import wd_tag_service
 from app.services.exceptions import ServiceError
 
@@ -24,21 +25,7 @@ def _build_active_media_query(session: Session) -> tuple[bool, "Session.query"]:
     query = session.query(Media).filter(Media.media_type.in_(["image", "video"]))
 
     if has_any_source:
-        query = (
-            query.outerjoin(MediaSource, Media.source_id == MediaSource.id)
-            .filter(
-                # legacy：未绑定来源的媒体
-                (Media.source_id.is_(None))
-                |
-                # 新架构：绑定到 active + 未删除来源的媒体
-                (
-                    (Media.source_id.isnot(None))
-                    & (MediaSource.id.isnot(None))
-                    & (MediaSource.deleted_at.is_(None))
-                    & (MediaSource.status.is_(None) | (MediaSource.status == "active"))
-                )
-            )
-        )
+        query = apply_active_media_filter(query, join_source=True)
 
     return has_any_source, query
 
