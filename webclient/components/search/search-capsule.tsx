@@ -19,8 +19,8 @@ export function SearchCapsuleInput({ className, ...props }: SearchCapsuleInputPr
     <Input
       {...props}
       className={cn(
-        // 透明背景，使用外层胶囊的填充色；重置 selection 样式，避免暗色模式下出现奇怪的高亮块
-        "h-11 flex-1 border-none bg-transparent shadow-none rounded-none px-5 text-base placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-transparent selection:bg-transparent selection:text-inherit",
+        // 透明背景，使用外层胶囊的填充色；需要允许文本选择/全选（不要把 selection 设成透明）
+        "h-11 flex-1 border-none bg-transparent shadow-none rounded-none px-5 text-base placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-transparent select-text selection:bg-primary/20 selection:text-foreground dark:selection:bg-primary/30",
         className,
       )}
     />
