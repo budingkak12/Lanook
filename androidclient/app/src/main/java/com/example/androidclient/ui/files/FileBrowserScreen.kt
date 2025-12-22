@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -81,16 +82,23 @@ import com.example.androidclient.ui.VideoPlayer
 import com.example.androidclient.data.model.fs.FsItem
 import com.example.androidclient.data.repository.FsRepository
 import com.example.androidclient.di.NetworkModule
+import net.engawapg.lib.zoomable.rememberZoomState
+import net.engawapg.lib.zoomable.zoomable
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun FileBrowserScreen(vm: FileBrowserViewModel) {
+fun FileBrowserScreen(vm: FileBrowserViewModel, onToggleFullScreen: (Boolean) -> Unit = {}) {
     val state by vm.uiState.collectAsState()
     var moreMenuExpanded by remember { mutableStateOf(false) }
 
     // 当前目录下的文件列表（非目录），用于详情翻页
     val files = remember(state.items, state.path) { state.items.filter { !it.isDir } }
     var detailIndex by remember { mutableStateOf<Int?>(null) }
+    
+    // 当详情页打开/关闭时，通知主屏幕切换全屏状态（隐藏/显示底部导航栏）
+    LaunchedEffect(detailIndex) {
+        onToggleFullScreen(detailIndex != null)
+    }
 
     var showNewFolder by remember { mutableStateOf(false) }
     var showRename: FsItem? by remember { mutableStateOf(null) }
@@ -479,32 +487,80 @@ private fun FsDetailPager(
         vm.loadMoreIfNeeded(pagerState.currentPage)
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val bottomInset = with(density) { 
+        androidx.compose.foundation.layout.WindowInsets.systemBars.getBottom(this).toDp() 
+    }
+    val topInset = with(density) { 
+        androidx.compose.foundation.layout.WindowInsets.systemBars.getTop(this).toDp() 
+    }
+    var context = LocalContext.current
+    var deleteItem by remember { mutableStateOf<FsItem?>(null) }
+
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            val item = items[page]
-            val resourceUrl = vm.fileUrl(item, baseUrl)
-            when (item.ext.lowercase()) {
-                "mp4", "mov", "mkv", "avi" -> {
-                    VideoPlayer(url = resourceUrl ?: "", modifier = Modifier.fillMaxSize())
-                }
-                else -> {
-                    AsyncImage(
-                        model = resourceUrl,
-                        contentDescription = item.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+            if (page < items.size) {
+                val item = items[page]
+                val resourceUrl = vm.fileUrl(item, baseUrl)
+                val type = if (listOf("mp4","mov","mkv","avi").contains(item.ext.lowercase())) "video" else "image"
+
+                com.example.androidclient.ui.components.SingleMediaPage(
+                    resourceUrl = resourceUrl ?: "",
+                    type = type,
+                    filename = item.name,
+                    liked = false,
+                    favorited = false,
+                    onToggleLike = {
+                        android.widget.Toast.makeText(context, "未入库文件不支持此操作", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    onToggleFavorite = {
+                        android.widget.Toast.makeText(context, "未入库文件不支持此操作", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    bottomInset = bottomInset
+                )
             }
         }
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier
-                .padding(16.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.5f))
-        ) {
-            Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "关闭", tint = Color.White)
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .padding(start = 16.dp, top = topInset + 12.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .align(Alignment.TopStart)
+            ) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = "关闭", tint = Color.White)
+            }
+
+            IconButton(
+                onClick = {
+                    val current = items.getOrNull(pagerState.currentPage)
+                    if (current != null) deleteItem = current
+                },
+                modifier = Modifier
+                    .padding(end = 16.dp, top = topInset + 12.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .align(Alignment.TopEnd)
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "删除", tint = Color.White)
+            }
+        }
+
+        if (deleteItem != null) {
+            com.example.androidclient.ui.components.DeleteConfirmDialog(
+                isDeleting = false,
+                onDismiss = { deleteItem = null },
+                onConfirm = {
+                    val target = deleteItem!!
+                    deleteItem = null
+                    vm.delete(target.name) {
+                        // Refresh handled by VM state, simple close if items empty or stay
+                        if (items.size <= 1) onClose()
+                    }
+                }
+            )
         }
     }
 }

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -64,41 +65,46 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: Se
         }
     })
 
+    var isFullScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            // 恢复系统导航栏内边距，避免被系统导航栏遮挡
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.background,
-                windowInsets = NavigationBarDefaults.windowInsets
-            ) {
-                val navBackStackEntry by innerNavController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                items.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = null) },
-                        label = { Text(screen.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            innerNavController.navigate(screen.route) {
-                                popUpTo(innerNavController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (!isFullScreen) {
+                // 恢复系统导航栏内边距，避免被系统导航栏遮挡
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    windowInsets = NavigationBarDefaults.windowInsets
+                ) {
+                    val navBackStackEntry by innerNavController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+                    items.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = null) },
+                            label = { Text(screen.title) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                innerNavController.navigate(screen.route) {
+                                    popUpTo(innerNavController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     ) { innerPadding ->
         // 仅保留顶部/左右的系统间距，底部给出 8dp 呼吸空间，避免与导航栏紧贴
+        // 如果全屏模式，则不设置底部 padding，以便内容真正全屏
         val contentPadding = PaddingValues(
             start = innerPadding.calculateStartPadding(layoutDirection),
             top = innerPadding.calculateTopPadding(),
             end = innerPadding.calculateEndPadding(layoutDirection),
-            bottom = innerPadding.calculateBottomPadding()
+            bottom = if (isFullScreen) 0.dp else innerPadding.calculateBottomPadding()
         )
         NavHost(
             navController = innerNavController,
@@ -106,6 +112,11 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: Se
             modifier = Modifier.padding(contentPadding)
         ) {
             composable(Screen.Random.route) {
+                // 离开文件浏览页时，确保全屏状态复位（虽然NavHost切换通常会重组，但为了保险可以重置）
+                androidx.compose.runtime.DisposableEffect(Unit) {
+                    isFullScreen = false
+                    onDispose {}
+                }
                 ThumbnailGridScreen(vm) { index ->
                     mainNavController.navigate("details/$index")
                 }
@@ -114,7 +125,7 @@ fun MainScreen(mainNavController: NavController, vm: MainViewModel, searchVm: Se
                 Text("Album Screen")
             }
             composable(Screen.Files.route) {
-                FileBrowserScreen(vm = fsVm)
+                FileBrowserScreen(vm = fsVm, onToggleFullScreen = { isFullScreen = it })
             }
             composable(Screen.Search.route) {
                 SearchScreen(
