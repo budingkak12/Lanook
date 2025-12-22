@@ -148,9 +148,10 @@ fun DetailViewScreen(
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(item.resourceUrl)
+                                    .size(coil3.size.Size.ORIGINAL) // Load original size for quality
                                     .build(),
                                 contentDescription = item.filename,
-                                contentScale = ContentScale.Fit,
+                                contentScale = ContentScale.Fit, // Ensure image fits screen initially
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .zoomable(
