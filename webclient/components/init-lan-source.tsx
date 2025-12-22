@@ -96,7 +96,7 @@ export function InitLanSource({ onDone }: Props) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={host}
             onChange={(e) => setHost(e.target.value)}
-            placeholder="10.103.30.77 或 nas.local"
+            placeholder="10.203.230.77 或 nas.local"
           />
         </div>
 

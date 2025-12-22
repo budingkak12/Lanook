@@ -41,7 +41,7 @@ SAMPLE_DIR = Path(
     os.environ.get("TEST_SAMPLE_DIR") or (Path(__file__).resolve().parent / "sample_media")
 ).expanduser().resolve()
 
-_DEFAULT_SMB_HOST = os.environ.get("TEST_SMB_HOST", "10.103.30.77").strip()
+_DEFAULT_SMB_HOST = os.environ.get("TEST_SMB_HOST", "10.203.230.77").strip()
 _DEFAULT_SMB_SHARE = os.environ.get("TEST_SMB_SHARE", "PublicShare").strip() or "PublicShare"
 _DEFAULT_SMB_SUBPATH = (os.environ.get("TEST_SMB_SUBPATH") or "").strip("/")
 SMB_DISPLAY_NAME = os.environ.get("TEST_SMB_DISPLAY_NAME", "NAS-PublicShare").strip() or "NAS-PublicShare"

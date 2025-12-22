@@ -93,7 +93,7 @@ export function MediaSourceSelector({ mode = 'init', onSuccess }: MediaSourceSel
   const [browsingPath, setBrowsingPath] = useState('') // 新增：当前浏览的路径，不显示在地址栏
 
   // NAS连接状态管理
-  const [nasHost, setNasHost] = useState('smb://10.103.30.77')
+  const [nasHost, setNasHost] = useState('smb://10.203.230.77')
   const [nasUsername, setNasUsername] = useState('wang')
   const [nasPassword, setNasPassword] = useState('0000')
   const [isConnectingNas, setIsConnectingNas] = useState(false)

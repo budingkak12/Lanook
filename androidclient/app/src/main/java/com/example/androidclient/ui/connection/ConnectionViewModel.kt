@@ -40,7 +40,7 @@ class ConnectionViewModel(
 
     private var autoNavigated = false
     private var autoProbeStarted = false
-    private val defaultCandidates = listOf("http://10.103.30.77:8000")
+    private val defaultCandidates = listOf("http://10.203.230.77:8000")
 
     init {
         viewModelScope.launch {

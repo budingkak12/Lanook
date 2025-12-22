@@ -18,8 +18,8 @@ function getApiBase(): string {
     const port = window.location.port
 
     if (DEV_HOSTS.has(host)) {
-      // 开发环境按铁律：直连后端 10.103.30.77:8000
-      cachedApiBase = "http://10.103.30.77:8000"
+      // 开发环境按铁律：直连后端 10.203.230.77:8000
+      cachedApiBase = "http://10.203.230.77:8000"
       return cachedApiBase
     }
 
