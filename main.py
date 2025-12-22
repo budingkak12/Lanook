@@ -136,6 +136,13 @@ def _prepare_initialization_state():
     # 确保新表结构可用（如 app_settings）
     try:
         create_database_and_tables(echo=False)
+        # 确保基础标签/设置存在（like/favorite 等），便于前端与流程测试稳定运行
+        with SessionLocal() as db:
+            try:
+                seed_initial_data(db)
+            except Exception:
+                # 不阻断启动：初始化状态与 API 仍可运行
+                db.rollback()
     except Exception as exc:
         print("[startup] Failed to ensure tables for initialization:", exc)
 

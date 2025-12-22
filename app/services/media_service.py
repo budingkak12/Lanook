@@ -519,14 +519,29 @@ def remove_tag(db: Session, *, media_id: int, tag: str) -> None:
 
 
 def list_tags(db: Session) -> List[str]:
-    rows = (
+    # 口径：
+    # - 返回“已使用的标签”（MediaTag 中出现过的）
+    # - 但基础交互标签 like/favorite 需要始终可见（即便当前库里还没被用过）
+    base_tags = ["like", "favorite"]
+
+    used_rows = (
         db.query(TagDefinition.name)
         .join(MediaTag, MediaTag.tag_name == TagDefinition.name)
         .distinct()
         .order_by(TagDefinition.name)
         .all()
     )
-    return [name for (name,) in rows]
+    used = {name for (name,) in used_rows}
+
+    base_rows = (
+        db.query(TagDefinition.name)
+        .filter(TagDefinition.name.in_(base_tags))
+        .all()
+    )
+    bases = {name for (name,) in base_rows}
+
+    merged = sorted(used | bases)
+    return merged
 
 
 # -------- 标签译文支持 --------

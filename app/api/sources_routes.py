@@ -781,6 +781,22 @@ def browse_network_folder(request: dict):
             raise HTTPException(status_code=500, detail=f"连接失败: {error_msg}")
 
 
+@router.post("/scan/start")
+def start_scan(
+    background: BackgroundTasks,
+    source_id: int = Query(..., description="媒体来源 ID"),
+    db: Session = Depends(get_db),
+):
+    """启动一次来源扫描任务，返回 jobId。"""
+    src = get_source(db, source_id)
+    if not src:
+        raise HTTPException(status_code=404, detail="source not found")
+    if (src.deleted_at is not None) or (src.status not in (None, "active")):
+        raise HTTPException(status_code=409, detail="source inactive")
+    job_id = start_scan_job(int(src.id), str(src.root_path), background)
+    return {"jobId": job_id}
+
+
 @router.get("/scan/status", response_model=ScanStatusResponse)
 def get_scan(job_id: str = Query(..., description="任务ID")):
     job = get_scan_status(job_id)

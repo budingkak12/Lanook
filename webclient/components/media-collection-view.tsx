@@ -265,13 +265,40 @@ export function MediaCollectionView({
       if (mediaIds.length === 0) {
         return
       }
+      const currentId = currentMediaId
+      const wasViewerOpen = selectedIndex !== -1 && currentId !== null
+      const beforeItems = listRef.current?.getItems?.() ?? items
+      const removeSet = new Set(mediaIds)
+      const nextItems = beforeItems.filter((item) => !removeSet.has(item.mediaId))
+
       pendingIndexRef.current = null
       listRef.current?.removeItems?.(mediaIds)
-      if (currentMediaId !== null && mediaIds.includes(currentMediaId)) {
+
+      if (!wasViewerOpen) {
+        return
+      }
+
+      if (nextItems.length === 0) {
         closeViewer()
+        return
+      }
+
+      // 保持在详情页：如果当前媒体被删，则展示“下一张”（在删除前的 index 位置）。
+      // 如果当前媒体未被删，则定位回当前媒体在新列表里的位置（处理批量删除导致的 index 偏移）。
+      let nextIndex = nextItems.findIndex((item) => item.mediaId === currentId)
+      if (nextIndex === -1) {
+        const beforeIndex = beforeItems.findIndex((item) => item.mediaId === currentId)
+        nextIndex = Math.min(Math.max(beforeIndex, 0), nextItems.length - 1)
+      }
+
+      setItems(nextItems)
+      setSelectedIndex(nextIndex)
+      const nextMedia = nextItems[nextIndex]
+      if (nextMedia) {
+        onViewerOpen?.(nextMedia, nextIndex)
       }
     },
-    [closeViewer, currentMediaId],
+    [closeViewer, currentMediaId, items, onViewerOpen, selectedIndex],
   )
 
   const onLoadMore = useCallback(() => listRef.current?.loadMore?.() ?? Promise.resolve(0), [])
