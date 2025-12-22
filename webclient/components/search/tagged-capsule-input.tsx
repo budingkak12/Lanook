@@ -2,6 +2,7 @@
 
 import { forwardRef, useMemo, useRef, useState } from "react"
 import type { KeyboardEvent } from "react"
+import { Search, Hash, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SearchCapsuleInput, searchCapsuleWrapperClass } from "@/components/search/search-capsule"
 import { TagPill } from "@/components/ui/tag-pill"
@@ -68,21 +69,47 @@ export const TaggedCapsuleInput = forwardRef<HTMLInputElement, TaggedCapsuleInpu
 
     const lastToken = useMemo(() => getLastToken(value), [value])
     const suggestions = useMemo(() => {
-      const key = lastToken.trim().toLowerCase()
-      if (!key) return [] as TagOption[]
-      return allTags
-        .filter((t) => formatDisplayText(t).toLowerCase().includes(key))
+      const key = lastToken.trim()
+      // 如果没有输入 key，不显示下拉建议
+      if (!key) return []
+
+      const lowerKey = key.toLowerCase()
+
+      // 1. 构造“文本搜索”选项 (始终作为第一项)
+      // 使用 type 字段区分
+      const textOption = {
+        name: key,
+        displayName: key,
+        type: "text" as const,
+      }
+
+      // 2. 构造“标签匹配”选项
+      const tagOptions = allTags
+        .filter((t) => formatDisplayText(t).toLowerCase().includes(lowerKey))
         .slice(0, 10)
+        .map((t) => ({ ...t, type: "tag" as const }))
+
+      return [textOption, ...tagOptions]
     }, [allTags, lastToken])
 
-    const handlePick = (tagName: string) => {
-      if (!tagName.trim()) return
-      if (!tags.includes(tagName)) {
-        onTagsChange([...tags, tagName])
+    const handlePick = (item: { name: string; type: "text" | "tag" }) => {
+      if (item.type === "text") {
+        // 用户显式点击了“搜索文本”
+        // 行为：确认保留这段文本在输入框中（不做 Tag 转换），并关闭下拉框
+        // 这相当于用户告诉系统：“这就是我要的文字，不要把它当标签”
+        setOpen(false)
+        inputRef.current?.focus?.()
+      } else {
+        // 选中标签 -> 转为 Pill
+        const tagName = item.name
+        if (!tagName.trim()) return
+        if (!tags.includes(tagName)) {
+          onTagsChange([...tags, tagName])
+        }
+        onChange(removeLastToken(value))
+        setOpen(false)
+        inputRef.current?.focus?.()
       }
-      onChange(removeLastToken(value))
-      setOpen(false)
-      inputRef.current?.focus?.()
     }
 
     const handleRemoveAt = (idx: number) => {
@@ -228,15 +255,28 @@ export const TaggedCapsuleInput = forwardRef<HTMLInputElement, TaggedCapsuleInpu
                     type="button"
                     className="w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition-colors hover:bg-accent/60"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => handlePick(s.name)}
+                    onClick={() => handlePick(s)}
                   >
-                    <TagPill
-                      prefix={tone === "destructive" ? "-" : undefined}
-                      name={s.name}
-                      displayName={s.displayName ?? s.name}
-                      variant={tone === "destructive" ? "destructive" : "primary"}
-                      className="w-full"
-                    />
+                    {s.type === "text" ? (
+                      <div className="flex items-center gap-2 text-foreground/80 w-full">
+                        <div className="flex items-center justify-center w-5 h-5 bg-primary/10 rounded-full shrink-0">
+                          <Search className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="truncate">
+                          <span className="opacity-50 mr-1">搜索文本:</span>
+                          <span className="font-medium text-primary/90">"{s.name}"</span>
+                        </span>
+                      </div>
+                    ) : (
+                      <TagPill
+                        // icon={<Hash className="w-3 h-3 mr-1 opacity-50" />} // TagPill 内部可能已有样式，这里只传基本属性
+                        prefix={tone === "destructive" ? "-" : undefined}
+                        name={s.name}
+                        displayName={s.displayName ?? s.name}
+                        variant={tone === "destructive" ? "destructive" : "primary"}
+                        className="w-full text-left justify-start font-normal"
+                      />
+                    )}
                   </button>
                 ))}
               </div>
