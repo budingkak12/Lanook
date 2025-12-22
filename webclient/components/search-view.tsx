@@ -734,7 +734,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
             queryText={appliedQuery}
             sessionId={null}
             selectionBehavior="desktop"
-            deleteBehavior="preview"
+            deleteBehavior="backend"
             onMediaClick={onMediaClick}
           />
         )}

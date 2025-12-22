@@ -200,7 +200,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                     queryText={appliedQuery}
                     sessionId={null}
                     selectionBehavior="desktop"
-                    deleteBehavior="preview"
+                    deleteBehavior="backend"
                     onMediaClick={onMediaClick}
                     onItemsChange={onItemsChange}
                   />

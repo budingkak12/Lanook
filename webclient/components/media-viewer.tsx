@@ -6,15 +6,21 @@ import { X, Trash2, ChevronLeft, ChevronRight, RotateCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { deleteMedia, friendlyDeleteError, setFavorite, setLike, resolveApiUrl } from "@/lib/api"
 import { ReactionButton, type ReactionVariant } from "@/components/ui/reaction-button"
-import { SearchStandaloneButton } from "@/components/search/search-capsule"
+import {
+  hasSeenDeleteConfirm,
+  markSeenDeleteConfirm,
+} from "@/lib/delete-confirm"
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Keyboard } from 'swiper/modules'
 import 'swiper/css'
@@ -61,7 +67,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set())
   const [rotation, setRotation] = useState(0)
   const [rotationTransitionEnabled, setRotationTransitionEnabled] = useState(true)
-  const [hasSeenDeleteConfirm, setHasSeenDeleteConfirm] = useState(false)
+  const [dontAskDeleteAgain, setDontAskDeleteAgain] = useState(false)
   // 动效预览区已关闭：保留唯一选定方案（YouTube 1.5x）
   const swiperRef = useRef<any>(null)
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({})
@@ -95,24 +101,6 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
   const ROTATE_ANIMATION_MS = 200
 
   const mediaId = useMemo(() => media.mediaId, [media.mediaId])
-  const DELETE_CONFIRM_STORAGE_KEY = "lanook.delete_confirm_seen.v1"
-
-  const markDeleteConfirmSeen = useCallback(() => {
-    setHasSeenDeleteConfirm(true)
-    try {
-      localStorage.setItem(DELETE_CONFIRM_STORAGE_KEY, "1")
-    } catch {
-      // ignore storage errors (private mode, etc.)
-    }
-  }, [])
-
-  useEffect(() => {
-    try {
-      setHasSeenDeleteConfirm(localStorage.getItem(DELETE_CONFIRM_STORAGE_KEY) === "1")
-    } catch {
-      setHasSeenDeleteConfirm(false)
-    }
-  }, [])
 
   // 避免 rotation 数值无限增长：超过阈值后“无动画”归一化到 0~359
   useEffect(() => {
@@ -246,6 +234,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     setFavoriteLoading(false)
     setIsDeleting(false)
     setShowDeleteDialog(false)
+    setDontAskDeleteAgain(false)
     setCurrentSlideIndex(validIndex)
 
     // 如果索引有修正，通知父组件
@@ -395,6 +384,9 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
     }
     setIsDeleting(true)
     try {
+      if (dontAskDeleteAgain) {
+        markSeenDeleteConfirm()
+      }
       await deleteMedia(media.mediaId, true)
       onMediaRemove([media.mediaId])
     } catch (err) {
@@ -499,12 +491,10 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           disabled={isDeleting}
           onClick={() => {
             if (isDeleting) return
-            if (hasSeenDeleteConfirm) {
+            if (hasSeenDeleteConfirm()) {
               void handleDelete()
               return
             }
-            // 需求：用户“终身只看到一次”确认弹窗，因此这里第一次弹出后就标记为 seen。
-            markDeleteConfirmSeen()
             setShowDeleteDialog(true)
           }}
           className="flex h-11 w-11 items-center justify-center rounded-full bg-white/80 backdrop-blur-md border border-white/40 shadow-lg shadow-black/5 text-slate-700 hover:text-red-500 hover:scale-105 transition-all active:scale-95 disabled:opacity-50"
@@ -699,27 +689,31 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>确定要删除这个媒体吗？此操作无法撤销。</AlertDialogDescription>
+            <AlertDialogDescription>
+              此操作将永久删除原始文件（真实文件）并清理相关索引/缓存，且无法撤销。
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <SearchStandaloneButton
-              size="compact"
-              disabled={isDeleting}
-              onClick={() => setShowDeleteDialog(false)}
-              wrapperClassName="w-full sm:w-auto"
-              className="text-foreground"
-            >
-              取消
-            </SearchStandaloneButton>
-            <SearchStandaloneButton
-              size="compact"
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={isDeleting} className="sm:order-1">取消</AlertDialogCancel>
+            <AlertDialogAction
               disabled={isDeleting}
               onClick={() => void handleDelete()}
-              wrapperClassName="w-full sm:w-auto"
-              className="text-red-600 hover:bg-red-600 hover:text-white"
+              className="sm:order-2"
             >
               {isDeleting ? "删除中..." : "删除"}
-            </SearchStandaloneButton>
+            </AlertDialogAction>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeleting}
+              onClick={async () => {
+                markSeenDeleteConfirm()
+                await handleDelete()
+              }}
+              className="w-full sm:w-auto sm:order-3"
+            >
+              不再询问
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -13,7 +13,7 @@ interface Props {
 
 export function InitLanSource({ onDone }: Props) {
   const { toast } = useToast()
-  const [host, setHost] = useState("10.103.30.77")
+  const [host, setHost] = useState("")
   const [share, setShare] = useState("")
   const [subPath, setSubPath] = useState("")
   const [anonymous, setAnonymous] = useState(true)

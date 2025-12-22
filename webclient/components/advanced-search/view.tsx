@@ -333,7 +333,7 @@ export function AdvancedSearchView() {
                   tag={null}
                   sessionId={null}
                   selectionBehavior="desktop"
-                  deleteBehavior="preview"
+                  deleteBehavior="backend"
                   onMediaClick={onMediaClick}
                   onItemsChange={onItemsChange}
                 />

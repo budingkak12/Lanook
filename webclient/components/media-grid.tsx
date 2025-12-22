@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { apiFetch, batchDeleteMedia, friendlyDeleteError, resolveApiUrl } from "@/lib/api"
+import { hasSeenDeleteConfirm, markSeenDeleteConfirm } from "@/lib/delete-confirm"
 import { FloatingDeleteButton } from "@/components/media-grid/floating-delete-button"
 import { SelectionPreviewDialog } from "@/components/media-grid/selection-preview-dialog"
 
@@ -106,6 +107,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [dontAskDeleteAgain, setDontAskDeleteAgain] = useState(false)
   const [selectionBox, setSelectionBox] = useState<{
     left: number
     top: number
@@ -439,6 +441,9 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
     setIsDeleting(true)
     try {
+      if (dontAskDeleteAgain) {
+        markSeenDeleteConfirm()
+      }
       const result = await batchDeleteMedia(ids)
       const deletedSet = new Set(result.deleted.map((id) => String(id)))
 
@@ -476,6 +481,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     } finally {
       setShowDeleteDialog(false)
       setIsDeleting(false)
+      setDontAskDeleteAgain(false)
     }
   }
 
@@ -746,7 +752,13 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => (isPreviewDelete ? setShowPreviewDialog(true) : setShowDeleteDialog(true))}
+            onClick={() => {
+              if (hasSeenDeleteConfirm()) {
+                void handleDeleteSelected()
+                return
+              }
+              setShowDeleteDialog(true)
+            }}
             disabled={selectedIds.size === 0}
           >
             <Trash2 className="w-4 h-4 mr-2" />
@@ -800,9 +812,8 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
                     tileRefs.current.set(item.id, el)
                   }}
                   data-media-tile="true"
-                  className={`group relative aspect-square overflow-hidden bg-muted cursor-pointer transition-all ${
-                    selectedIds.has(item.id) ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary"
-                  }`}
+                  className={`group relative aspect-square overflow-hidden bg-muted cursor-pointer transition-all ${selectedIds.has(item.id) ? "ring-2 ring-primary" : "hover:ring-2 hover:ring-primary"
+                    }`}
                   onClick={(e) => handleTileClick(item, index, e)}
                 >
                   <img
@@ -820,9 +831,8 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
                   />
 
                   <div
-                    className={`absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity ${
-                      isSelectionMode ? "opacity-100" : ""
-                    }`}
+                    className={`absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity ${isSelectionMode ? "opacity-100" : ""
+                      }`}
                     onClick={(e) => handleCheckboxClick(item.id, e)}
                   >
                     <Checkbox checked={selectedIds.has(item.id)} className="bg-white border-2" />
@@ -854,7 +864,17 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         <>
           <FloatingDeleteButton
             count={selectedIds.size}
-            onClick={() => (isPreviewDelete ? setShowPreviewDialog(true) : setShowDeleteDialog(true))}
+            onClick={() => {
+              if (isPreviewDelete) {
+                setShowPreviewDialog(true)
+                return
+              }
+              if (hasSeenDeleteConfirm()) {
+                void handleDeleteSelected()
+                return
+              }
+              setShowDeleteDialog(true)
+            }}
           />
           {isPreviewDelete ? (
             <SelectionPreviewDialog
@@ -868,14 +888,30 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
                 <AlertDialogHeader>
                   <AlertDialogTitle>确认删除</AlertDialogTitle>
                   <AlertDialogDescription>
-                    确定要删除选中的 {selectedIds.size} 个项目吗？此操作无法撤销。
+                    确定要删除选中的 {selectedIds.size} 个项目吗？此操作将永久删除原始文件（真实文件）且无法撤销。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-                  <AlertDialogAction disabled={isDeleting} onClick={() => void handleDeleteSelected()}>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                  <AlertDialogCancel disabled={isDeleting} className="sm:order-1">取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isDeleting}
+                    onClick={() => void handleDeleteSelected()}
+                    className="sm:order-2"
+                  >
                     {isDeleting ? "删除中..." : "删除"}
                   </AlertDialogAction>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isDeleting}
+                    onClick={async () => {
+                      markSeenDeleteConfirm()
+                      await handleDeleteSelected()
+                    }}
+                    className="w-full sm:w-auto sm:order-3"
+                  >
+                    不再询问
+                  </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -887,14 +923,30 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
             <AlertDialogHeader>
               <AlertDialogTitle>确认删除</AlertDialogTitle>
               <AlertDialogDescription>
-                确定要删除选中的 {selectedIds.size} 个项目吗？此操作无法撤销。
+                确定要删除选中的 {selectedIds.size} 个项目吗？此操作将永久删除原始文件（真实文件）且无法撤销。
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-              <AlertDialogAction disabled={isDeleting} onClick={() => void handleDeleteSelected()}>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel disabled={isDeleting} className="sm:order-1">取消</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isDeleting}
+                onClick={() => void handleDeleteSelected()}
+                className="sm:order-2"
+              >
                 {isDeleting ? "删除中..." : "删除"}
               </AlertDialogAction>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isDeleting}
+                onClick={async () => {
+                  markSeenDeleteConfirm()
+                  await handleDeleteSelected()
+                }}
+                className="w-full sm:w-auto sm:order-3"
+              >
+                不再询问
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

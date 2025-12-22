@@ -6,9 +6,12 @@
 /* 亮色主题 - 参考test文件夹但优化层次感 */
 :root {
   /* 全站白色主题：对齐“设置页”灰底风格 */
-  --background: rgb(212 215 218); /* 页面最大底色 */
-  --foreground: rgb(74 77 78); /* 主文字色 */
-  --card: rgb(251 251 251); /* 白色卡片/盒子 */
+  --background: rgb(212 215 218);
+  /* 页面最大底色 */
+  --foreground: rgb(74 77 78);
+  /* 主文字色 */
+  --card: rgb(251 251 251);
+  /* 白色卡片/盒子 */
   --card-foreground: rgb(74 77 78);
   --popover: rgb(251 251 251);
   --popover-foreground: rgb(74 77 78);
@@ -31,7 +34,8 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem; /* 保持test文件夹的圆角大小 */
+  --radius: 0.625rem;
+  /* 保持test文件夹的圆角大小 */
   --sidebar: rgb(251 251 251);
   --sidebar-foreground: rgb(74 77 78);
   --sidebar-primary: rgb(251 251 251);
@@ -73,13 +77,18 @@
 }
 
 .warm {
-  --background: rgb(252 246 229); /* L0 页面背景：偏暖浅米色 */
-  --foreground: rgb(74 77 78); /* 保持现有文字色，保证对比度 */
-  --card: rgb(255 252 244); /* L1 卡片：略浅一点的奶白色 */
+  --background: rgb(252 246 229);
+  /* L0 页面背景：偏暖浅米色 */
+  --foreground: rgb(74 77 78);
+  /* 保持现有文字色，保证对比度 */
+  --card: rgb(255 252 244);
+  /* L1 卡片：略浅一点的奶白色 */
   --card-foreground: rgb(74 77 78);
-  --muted: rgb(246 238 226); /* L2 辅助块背景（列表行 hover 等） */
+  --muted: rgb(246 238 226);
+  /* L2 辅助块背景（列表行 hover 等） */
   --muted-foreground: rgb(130 120 105);
-  --accent: rgb(248 236 216); /* 轻量强调底色 */
+  --accent: rgb(248 236 216);
+  /* 轻量强调底色 */
   --accent-foreground: rgb(74 77 78);
   --border: rgb(236 226 210);
   --input: rgb(236 226 210);
@@ -96,23 +105,31 @@
 
 /* 暗色主题 - 保持原有风格一致 (参考提交5252ae3之前的配置) */
 .dark {
-  --background: oklch(0.42 0.005 264); /* 深灰色背景 */
-  --foreground: oklch(0.98 0 0); /* 白色文本 */
-  --card: oklch(0.48 0.005 264); /* 稍浅的灰色卡片 */
-  --card-foreground: oklch(0.98 0 0); /* 卡片上的白色文本 */
+  --background: oklch(0.42 0.005 264);
+  /* 深灰色背景 */
+  --foreground: oklch(0.98 0 0);
+  /* 白色文本 */
+  --card: oklch(0.48 0.005 264);
+  /* 稍浅的灰色卡片 */
+  --card-foreground: oklch(0.98 0 0);
+  /* 卡片上的白色文本 */
   --popover: oklch(0.48 0.005 264);
   --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.98 0 0); /* 白色用于主要元素 */
-  --primary-foreground: oklch(0.25 0 0); /* 白色背景上的深色文本 */
+  --primary: oklch(0.98 0 0);
+  /* 白色用于主要元素 */
+  --primary-foreground: oklch(0.25 0 0);
+  /* 白色背景上的深色文本 */
   --secondary: oklch(0.35 0.005 264);
   --secondary-foreground: oklch(0.98 0 0);
   --muted: oklch(0.35 0.005 264);
-  --muted-foreground: oklch(0.75 0 0); /* 静音文本的浅灰色 */
+  --muted-foreground: oklch(0.75 0 0);
+  /* 静音文本的浅灰色 */
   --accent: oklch(0.38 0.005 264);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.32 0.005 264); /* 更深的边框 */
+  --border: oklch(0.32 0.005 264);
+  /* 更深的边框 */
   --input: oklch(0.32 0.005 264);
   --ring: oklch(0.6 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
@@ -175,17 +192,21 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html, body {
+
+  html,
+  body {
     @apply bg-background text-foreground m-0 p-0;
     height: 100%;
     overflow-x: hidden;
   }
+
   body {
     min-height: 100vh;
     /* 添加安全区域支持 */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
+
   /* 移动端视口高度支持 */
   @supports (height: 100dvh) {
     body {
@@ -200,37 +221,37 @@
       padding-bottom: calc(3.5rem + env(safe-area-inset-bottom)) !important;
     }
   }
+
   /* 安全区域工具类 */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
   .pt-safe {
     padding-top: env(safe-area-inset-top);
   }
+
   .pl-safe {
     padding-left: env(safe-area-inset-left);
   }
+
   .pr-safe {
     padding-right: env(safe-area-inset-right);
   }
 
   /* 暗色主题添加亚麻纹理背景图案 */
   .dark body {
-    background-image: repeating-linear-gradient(
-        0deg,
+    background-image: repeating-linear-gradient(0deg,
         transparent,
         transparent 2px,
         rgba(255, 255, 255, 0.03) 2px,
-        rgba(255, 255, 255, 0.03) 4px
-      ),
-      repeating-linear-gradient(
-        90deg,
+        rgba(255, 255, 255, 0.03) 4px),
+      repeating-linear-gradient(90deg,
         transparent,
         transparent 2px,
         rgba(255, 255, 255, 0.03) 2px,
-        rgba(255, 255, 255, 0.03) 4px
-      );
+        rgba(255, 255, 255, 0.03) 4px);
   }
-} 
+}
 
 /* 设置页专用覆盖已提升为全站主题（保留空位避免误引用） */
