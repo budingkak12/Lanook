@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+DeleteMode = str  # "trash" | "permanent"
+
 
 class MediaItem(BaseModel):
     id: int
@@ -32,6 +34,7 @@ class TagRequest(BaseModel):
 class DeleteBatchReq(BaseModel):
     ids: List[int]
     delete_file: bool = True
+    delete_mode: DeleteMode = "trash"
 
 
 class FailedItemModel(BaseModel):

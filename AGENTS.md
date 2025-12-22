@@ -3,7 +3,7 @@
 - 正在开发一个无用户概念的局域网相册，支持媒体浏览/管理，
 - 安卓前端：androidclient/
 - iOS原生端：Apple-app/Lanook
-- web前端 ：webclient，项目使用 yarn管理的项目，使用 yarn dev 启动前端
+- web前端 ：webclient，项目使用 yarn管理的项目，使用 yarn dev 启动前端，结构初步参考：前端页面.txt
 - 程序总体架构：
 [ 各类远程存储smb 本机文件夹等等（源） ]
         ↓

@@ -690,7 +690,7 @@ export function MediaViewer({ media, currentIndex, allMedia, onClose, onNavigate
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作将永久删除原始文件（真实文件）并清理相关索引/缓存，且无法撤销。
+              此操作会将原始文件移动到系统回收站/废纸篓（可在系统回收站看到并手动恢复），同时从应用中移除并清理相关索引/缓存。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">

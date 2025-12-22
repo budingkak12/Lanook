@@ -620,11 +620,11 @@ def list_tags_with_translation(db: Session) -> List[Dict[str, str | None]]:
 # 删除
 # ---------------------------------------------------------------------------
 
-def delete_media(db: Session, *, media_id: int, delete_file: bool) -> None:
+def delete_media(db: Session, *, media_id: int, delete_file: bool, delete_mode: str = "trash") -> None:
     media = db.query(Media).filter(Media.id == media_id).first()
     if not media:
         raise MediaNotFoundError("media not found")
-    ok, reason = delete_media_record_and_files(db, media, delete_file=delete_file)
+    ok, reason = delete_media_record_and_files(db, media, delete_file=delete_file, delete_mode=delete_mode)
     if not ok:
         raise ServiceError(reason or "failed to delete media")
     media_cache.purge_cache_for_media(db, [media_id])
@@ -637,8 +637,8 @@ def delete_media(db: Session, *, media_id: int, delete_file: bool) -> None:
         raise ServiceError("failed to commit deletion") from exc
 
 
-def batch_delete_media(db: Session, *, ids: List[int], delete_file: bool) -> DeleteBatchResp:
-    deleted, failed = svc_batch_delete(db, ids, delete_file=delete_file)
+def batch_delete_media(db: Session, *, ids: List[int], delete_file: bool, delete_mode: str = "trash") -> DeleteBatchResp:
+    deleted, failed = svc_batch_delete(db, ids, delete_file=delete_file, delete_mode=delete_mode)
     if deleted:
         media_cache.purge_cache_for_media(db, deleted)
         _safe_cache_commit(db)

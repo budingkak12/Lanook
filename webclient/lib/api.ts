@@ -73,6 +73,8 @@ export type BulkDeleteResult = {
   failed: { id: number; reason?: string | null }[]
 }
 
+export type DeleteMode = "trash" | "permanent"
+
 function buildJsonRequestInit(method: string, body: unknown): RequestInit {
   return {
     method,
@@ -119,16 +121,22 @@ export async function batchDeleteMedia(ids: number[], deleteFile = true): Promis
   if (ids.length === 0) {
     return { deleted: [], failed: [] }
   }
-  const response = await apiFetch("/media/batch-delete", buildJsonRequestInit("POST", { ids, delete_file: deleteFile }))
+  const response = await apiFetch(
+    "/media/batch-delete",
+    buildJsonRequestInit("POST", { ids, delete_file: deleteFile, delete_mode: "trash" as DeleteMode }),
+  )
   const ensured = await ensureOk(response)
   const data = (await ensured.json()) as BulkDeleteResult
   return data
 }
 
-export async function deleteMedia(mediaId: number, deleteFile = true): Promise<void> {
-  const response = await apiFetch(`/media/${mediaId}?delete_file=${deleteFile ? "true" : "false"}`, {
+export async function deleteMedia(mediaId: number, deleteFile = true, deleteMode: DeleteMode = "trash"): Promise<void> {
+  const response = await apiFetch(
+    `/media/${mediaId}?delete_file=${deleteFile ? "true" : "false"}&delete_mode=${deleteMode}`,
+    {
     method: "DELETE",
-  })
+    },
+  )
   await ensureOk(response)
 }
 

@@ -888,7 +888,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
                 <AlertDialogHeader>
                   <AlertDialogTitle>确认删除</AlertDialogTitle>
                   <AlertDialogDescription>
-                    确定要删除选中的 {selectedIds.size} 个项目吗？此操作将永久删除原始文件（真实文件）且无法撤销。
+                    确定要删除选中的 {selectedIds.size} 个项目吗？将把原始文件移动到系统回收站/废纸篓（可恢复），同时从应用中移除并清理相关索引/缓存。
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2">
@@ -921,11 +921,11 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>确认删除</AlertDialogTitle>
-              <AlertDialogDescription>
-                确定要删除选中的 {selectedIds.size} 个项目吗？此操作将永久删除原始文件（真实文件）且无法撤销。
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+          <AlertDialogTitle>确认删除</AlertDialogTitle>
+          <AlertDialogDescription>
+              确定要删除选中的 {selectedIds.size} 个项目吗？将把原始文件移动到系统回收站/废纸篓（可恢复），同时从应用中移除并清理相关索引/缓存。
+          </AlertDialogDescription>
+          </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel disabled={isDeleting} className="sm:order-1">取消</AlertDialogCancel>
               <AlertDialogAction

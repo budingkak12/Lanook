@@ -91,10 +91,11 @@ def list_tags(
 def delete_media_item(
     media_id: int,
     delete_file: bool = Query(True, description="是否同时删除原始文件"),
+    delete_mode: str = Query("trash", description="原始文件删除方式：trash(回收站) / permanent(彻底删除)", pattern="^(trash|permanent)$"),
     db: Session = Depends(get_db),
 ):
     try:
-        media_service.delete_media(db, media_id=media_id, delete_file=delete_file)
+        media_service.delete_media(db, media_id=media_id, delete_file=delete_file, delete_mode=delete_mode)
     except ServiceError as exc:
         _raise_service_error(exc)
 
@@ -102,7 +103,7 @@ def delete_media_item(
 @router.post("/media/batch-delete", response_model=DeleteBatchResp)
 def batch_delete_media(req: DeleteBatchReq, db: Session = Depends(get_db)):
     try:
-        return media_service.batch_delete_media(db, ids=req.ids, delete_file=req.delete_file)
+        return media_service.batch_delete_media(db, ids=req.ids, delete_file=req.delete_file, delete_mode=req.delete_mode)
     except ServiceError as exc:
         _raise_service_error(exc)
 

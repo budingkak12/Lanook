@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import shutil
+import sys
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
@@ -45,6 +47,48 @@ def _safe_unlink_glob(parent: Path, pattern: str) -> bool:
         return False
 
 
+def _move_to_trash_local(path: Path) -> tuple[bool, str | None]:
+    """将本地文件移动到系统回收站/废纸篓。
+
+    返回 (ok, error_reason)：
+    - ok=True 表示已移动（或已不存在无需移动）
+    - ok=False 表示移动失败（不会回退为永久删除）
+    """
+    try:
+        if not path.exists():
+            return True, None
+    except Exception:
+        # 无法判断存在性时也尝试继续
+        pass
+
+    # 优先使用跨平台实现
+    try:
+        from send2trash import send2trash  # type: ignore
+
+        send2trash(str(path))
+        return True, None
+    except Exception as exc:
+        # macOS 兜底：直接移动到 ~/.Trash（Finder/废纸篓可见）
+        if sys.platform == "darwin":
+            try:
+                trash_dir = Path.home() / ".Trash"
+                trash_dir.mkdir(parents=True, exist_ok=True)
+                target = trash_dir / path.name
+                if target.exists():
+                    stem = path.stem or "file"
+                    suffix = path.suffix
+                    for i in range(1, 10_000):
+                        candidate = trash_dir / f"{stem}-{i}{suffix}"
+                        if not candidate.exists():
+                            target = candidate
+                            break
+                shutil.move(str(path), str(target))
+                return True, None
+            except Exception as exc2:
+                return False, f"trash_move_failed:{type(exc2).__name__}"
+        return False, f"trash_move_failed:{type(exc).__name__}"
+
+
 def _thumb_path_for_media(media: Media) -> Path:
     # 基于内容指纹命名；若缺失则回退到旧 id 命名
     if media.absolute_path:
@@ -60,7 +104,7 @@ def _thumb_path_for_media(media: Media) -> Path:
 
 
 def delete_media_record_and_files(
-    db: Session, media: Media, *, delete_file: bool = True
+    db: Session, media: Media, *, delete_file: bool = True, delete_mode: str = "trash"
 ) -> Tuple[bool, str | None]:
     """
     硬删除单个媒体：数据库记录（含关联表） + 派生文件；可选删除原文件。
@@ -179,7 +223,16 @@ def delete_media_record_and_files(
             else:
                 p = Path(abs_path)
                 if p.exists():
-                    p.unlink()
+                    mode = (delete_mode or "trash").strip().lower()
+                    if mode == "permanent":
+                        p.unlink()
+                    else:
+                        ok, err = _move_to_trash_local(p)
+                        if not ok:
+                            # 不做“彻底删除”回退，避免与“回收站可见”的语义冲突；保留 warning 理由。
+                            reason = (reason or "") + f" {err or 'trash_move_failed'}"
+                        elif err:
+                            reason = (reason or "") + f" {err}"
         except Exception:
             # 非致命：记录 warning，DB 已删除，接口仍视为成功
             reason = (reason or "") + " file_remove_failed"
@@ -188,7 +241,7 @@ def delete_media_record_and_files(
 
 
 def batch_delete(
-    db: Session, ids: Iterable[int], *, delete_file: bool = True
+    db: Session, ids: Iterable[int], *, delete_file: bool = True, delete_mode: str = "trash"
 ) -> Tuple[List[int], List[FailedItem]]:
     """批量删除，返回 (deleted_ids, failed_items)。
 
@@ -218,7 +271,7 @@ def batch_delete(
             # 幂等：记录不存在视为已删
             deleted.append(mid)
             continue
-        ok, reason = delete_media_record_and_files(db, m, delete_file=delete_file)
+        ok, reason = delete_media_record_and_files(db, m, delete_file=delete_file, delete_mode=delete_mode)
         if ok:
             deleted.append(mid)
         else:
