@@ -124,11 +124,32 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
 
-          {/* --- 搜索模式切换 --- */}
+
+          {/* --- 想看 (Want) --- */}
           <section className="space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Eye className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">想看</span>
+            </div>
+            <TaggedCapsuleInput
+              ref={wantInputRef}
+              tone="primary"
+              tags={wantTags}
+              value={wantInput}
+              onChange={setWantInput}
+              onTagsChange={setWantTags}
+              allTags={allTags}
+              placeholder="描述画面，例：夕阳 海边"
+              preset="soft"
+              onSubmit={handleRunSearch}
+            />
+          </section>
+
+          {/* --- 搜索模式切换 --- */}
+          <section className="space-y-2 !mt-4">
             <div className="flex items-center justify-between bg-accent/20 p-1.5 rounded-xl border border-accent/30">
               <div className="pl-2">
-                <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">Logic Mode</span>
+                <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest underline decoration-primary/30 decoration-2 underline-offset-4">搜索逻辑</span>
               </div>
               <div className="flex bg-background/50 p-1 rounded-lg gap-1">
                 {[
@@ -156,26 +177,6 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
                 ? "💡 包含以上任一标签的内容（结果更丰富）"
                 : "💡 同时符合以上条件的精准结果（更严苛）"}
             </p>
-          </section>
-
-          {/* --- 想看 (Want) --- */}
-          <section className="space-y-2">
-            <div className="flex items-center gap-2 mb-1">
-              <Eye className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">想看</span>
-            </div>
-            <TaggedCapsuleInput
-              ref={wantInputRef}
-              tone="primary"
-              tags={wantTags}
-              value={wantInput}
-              onChange={setWantInput}
-              onTagsChange={setWantTags}
-              allTags={allTags}
-              placeholder="描述画面，例：夕阳 海边"
-              preset="soft"
-              onSubmit={handleRunSearch}
-            />
           </section>
 
           {/* --- 不想看 (Not Want) --- */}
