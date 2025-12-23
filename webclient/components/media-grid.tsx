@@ -33,6 +33,10 @@ type MediaGridProps = {
    * 当提供 queryText 时走文本检索（可与 tag 组合），不要求 sessionId。
    */
   queryText?: string | null
+  /**
+   * 搜索逻辑模式：or | and
+   */
+  searchMode?: "or" | "and"
   onMediaClick: (media: MediaItem) => void
   onItemsChange?: (items: MediaItem[]) => void
   /**
@@ -88,6 +92,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     sessionId = null,
     tag = null,
     queryText = null,
+    searchMode = "or",
     onMediaClick,
     onItemsChange,
     mockMode = false,
@@ -250,6 +255,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         })
         if (isQueryMode) {
           params.set("query_text", trimmedQuery)
+          params.set("search_mode", searchMode)
           if (isTagMode) {
             params.set("tag", trimmedTag)
           }
@@ -921,11 +927,11 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-          <AlertDialogTitle>确认删除</AlertDialogTitle>
-          <AlertDialogDescription>
-              确定要删除选中的 {selectedIds.size} 个项目吗？将把原始文件移动到系统回收站/废纸篓（可恢复），同时从应用中移除并清理相关索引/缓存。
-          </AlertDialogDescription>
-          </AlertDialogHeader>
+              <AlertDialogTitle>确认删除</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除选中的 {selectedIds.size} 个项目吗？将把原始文件移动到系统回收站/废纸篓（可恢复），同时从应用中移除并清理相关索引/缓存。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel disabled={isDeleting} className="sm:order-1">取消</AlertDialogCancel>
               <AlertDialogAction

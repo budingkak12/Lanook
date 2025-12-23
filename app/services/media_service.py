@@ -293,39 +293,75 @@ _CLIP_SCORE_THRESHOLD = 0.25
 
 
 def _tokenize_query(text_val: str) -> List[str]:
-    parts = re.split(r"[\\s,，。；;、]+", text_val or "")
+    # 修正正则表达式：使用 \s 匹配空白符，而不是 \\s 匹配字面字符
+    parts = re.split(r"[\s,，。；;、]+", text_val or "")
     tokens = [p.strip() for p in parts if p and p.strip()]
     return tokens
 
 
-def _search_media_by_tags(db: Session, tokens: List[str]) -> Dict[int, float]:
+def _search_media_by_tags(db: Session, tokens: List[str], search_mode: str = "or") -> Dict[int, float]:
     if not tokens:
         return {}
-    tag_names: set[str] = set()
-    for token in tokens:
+    
+    if search_mode == "or":
+        tag_names: set[str] = set()
+        for token in tokens:
+            rows = (
+                db.query(TagDefinition.name)
+                .filter(TagDefinition.name.ilike(f"%{token}%"))
+                .limit(100)
+                .all()
+            )
+            for (name,) in rows:
+                tag_names.add(name)
+        if not tag_names:
+            return {}
         rows = (
-            db.query(TagDefinition.name)
-            .filter(TagDefinition.name.ilike(f"%{token}%"))
-            .limit(100)
+            db.query(MediaTag.media_id, func.max(MediaTag.confidence))
+            .filter(MediaTag.tag_name.in_(tag_names))
+            .group_by(MediaTag.media_id)
             .all()
         )
-        for (name,) in rows:
-            tag_names.add(name)
-    if not tag_names:
-        return {}
-    rows = (
-        db.query(MediaTag.media_id, func.max(MediaTag.confidence))
-        .filter(MediaTag.tag_name.in_(tag_names))
-        .group_by(MediaTag.media_id)
-        .all()
-    )
-    scores: Dict[int, float] = {}
-    for mid, conf in rows:
-        base = float(conf or 0.6)
-        # 给 WD 标签匹配一个中等分值，便于与 CLIP 分融合
-        score = max(_CLIP_SCORE_THRESHOLD, min(1.0, base))
-        scores[int(mid)] = max(scores.get(int(mid), 0.0), score)
-    return scores
+        scores: Dict[int, float] = {}
+        for mid, conf in rows:
+            base = float(conf or 0.6)
+            score = max(_CLIP_SCORE_THRESHOLD, min(1.0, base))
+            scores[int(mid)] = max(scores.get(int(mid), 0.0), score)
+        return scores
+    else:
+        # AND 逻辑：每个词都必须至少命中一个标签
+        media_token_hits: Dict[int, set[int]] = {}  # mid -> set of hit token indices
+        token_scores: Dict[int, float] = {}
+        
+        for i, token in enumerate(tokens):
+            tag_names = set()
+            rows = db.query(TagDefinition.name).filter(TagDefinition.name.ilike(f"%{token}%")).limit(100).all()
+            for (name,) in rows:
+                tag_names.add(name)
+            
+            if not tag_names:
+                continue
+                
+            tag_rows = (
+                db.query(MediaTag.media_id, func.max(MediaTag.confidence))
+                .filter(MediaTag.tag_name.in_(tag_names))
+                .group_by(MediaTag.media_id)
+                .all()
+            )
+            for mid, conf in tag_rows:
+                mid = int(mid)
+                if mid not in media_token_hits:
+                    media_token_hits[mid] = set()
+                media_token_hits[mid].add(i)
+                score = max(_CLIP_SCORE_THRESHOLD, min(1.0, float(conf or 0.6)))
+                token_scores[mid] = max(token_scores.get(mid, 0.0), score)
+        
+        target_count = len(tokens)
+        and_scores = {
+            mid: score for mid, score in token_scores.items() 
+            if len(media_token_hits.get(mid, set())) == target_count
+        }
+        return and_scores
 
 
 def _search_media_by_text(
@@ -333,6 +369,7 @@ def _search_media_by_text(
     *,
     query_text: str,
     tag: Optional[str],
+    search_mode: str = "or",
     offset: int,
     limit: int,
 ) -> PageResponse:
@@ -354,25 +391,55 @@ def _search_media_by_text(
             continue
         clip_scores[int(item["mediaId"])] = score
 
-    tag_scores = _search_media_by_tags(db, tokens)
+    tag_scores = _search_media_by_tags(db, tokens, search_mode=search_mode)
 
     combined: Dict[int, float] = {}
-    for mid, sc in clip_scores.items():
-        combined[mid] = max(combined.get(mid, 0.0), sc)
-    for mid, sc in tag_scores.items():
-        combined[mid] = max(combined.get(mid, 0.0), sc)
+    if search_mode == "or":
+        # OR 模式：简单的并集，取最高分
+        for mid, sc in clip_scores.items():
+            combined[mid] = max(combined.get(mid, 0.0), sc)
+        for mid, sc in tag_scores.items():
+            combined[mid] = max(combined.get(mid, 0.0), sc)
+    else:
+        # AND 模式：语义增强模型
+        # 1. 基础集是命中了所有标签词项的媒体 (tag_scores 已经在前面算好了交集)
+        # 2. 补充集是 CLIP 分数极高的媒体 (语义非常契合)
+        
+        # 将 CLIP 分数作为基础
+        for mid, sc in clip_scores.items():
+            # 在 AND 模式下，CLIP 本身就是对全句的理解，具有天然的“聚合”属性
+            # 如果分数够高，我们视其为符合条件
+            if sc > 0.45: # 更严格的 CLIP 阈值
+                combined[mid] = max(combined.get(mid, 0.0), sc)
+        
+        # 融入标签交集结果
+        for mid, sc in tag_scores.items():
+            combined[mid] = max(combined.get(mid, 0.0), sc)
 
     if tag:
-        tag_def = db.query(TagDefinition).filter(TagDefinition.name == tag).first()
-        if not tag_def:
-            raise InvalidTagError("invalid tag")
-        allowed_ids = {
-            mid
-            for (mid,) in db.query(MediaTag.media_id)
-            .filter(MediaTag.tag_name == tag, MediaTag.media_id.in_(combined.keys()))
-            .all()
-        }
-        combined = {mid: sc for mid, sc in combined.items() if mid in allowed_ids}
+        # 处理显式指定的 tag 参数（混合输入中的 Pill 或路径跳转）
+        # 使用 ilike 确保大小写不敏感，防止前端传参格式差异
+        tag_def = db.query(TagDefinition).filter(TagDefinition.name.ilike(tag)).first()
+        if tag_def:
+            # 获取该标签下的所有媒体 ID
+            actual_tag_name = tag_def.name
+            allowed_ids = {
+                mid
+                for (mid,) in db.query(MediaTag.media_id)
+                .filter(MediaTag.tag_name == actual_tag_name)
+                .all()
+            }
+            
+            if search_mode == "or":
+                # OR 模式：将标签内容合并入结果集（UNION）
+                for mid in allowed_ids:
+                    # 给予一个基础置信分，确保它能出现在结果中
+                    combined[mid] = max(combined.get(mid, 0.0), 0.75)
+            else:
+                # AND 模式：强制执行交集筛选（INTERSECT）
+                combined = {mid: sc for mid, sc in combined.items() if mid in allowed_ids}
+
+
 
     if not combined:
         return PageResponse(items=[], offset=offset, hasMore=False)
@@ -423,13 +490,14 @@ def get_media_page(
     seed: Optional[str],
     tag: Optional[str],
     query_text: Optional[str],
+    search_mode: str = "or",
     offset: int,
     limit: int,
     order: str,
 ) -> PageResponse:
     # 文本检索模式：支持 WD 标签匹配 + Chinese-CLIP，允许与标签组合过滤
     if query_text:
-        return _search_media_by_text(db, query_text=query_text, tag=tag, offset=offset, limit=limit)
+        return _search_media_by_text(db, query_text=query_text, tag=tag, search_mode=search_mode, offset=offset, limit=limit)
 
     if tag:
         tag_def = db.query(TagDefinition).filter(TagDefinition.name == tag).first()
