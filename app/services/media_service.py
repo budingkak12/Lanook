@@ -302,6 +302,10 @@ def _tokenize_query(text_val: str) -> List[str]:
 def _search_media_by_tags(db: Session, tokens: List[str], search_mode: str = "or") -> Dict[int, float]:
     if not tokens:
         return {}
+
+    # 约定：当只有 1 个词时，AND 与 OR 等价（避免 AND 分支阈值更严导致“OR 有结果但 AND 没结果”）。
+    if search_mode == "and" and len(tokens) <= 1:
+        search_mode = "or"
     
     if search_mode == "or":
         tag_names: set[str] = set()
@@ -374,6 +378,7 @@ def _search_media_by_text(
     limit: int,
 ) -> PageResponse:
     tokens = _tokenize_query(query_text)
+    effective_mode = "or" if (search_mode == "and" and len(tokens) <= 1) else search_mode
 
     clip_top_k = max(limit + offset + 50, 100)
     clip_payload = clip_service.search(
@@ -391,10 +396,10 @@ def _search_media_by_text(
             continue
         clip_scores[int(item["mediaId"])] = score
 
-    tag_scores = _search_media_by_tags(db, tokens, search_mode=search_mode)
+    tag_scores = _search_media_by_tags(db, tokens, search_mode=effective_mode)
 
     combined: Dict[int, float] = {}
-    if search_mode == "or":
+    if effective_mode == "or":
         # OR 模式：简单的并集，取最高分
         for mid, sc in clip_scores.items():
             combined[mid] = max(combined.get(mid, 0.0), sc)
