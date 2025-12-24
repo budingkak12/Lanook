@@ -44,7 +44,7 @@ def create_database_and_tables(echo: bool = True) -> None:
 def seed_initial_data(db_session) -> None:
     """填充预定义标签/系统设置。"""
     print("正在填充初始数据...")
-    predefined_tags = ["like", "favorite"]
+    predefined_tags = ["like", "favorite", "video"]
     for tag_name in predefined_tags:
         existing_tag = db_session.query(TagDefinition).filter(TagDefinition.name == tag_name).first()
         if not existing_tag:

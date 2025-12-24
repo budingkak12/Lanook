@@ -1,6 +1,7 @@
 package com.example.androidclient.data.remote
 import com.example.androidclient.data.model.TagRequest
 import com.example.androidclient.data.model.TagResponse
+import com.example.androidclient.data.model.TagListWithTranslationResponse
 import com.example.androidclient.data.model.ThumbnailListResponse
 import com.example.androidclient.data.model.DeleteBatchRequest
 import com.example.androidclient.data.model.DeleteBatchResponse
@@ -67,6 +68,15 @@ interface ApiService {
      */
     @GET("tags")
     suspend fun getAllTags(): com.example.androidclient.data.model.TagListResponse
+
+    /**
+     * 获取全部标签（带译名）
+     * 响应：{"tags": [{"name":"aircraft","display_name":"飞机"}, ...]}
+     */
+    @GET("tags")
+    suspend fun getAllTagsWithTranslation(
+        @Query("with_translation") withTranslation: Boolean = true
+    ): TagListWithTranslationResponse
 
     @GET("filesystem/roots")
     suspend fun getFilesystemRoots(): List<DirectoryEntry>

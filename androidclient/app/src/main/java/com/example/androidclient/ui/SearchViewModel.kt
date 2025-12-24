@@ -23,7 +23,6 @@ import kotlinx.coroutines.launch
 
 class SearchViewModel(
     private val api: ApiService,
-    private val translate: Map<String, String> = emptyMap()
 ) : ViewModel() {
 
     private val mediaRepository = MediaRepository(api)
@@ -43,10 +42,10 @@ class SearchViewModel(
     init {
         // 首次进入拉取全部标签并构造显示名
         viewModelScope.launch {
-            runCatching { api.getAllTags() }
+            runCatching { api.getAllTagsWithTranslation() }
                 .onSuccess { resp ->
-                    val mapped = resp.tags.map { name ->
-                        TagOption(name = name, displayName = translate[name])
+                    val mapped = resp.tags.map { tag ->
+                        TagOption(name = tag.name, displayName = tag.display_name)
                     }
                     _allTags.value = mapped
                 }
@@ -88,13 +87,12 @@ class SearchViewModel(
 }
 
 class SearchViewModelFactory(
-    private val api: ApiService,
-    private val translate: Map<String, String>
+    private val api: ApiService
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(SearchViewModel::class.java)) {
-            return SearchViewModel(api, translate) as T
+            return SearchViewModel(api) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

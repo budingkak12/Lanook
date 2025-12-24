@@ -44,7 +44,6 @@ import com.example.androidclient.ui.settings.TasksViewModel
 import com.example.androidclient.ui.settings.TasksViewModelFactory
 import com.example.androidclient.ui.setup.ChooseMediaPathScreen
 import com.example.androidclient.ui.setup.SetupViewModel
-import com.example.androidclient.util.TagTranslator
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -85,7 +84,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                val translate = remember { TagTranslator.load(applicationContext) }
                 val connectionViewModel: ConnectionViewModel = viewModel(
                     factory = ConnectionViewModel.Factory(connectionRepository)
                 )
@@ -206,8 +204,8 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) {
-                        val searchViewModelFactory = remember(NetworkModule.currentBaseUrl(), translate) {
-                            SearchViewModelFactory(NetworkModule.api, translate)
+                        val searchViewModelFactory = remember(NetworkModule.currentBaseUrl()) {
+                            SearchViewModelFactory(NetworkModule.api)
                         }
                         val mainViewModel: MainViewModel = viewModel()
                         val searchViewModel: SearchViewModel = viewModel(factory = searchViewModelFactory)
