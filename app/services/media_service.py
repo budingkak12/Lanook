@@ -417,27 +417,27 @@ def _search_media_by_text(
             combined[mid] = max(combined.get(mid, 0.0), sc)
 
     if tag:
-        # 处理显式指定的 tag 参数（混合输入中的 Pill 或路径跳转）
-        # 使用 ilike 确保大小写不敏感，防止前端传参格式差异
+        # 显式 tag 参数应当是“过滤条件”，而不是“并集补充”：
+        # - 期望：tag=aircraft 时，无论 search_mode=or/and，都只能返回带该标签的媒体；
+        # - 否则会把 CLIP/文本检索的无关结果并进来，导致前端看到大量不相关内容。
+        #
+        # 使用 ilike 确保大小写不敏感；但若 tag 不存在，则直接报错，避免静默放宽过滤。
         tag_def = db.query(TagDefinition).filter(TagDefinition.name.ilike(tag)).first()
-        if tag_def:
-            # 获取该标签下的所有媒体 ID
-            actual_tag_name = tag_def.name
-            allowed_ids = {
-                mid
-                for (mid,) in db.query(MediaTag.media_id)
-                .filter(MediaTag.tag_name == actual_tag_name)
-                .all()
-            }
-            
-            if search_mode == "or":
-                # OR 模式：将标签内容合并入结果集（UNION）
-                for mid in allowed_ids:
-                    # 给予一个基础置信分，确保它能出现在结果中
-                    combined[mid] = max(combined.get(mid, 0.0), 0.75)
-            else:
-                # AND 模式：强制执行交集筛选（INTERSECT）
-                combined = {mid: sc for mid, sc in combined.items() if mid in allowed_ids}
+        if not tag_def:
+            raise InvalidTagError("invalid tag")
+
+        actual_tag_name = tag_def.name
+        allowed_ids = [
+            int(mid)
+            for (mid,) in db.query(MediaTag.media_id)
+            .filter(MediaTag.tag_name == actual_tag_name)
+            .all()
+        ]
+        if not allowed_ids:
+            return PageResponse(items=[], offset=offset, hasMore=False)
+
+        # 保留合集内“所有”该标签媒体，query_text 仅用于排序（未命中者得分为 0）。
+        combined = {mid: float(combined.get(mid, 0.0)) for mid in allowed_ids}
 
 
 
