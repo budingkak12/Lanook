@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import { apiFetch, batchDeleteMedia, friendlyDeleteError, resolveApiUrl } from "@/lib/api"
 import { hasSeenDeleteConfirm, markSeenDeleteConfirm } from "@/lib/delete-confirm"
-import { FloatingDeleteButton } from "@/components/media-grid/floating-delete-button"
+import { FloatingSelectionActions } from "@/components/media-grid/floating-selection-actions"
 import { SelectionPreviewDialog } from "@/components/media-grid/selection-preview-dialog"
+import { AddToCollectionModal } from "@/components/add-to-collection-modal"
+import { FolderPlus } from "lucide-react"
 
 type MediaGridProps = {
   sessionId?: string | null
@@ -37,6 +39,10 @@ type MediaGridProps = {
    * 搜索逻辑模式：or | and
    */
   searchMode?: "or" | "and"
+  /**
+   * 当提供 collectionId 时，从指定合集获取媒体。
+   */
+  collectionId?: number | null
   onMediaClick: (media: MediaItem) => void
   onItemsChange?: (items: MediaItem[]) => void
   /**
@@ -93,6 +99,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     tag = null,
     queryText = null,
     searchMode = "or",
+    collectionId = null,
     onMediaClick,
     onItemsChange,
     mockMode = false,
@@ -136,7 +143,8 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     subtractive: boolean
   } | null>(null)
   const rafRef = useRef<number | null>(null)
-  const pendingBoxRef = useRef<{ minX: number; minY: number; maxX: number; maxY: number } | null>(null)
+  const pendingBoxRef = useRef({ minX: 0, minY: 0, maxX: 0, maxY: 0 })
+  const [showAddToCollection, setShowAddToCollection] = useState(false)
 
   const resetSelection = useCallback(() => {
     setSelectedIds(new Set())
@@ -200,9 +208,9 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       const isQueryMode = trimmedQuery.length > 0
       const effectiveSessionId = currentSessionId || sessionId
 
-      // 无标签、无文本时才需要 seed；有文本则允许无 sessionId
+      // 无标签、无文本、无合集时才需要 seed；有文本则允许无 sessionId
       if (!mockMode) {
-        if (!isTagMode && !isQueryMode && !effectiveSessionId) {
+        if (!isTagMode && !isQueryMode && !collectionId && !effectiveSessionId) {
           setMediaItems([])
           setHasMore(false)
           setError("尚未获取会话，请稍候重试。")
@@ -261,6 +269,26 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
           }
         } else if (isTagMode) {
           params.set("tag", trimmedTag)
+        } else if (collectionId) {
+          // 合集接口路径不同，这里做一个特殊跳转或者在 MediaGrid 里适配
+          const response = await apiFetch(`/collections/${collectionId}/items?${params.toString()}`, { signal: controller.signal })
+          const data = (await response.json()) as MediaListItem[]
+          // 合集接口目前返回的是 MediaListItem[] 而不是 PageResponse，需要适配
+          const nextItems = normalizeItems(data)
+          let addedCount = 0
+          setMediaItems((prev) => {
+            const seen = new Set(prev.map((item) => item.id))
+            const uniqueNext = nextItems.filter((item) => !seen.has(item.id))
+            if (mode === "replace") {
+              addedCount = nextItems.length
+              return nextItems
+            }
+            addedCount = uniqueNext.length
+            return [...prev, ...uniqueNext]
+          })
+          setHasMore(data.length === PAGE_SIZE)
+          setError(null)
+          return addedCount
         } else {
           params.set("seed", effectiveSessionId!)
           params.set("order", "seeded")
@@ -337,7 +365,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
     setError(null)
     abortRef.current?.abort()
 
-    if (!mockMode && !sessionId && trimmedTag.length === 0 && trimmedQuery.length === 0) {
+    if (!mockMode && !sessionId && trimmedTag.length === 0 && trimmedQuery.length === 0 && !collectionId) {
       return
     }
 
@@ -351,7 +379,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       abortRef.current?.abort()
       fetchingRef.current = false
     }
-  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag, queryText, mockMode])
+  }, [sessionId, fetchMedia, resetSelection, refreshVersion, tag, queryText, mockMode, collectionId])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -667,7 +695,7 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
       const state = dragStateRef.current
       if (!state?.active || state.pointerId !== e.pointerId) return
       dragStateRef.current = null
-      pendingBoxRef.current = null
+      pendingBoxRef.current = { minX: 0, minY: 0, maxX: 0, maxY: 0 }
       setSelectionBox(null)
       if (rafRef.current != null) {
         window.cancelAnimationFrame(rafRef.current)
@@ -755,23 +783,45 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
             </Button>
             <span className="text-sm text-muted-foreground">已选择 {selectedIds.size} 项</span>
           </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => {
-              if (hasSeenDeleteConfirm()) {
-                void handleDeleteSelected()
-                return
-              }
-              setShowDeleteDialog(true)
-            }}
-            disabled={selectedIds.size === 0}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            删除
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddToCollection(true)}
+              disabled={selectedIds.size === 0}
+            >
+              <FolderPlus className="w-4 h-4 mr-2" />
+              添加到合集
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                if (hasSeenDeleteConfirm()) {
+                  void handleDeleteSelected()
+                  return
+                }
+                setShowDeleteDialog(true)
+              }}
+              disabled={selectedIds.size === 0}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              删除
+            </Button>
+          </div>
         </div>
       )}
+
+      <AddToCollectionModal
+        open={showAddToCollection}
+        onOpenChange={setShowAddToCollection}
+        selectedMediaIds={Array.from(selectedIds).map(id => parseInt(id)).filter(id => !isNaN(id))}
+        searchContext={queryText ? { queryText, searchMode, tag } : null}
+        onSuccess={() => {
+          setSelectedIds(new Set())
+          setIsSelectionMode(false)
+        }}
+      />
 
       <div
         ref={scrollContainerRef}
@@ -868,9 +918,10 @@ export const MediaGrid = forwardRef<MediaGridHandle, MediaGridProps>(function Me
 
       {isDesktopSelection ? (
         <>
-          <FloatingDeleteButton
+          <FloatingSelectionActions
             count={selectedIds.size}
-            onClick={() => {
+            onAddToCollection={() => setShowAddToCollection(true)}
+            onDelete={() => {
               if (isPreviewDelete) {
                 setShowPreviewDialog(true)
                 return

@@ -6,6 +6,7 @@
     "feed": "随机流",
     "albums": "相册",
     "search": "搜索",
+    "collections": "合集",
     "settings": "设置"
   },
   "session": {
@@ -152,5 +153,17 @@
   "errors": {
     "requestFailed": "请求失败: {{status}}",
     "unknownError": "未知错误"
+  },
+  "collections": {
+    "title": "合集管理",
+    "subtitle": "管理您的个性化媒体资产集",
+    "new": "新建合集",
+    "noDescription": "在这个合集中珍藏您的精彩瞬间",
+    "emptyTitle": "空空如也",
+    "emptyDesc": "快来创建您的第一个合集，把美好的回忆聚集在一起吧",
+    "createNow": "立即创建",
+    "confirmDelete": "确定删除该合集吗？",
+    "enterName": "请输入合集名称",
+    "deleteSuccess": "合集删除成功"
   }
 }

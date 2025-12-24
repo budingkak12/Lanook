@@ -1,3 +1,5 @@
+import type { MediaItem } from "@/app/(main)/types"
+
 const DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1"])
 
 let cachedApiBase: string | null = null
@@ -134,7 +136,7 @@ export async function deleteMedia(mediaId: number, deleteFile = true, deleteMode
   const response = await apiFetch(
     `/media/${mediaId}?delete_file=${deleteFile ? "true" : "false"}&delete_mode=${deleteMode}`,
     {
-    method: "DELETE",
+      method: "DELETE",
     },
   )
   await ensureOk(response)
@@ -525,7 +527,7 @@ export async function createMediaSource(request: CreateSourceRequest): Promise<M
 }
 
 // 带额外元信息的创建：识别"已存在"并透出消息
-export async function createMediaSourceWithMeta(request: CreateSourceRequest): Promise<{ source: MediaSource; existed: boolean; message: string | null }>{
+export async function createMediaSourceWithMeta(request: CreateSourceRequest): Promise<{ source: MediaSource; existed: boolean; message: string | null }> {
   const resp = await apiFetch("/setup/source", buildJsonRequestInit("POST", request))
   if (resp.status === 409) {
     // 冲突：父子路径重叠
@@ -718,4 +720,53 @@ export async function browseNasFolders(request: NasBrowseRequest): Promise<NasBr
   const response = await apiFetch("/network/browse", buildJsonRequestInit("POST", request))
   const ensured = await ensureOk(response)
   return (await ensured.json()) as NasBrowseResponse
+}
+// ===== 合集 (Collection) API =====
+
+export interface Collection {
+  id: number
+  name: string
+  description?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export async function getCollections(): Promise<Collection[]> {
+  return getJson<Collection[]>("/collections/")
+}
+
+export async function createCollection(name: string, description?: string): Promise<Collection> {
+  return getJson<Collection>("/collections/", buildJsonRequestInit("POST", { name, description }))
+}
+
+export async function deleteCollection(id: number): Promise<void> {
+  const resp = await apiFetch(`/collections/${id}`, { method: "DELETE" })
+  await ensureOk(resp)
+}
+
+export async function updateCollection(id: number, data: { name?: string; description?: string }): Promise<Collection> {
+  return getJson<Collection>(`/collections/${id}`, buildJsonRequestInit("PATCH", data))
+}
+
+export async function getCollectionItems(id: number, offset = 0, limit = 20): Promise<MediaItem[]> {
+  return getJson<MediaItem[]>(`/collections/${id}/items?offset=${offset}&limit=${limit}`)
+}
+
+export async function addToCollection(
+  id: number,
+  data: {
+    asset_ids?: number[]
+    scan_paths?: string[]
+    recursive?: boolean
+    from_search_result?: boolean
+    search_query?: string
+    search_mode?: "or" | "and"
+    tag?: string | null
+  },
+): Promise<{ added_count: number }> {
+  return getJson<{ added_count: number }>(`/collections/${id}/items`, buildJsonRequestInit("POST", data))
+}
+
+export async function removeFromCollection(id: number, mediaIds: number[]): Promise<{ removed_count: number }> {
+  return getJson<{ removed_count: number }>(`/collections/${id}/items`, buildJsonRequestInit("DELETE", mediaIds))
 }

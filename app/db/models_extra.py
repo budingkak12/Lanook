@@ -99,3 +99,21 @@ class FaceProcessingState(Base):
     pipeline_signature = Column(String, nullable=True)
     last_error = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Collection(Base):
+    __tablename__ = "collections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CollectionItem(Base):
+    __tablename__ = "collection_items"
+
+    collection_id = Column(Integer, ForeignKey("collections.id"), primary_key=True)
+    media_id = Column(Integer, ForeignKey("media.id"), primary_key=True)
+    added_at = Column(DateTime, default=datetime.utcnow)

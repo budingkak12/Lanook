@@ -1,12 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
-import { Eye, EyeOff, Search as SearchIcon, RotateCcw } from "lucide-react"
+import { Eye, EyeOff, FolderPlus, Search as SearchIcon, RotateCcw } from "lucide-react"
 
 import { MediaGrid } from "@/components/media-grid"
 import { MediaCollectionView } from "@/components/media-collection-view"
 import { cn } from "@/lib/utils"
 import { getAllTags, type TagItem } from "@/lib/api"
+import { AddToCollectionModal } from "@/components/add-to-collection-modal"
+import { Button } from "@/components/ui/button"
 import {
   SearchStandaloneButton,
 } from "@/components/search/search-capsule"
@@ -29,6 +31,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   const [appliedTag, setAppliedTag] = useState<string | null>(null)
   const [appliedSearchMode, setAppliedSearchMode] = useState<"or" | "and">("or")
   const [searchMode, setSearchMode] = useState<"or" | "and">("or")
+  const [showAddAllToCollection, setShowAddAllToCollection] = useState(false)
   const [refreshVersion, setRefreshVersion] = useState(0)
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [isLoadingTags, setIsLoadingTags] = useState(false)
@@ -229,23 +232,53 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
       <div className="flex-1 min-w-0 flex flex-col bg-background">
         <div className="flex-1 overflow-y-auto">
           {hasActiveQuery ? (
-            <div className="p-0 h-full">
-              <MediaCollectionView
-                className="h-full"
-                renderList={({ listRef, onMediaClick, onItemsChange }) => (
-                  <MediaGrid
-                    ref={listRef}
-                    key={refreshVersion}
-                    tag={appliedTag}
-                    queryText={appliedQuery}
-                    searchMode={appliedSearchMode}
-                    sessionId={null}
-                    selectionBehavior="desktop"
-                    deleteBehavior="backend"
-                    onMediaClick={onMediaClick}
-                    onItemsChange={onItemsChange}
-                  />
-                )}
+            <div className="h-full flex flex-col">
+              <div className="px-4 py-2 border-b border-border/50 flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddAllToCollection(true)}
+                  disabled={!appliedQuery || appliedQuery.trim().length === 0}
+                >
+                  <FolderPlus className="w-4 h-4 mr-2" />
+                  将全部结果加入合集
+                </Button>
+              </div>
+
+              <div className="flex-1 min-h-0">
+                <MediaCollectionView
+                  className="h-full"
+                  renderList={({ listRef, onMediaClick, onItemsChange }) => (
+                    <MediaGrid
+                      ref={listRef}
+                      key={refreshVersion}
+                      tag={appliedTag}
+                      queryText={appliedQuery}
+                      searchMode={appliedSearchMode}
+                      sessionId={null}
+                      selectionBehavior="desktop"
+                      deleteBehavior="backend"
+                      onMediaClick={onMediaClick}
+                      onItemsChange={onItemsChange}
+                    />
+                  )}
+                />
+              </div>
+
+              <AddToCollectionModal
+                open={showAddAllToCollection}
+                onOpenChange={setShowAddAllToCollection}
+                selectedMediaIds={[]}
+                searchContext={
+                  appliedQuery
+                    ? {
+                      queryText: appliedQuery,
+                      searchMode: appliedSearchMode,
+                      tag: appliedTag,
+                    }
+                    : null
+                }
               />
             </div>
           ) : (

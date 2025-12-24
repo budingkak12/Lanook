@@ -9,7 +9,7 @@ from .constants import (
     SUPPORTED_VIDEO_EXTS,
 )
 from .models import AppSetting, FaceCluster, FaceEmbedding, Media, MediaTag, TagDefinition
-from .models_extra import ClipEmbedding, MediaCacheState
+from .models_extra import ClipEmbedding, Collection, CollectionItem, MediaCacheState
 from .bootstrap import (
     clear_media_library,
     create_database_and_tables,
@@ -32,6 +32,8 @@ __all__ = [
     "FaceEmbedding",
     "FaceCluster",
     "MediaCacheState",
+    "Collection",
+    "CollectionItem",
     "AUTO_SCAN_ENABLED_KEY",
     "MEDIA_ROOT_KEY",
     "SCAN_INTERVAL_KEY",

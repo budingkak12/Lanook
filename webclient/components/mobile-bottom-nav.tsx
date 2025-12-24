@@ -59,6 +59,6 @@ export function MobileBottomNav({ activeView, onViewChange }: MobileBottomNavPro
         </div>
       </nav>
 
-      </div>
+    </div>
   )
 }

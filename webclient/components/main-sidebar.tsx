@@ -25,32 +25,32 @@ export function MainSidebar({
 }: MainSidebarProps) {
   const { t } = useTranslation()
 
-  const steps = useMemo(() => ([
+  const steps = [
     {
       id: 1,
       title: t("sidebar.feed"),
       viewId: "feed" as const,
-      icon: <Shuffle className="w-4 h-4" />,
+      icon: <Shuffle />,
     },
     {
       id: 2,
       title: t("sidebar.albums"),
       viewId: "albums" as const,
-      icon: <FolderOpen className="w-4 h-4" />,
+      icon: <FolderOpen />,
     },
     {
       id: 3,
       title: t("sidebar.search"),
       viewId: "search" as const,
-      icon: <Search className="w-4 h-4" />,
+      icon: <Search />,
     },
     {
-      id: 4,
+      id: 5,
       title: t("sidebar.settings"),
       viewId: "settings" as const,
-      icon: <Settings className="w-4 h-4" />,
+      icon: <Settings />,
     },
-  ]), [t])
+  ]
 
   const getCurrentStepId = () => {
     const currentStep = steps.find(step => step.viewId === activeView)
