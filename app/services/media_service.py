@@ -689,6 +689,31 @@ def list_tags_with_translation(db: Session) -> List[Dict[str, str | None]]:
     return enriched
 
 
+def list_tags_with_translation_since(
+    db: Session,
+    *,
+    since_dt: datetime,
+    limit: int = 500,
+) -> List[Dict[str, str | None]]:
+    """增量返回新创建的标签（用于前端本地联想缓存）。"""
+    translations = _load_tag_translations()
+    rows = (
+        db.query(TagDefinition)
+        .filter(TagDefinition.created_at.isnot(None) & (TagDefinition.created_at > since_dt))
+        .order_by(TagDefinition.created_at.asc(), TagDefinition.name.asc())
+        .limit(limit)
+        .all()
+    )
+    enriched: List[Dict[str, str | None]] = []
+    for row in rows:
+        name = str(row.name)
+        display = translations.get(name)
+        if display is None:
+            display = translations.get(_normalize_tag_key(name))
+        enriched.append({"name": name, "display_name": display})
+    return enriched
+
+
 # ---------------------------------------------------------------------------
 # 删除
 # ---------------------------------------------------------------------------

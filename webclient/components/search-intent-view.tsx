@@ -6,7 +6,7 @@ import { Eye, EyeOff, FolderPlus, Search as SearchIcon, RotateCcw } from "lucide
 import { MediaGrid } from "@/components/media-grid"
 import { MediaCollectionView } from "@/components/media-collection-view"
 import { cn } from "@/lib/utils"
-import { getAllTags, type TagItem } from "@/lib/api"
+import { getAllTags, subscribeAllTags, type TagItem } from "@/lib/api"
 import { AddToCollectionModal } from "@/components/add-to-collection-modal"
 import { Button } from "@/components/ui/button"
 import {
@@ -44,6 +44,16 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
   useEffect(() => {
     let mounted = true
     setIsLoadingTags(true)
+    const unsubscribe = subscribeAllTags((tags) => {
+      if (!mounted) return
+      const mapped: TagOption[] = tags.map((tag: TagItem) => ({
+        name: tag.name,
+        displayName: tag.display_name ?? undefined,
+      }))
+      setAllTags(mapped)
+      setTagError(null)
+      setIsLoadingTags(false)
+    })
     getAllTags()
       .then((tags) => {
         if (!mounted) return
@@ -63,6 +73,7 @@ export function SearchIntentView({ variant = "main" }: SearchIntentViewProps) {
       })
     return () => {
       mounted = false
+      unsubscribe()
     }
   }, [])
 

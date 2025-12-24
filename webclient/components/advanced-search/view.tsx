@@ -6,7 +6,7 @@ import { Filter, PanelsTopLeft, Percent, Rocket, Shuffle, Sparkles } from "lucid
 import { MediaGrid } from "@/components/media-grid"
 import { MediaCollectionView } from "@/components/media-collection-view"
 import { Button } from "@/components/ui/button"
-import { getAllTags, type TagItem } from "@/lib/api"
+import { getAllTags, subscribeAllTags, type TagItem } from "@/lib/api"
 import {
   DIRECTORY_OPTIONS,
   LENGTH_BUCKETS,
@@ -60,6 +60,16 @@ export function AdvancedSearchView() {
   useEffect(() => {
     let mounted = true
     setIsLoadingTags(true)
+    const unsubscribe = subscribeAllTags((tags) => {
+      if (!mounted) return
+      setAllTags(
+        tags.map((t: TagItem) => ({
+          name: t.name,
+          displayName: t.display_name,
+        })),
+      )
+      setIsLoadingTags(false)
+    })
     getAllTags()
       .then((tags) => {
         if (!mounted) return
@@ -75,6 +85,7 @@ export function AdvancedSearchView() {
       })
     return () => {
       mounted = false
+      unsubscribe()
     }
   }, [])
 

@@ -212,6 +212,19 @@ def _ensure_schema_upgrades() -> None:
         except Exception:
             pass
 
+    if "tag_definitions" in table_names:
+        columns = {col["name"] for col in inspector.get_columns("tag_definitions")}
+        if "created_at" not in columns:
+            try:
+                _alter("ALTER TABLE tag_definitions ADD COLUMN created_at DATETIME")
+            except Exception:
+                pass
+        try:
+            # SQLite: CURRENT_TIMESTAMP 为 UTC
+            _alter("UPDATE tag_definitions SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP)")
+        except Exception:
+            pass
+
     _backfill_media_sources()
     repair_media_sources_metadata()
 

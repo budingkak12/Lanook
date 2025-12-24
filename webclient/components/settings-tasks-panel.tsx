@@ -13,6 +13,7 @@ import {
   getAssetPipelineStatus,
   getScanTaskStatus,
 } from "@/lib/api"
+import { subscribeTasksSnapshot } from "@/lib/realtime"
 
 function formatPercent(numerator: number, denominator: number | null | undefined): string {
   if (!denominator || denominator <= 0) return "—"
@@ -109,8 +110,13 @@ export function SettingsTasksPanel() {
       void loadAll()
     }
     window.addEventListener("media-sources-changed", handler)
+    const unsubscribe = subscribeTasksSnapshot((snapshot) => {
+      setScanStatus(snapshot.scan)
+      setAssetStatus(snapshot.asset)
+    })
     return () => {
       window.removeEventListener("media-sources-changed", handler)
+      unsubscribe()
     }
   }, [])
 

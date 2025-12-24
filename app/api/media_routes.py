@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -77,12 +79,21 @@ def remove_tag(req: TagRequest, db: Session = Depends(get_db)):
 @router.get("/tags")
 def list_tags(
     with_translation: bool = Query(False, description="返回包含 display_name 的对象数组"),
+    since: str | None = Query(None, description="增量：仅返回该时间之后新增的标签（ISO8601）；仅 with_translation=true 时生效"),
     db: Session = Depends(get_db),
 ):
     try:
         if with_translation:
-            tags = media_service.list_tags_with_translation(db)
-            return {"tags": tags}
+            if since:
+                # 允许 Z 后缀
+                raw = since.strip()
+                if raw.endswith("Z"):
+                    raw = raw[:-1] + "+00:00"
+                dt = datetime.fromisoformat(raw)
+                tags = media_service.list_tags_with_translation_since(db, since_dt=dt)
+            else:
+                tags = media_service.list_tags_with_translation(db)
+            return {"tags": tags, "since": since}
         tags = media_service.list_tags(db)
         return {"tags": tags}
     except ServiceError as exc:

@@ -6,7 +6,7 @@ import { MediaGrid } from "@/components/media-grid"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { getAllTags, type TagItem } from "@/lib/api"
+import { getAllTags, subscribeAllTags, type TagItem } from "@/lib/api"
 import { Loader2, Search, X, Filter } from "lucide-react"
 
 type SearchViewProps = {
@@ -64,6 +64,16 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
   useEffect(() => {
     let mounted = true
     setIsLoadingTags(true)
+    const unsubscribe = subscribeAllTags((tags) => {
+      if (!mounted) return
+      const mapped: TagOption[] = tags.map((tag: TagItem) => ({
+        name: tag.name,
+        displayName: tag.display_name ?? undefined,
+      }))
+      setAllTags(mapped)
+      setTagError(null)
+      setIsLoadingTags(false)
+    })
     getAllTags()
       .then((tags) => {
         if (!mounted) return
@@ -83,6 +93,7 @@ export function SearchView({ onMediaClick }: SearchViewProps) {
       })
     return () => {
       mounted = false
+      unsubscribe()
     }
   }, [])
 

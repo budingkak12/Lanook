@@ -27,6 +27,7 @@ class TagDefinition(Base):
     __tablename__ = "tag_definitions"
 
     name = Column(String, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=True)
 
 
 class MediaTag(Base):

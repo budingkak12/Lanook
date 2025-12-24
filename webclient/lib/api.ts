@@ -187,6 +187,7 @@ export async function getAllTags(): Promise<TagItem[]> {
         (tag): tag is TagItem => typeof tag?.name === "string" && tag.name.trim().length > 0,
       )
       cachedAllTags = sanitized
+      notifyAllTagsListeners()
       return cachedAllTags
     } catch {
       // 这里必须抛错：调用方需要知道标签加载失败，否则会表现为“无联想结果”且无提示。
@@ -197,6 +198,101 @@ export async function getAllTags(): Promise<TagItem[]> {
   })()
 
   return fetchingAllTags
+}
+
+type AllTagsListener = (tags: TagItem[]) => void
+const allTagsListeners = new Set<AllTagsListener>()
+let tagsEventSource: EventSource | null = null
+
+function notifyAllTagsListeners() {
+  if (!cachedAllTags) return
+  for (const listener of allTagsListeners) {
+    try {
+      listener(cachedAllTags)
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+function upsertTagItems(next: TagItem[]) {
+  const current = cachedAllTags ?? []
+  const map = new Map<string, TagItem>()
+  for (const item of current) {
+    if (typeof item?.name === "string" && item.name.trim()) {
+      map.set(item.name, item)
+    }
+  }
+  for (const item of next) {
+    if (typeof item?.name === "string" && item.name.trim()) {
+      map.set(item.name, item)
+    }
+  }
+  cachedAllTags = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  notifyAllTagsListeners()
+}
+
+function ensureTagsSseStarted() {
+  if (typeof window === "undefined") return
+  if (tagsEventSource) return
+
+  const url = resolveApiUrl("/events/tags")
+  const es = new EventSource(url)
+  tagsEventSource = es
+
+  es.addEventListener("snapshot", (evt) => {
+    try {
+      const data = JSON.parse((evt as MessageEvent).data) as { tags?: TagItem[] }
+      const sanitized = (data.tags ?? []).filter(
+        (tag): tag is TagItem => typeof tag?.name === "string" && tag.name.trim().length > 0,
+      )
+      cachedAllTags = sanitized.sort((a, b) => a.name.localeCompare(b.name))
+      notifyAllTagsListeners()
+    } catch {
+      /* noop */
+    }
+  })
+
+  es.addEventListener("tag_added", (evt) => {
+    try {
+      const data = JSON.parse((evt as MessageEvent).data) as TagItem
+      if (typeof data?.name === "string" && data.name.trim().length > 0) {
+        upsertTagItems([data])
+      }
+    } catch {
+      /* noop */
+    }
+  })
+
+  es.onerror = () => {
+    // 让浏览器自动重连；如连接对象异常则重建
+    try {
+      es.close()
+    } catch {
+      /* noop */
+    }
+    tagsEventSource = null
+    // 延迟重连，避免后端重启时疯狂刷请求
+    window.setTimeout(() => ensureTagsSseStarted(), 1000)
+  }
+}
+
+/**
+ * 订阅标签列表（带后端 SSE 增量更新）。
+ * - 回调会在初次拿到 tags 后立即触发一次
+ * - 之后有新增标签会增量推送并触发回调
+ */
+export function subscribeAllTags(listener: AllTagsListener): () => void {
+  allTagsListeners.add(listener)
+  ensureTagsSseStarted()
+  void getAllTags()
+    .then(() => notifyAllTagsListeners())
+    .catch(() => {
+      /* noop */
+    })
+  return () => {
+    allTagsListeners.delete(listener)
+  }
 }
 
 export type MediaTag = {
