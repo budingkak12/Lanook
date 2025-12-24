@@ -8,7 +8,7 @@
 
   1. 进入工程目录：
 
-  cd /Users/wang/Documents/mytikt/Apple-app/Lanook
+  cd /Users/wang/Documents/Lanook/Apple-app/Lanook
 
   2. 一键打包：
 

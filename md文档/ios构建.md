@@ -1,5 +1,5 @@
 # Lanook iOS 未签名 IPA/TIPA 构建指引
-适用场景：为越狱/TrollStore 设备产出可安装包，无需苹果证书。项目根目录为 `mytikt/`，iOS 工程位于 `Apple-app/Lanook/`。
+适用场景：为越狱/TrollStore 设备产出可安装包，无需苹果证书。项目根目录为 `Lanook/`，iOS 工程位于 `Apple-app/Lanook/`。
 
 ## 前置条件
 - macOS + Xcode（已包含 iOS SDK）。
