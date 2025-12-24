@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.db import Media, MediaTag, TagDefinition
+from app.services.asset_pipeline import enqueue_security_gate
 from app.services.access_layer import SourceAccessLayer
 
 
@@ -24,6 +26,7 @@ def scan_into_db(
     existing = {path for (path,) in db.query(Media.absolute_path)}
     added = 0
     video_tag_ready = False
+    added_media_ids: list[int] = []
 
     try:
         for entry in mounted.diff(existing, limit=limit):
@@ -34,6 +37,9 @@ def scan_into_db(
                 source_id=resolved_source_id,
             )
             db.add(media)
+            db.flush()
+            if media.id:
+                added_media_ids.append(int(media.id))
 
             # 扫描到视频：额外打上 video 标签（用于前端/客户端按类型过滤）
             if entry.media_type == "video":
@@ -47,6 +53,14 @@ def scan_into_db(
             added += 1
         layer.complete_scan(mounted)
         db.commit()
+        # 提交后触发安检门（缩略图/元数据/向量/标签），避免和本次入库事务互相影响。
+        if os.environ.get("MEDIAAPP_GATE_ON_IMPORT", "1").strip().lower() not in {"0", "false", "off"}:
+            for mid in added_media_ids:
+                try:
+                    enqueue_security_gate(mid)
+                except Exception:
+                    # 安检门失败不应影响入库
+                    continue
     except Exception as exc:
         db.rollback()
         layer.fail_and_persist(mounted, exc)

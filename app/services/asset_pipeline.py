@@ -17,7 +17,9 @@ from sqlalchemy.orm import Session
 from app.db import Media, SessionLocal, create_database_and_tables
 from app.db.models_extra import AssetArtifact
 from app.services.asset_handlers.metadata import metadata_cache_lookup, metadata_generator
+from app.services.asset_handlers.tags import tags_cache_lookup, tags_generator
 from app.services.asset_handlers.transcode import transcode_cache_lookup, transcode_generator
+from app.services.asset_handlers.vector import vector_cache_lookup, vector_generator
 from app.services.asset_models import ArtifactPayload
 from app.services.thumbnails_service import get_or_generate_thumbnail, resolve_cached_thumbnail
 
@@ -27,6 +29,8 @@ class ArtifactType(str, Enum):
     METADATA = "metadata"
     PLACEHOLDER = "placeholder"
     TRANSCODE = "transcode"
+    VECTOR = "vector"
+    TAGS = "tags"
 
 
 class AssetArtifactStatus(str, Enum):
@@ -195,6 +199,22 @@ class AssetPipeline:
                 cache_lookup=transcode_cache_lookup,
                 generator=transcode_generator,
                 priority=int(os.environ.get("MEDIAAPP_TRANSCODE_PRIORITY", "200")),
+            )
+        )
+        self.register_handler(
+            ArtifactHandler(
+                artifact_type=ArtifactType.VECTOR,
+                cache_lookup=vector_cache_lookup,
+                generator=vector_generator,
+                priority=int(os.environ.get("MEDIAAPP_VECTOR_PRIORITY", "140")),
+            )
+        )
+        self.register_handler(
+            ArtifactHandler(
+                artifact_type=ArtifactType.TAGS,
+                cache_lookup=tags_cache_lookup,
+                generator=tags_generator,
+                priority=int(os.environ.get("MEDIAAPP_TAGS_PRIORITY", "150")),
             )
         )
 
@@ -449,6 +469,30 @@ def request_metadata_artifact(media: Media, session: Session, *, wait_timeout: O
 def request_transcode_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
     pipeline = ensure_pipeline_started()
     return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.TRANSCODE, session=session, wait_timeout=wait_timeout)
+
+
+def request_vector_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
+    pipeline = ensure_pipeline_started()
+    return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.VECTOR, session=session, wait_timeout=wait_timeout)
+
+
+def request_tags_artifact(media: Media, session: Session, *, wait_timeout: Optional[float] = None) -> AssetArtifactResult:
+    pipeline = ensure_pipeline_started()
+    return pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.TAGS, session=session, wait_timeout=wait_timeout)
+
+
+def enqueue_security_gate(media_id: int) -> None:
+    """将某个媒体加入“安检门”处理队列（缩略图/元数据/向量/标签）。"""
+    pipeline = ensure_pipeline_started()
+    with SessionLocal() as session:
+        media = session.query(Media).filter(Media.id == int(media_id)).first()
+        if not media:
+            return
+        # 只排队，不等待；依赖 worker 异步执行。
+        pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.THUMBNAIL, session=session, wait_timeout=0)
+        pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.METADATA, session=session, wait_timeout=0)
+        pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.VECTOR, session=session, wait_timeout=0)
+        pipeline.ensure_artifact(media=media, artifact_type=ArtifactType.TAGS, session=session, wait_timeout=0)
 
 
 def get_cached_artifact(session: Session, media_id: int, artifact_type: ArtifactType) -> Optional[AssetArtifactResult]:

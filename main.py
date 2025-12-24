@@ -25,6 +25,7 @@ from app.api.upload_routes import router as upload_router
 from app.api.fs_routes import router as fs_router
 from app.api.collection_routes import router as collection_router
 from app.api.events_routes import router as events_router
+from app.api.gate_routes import router as gate_router
 from app.services.init_state import InitializationCoordinator, InitializationState
 from app.services.media_initializer import get_configured_media_root, has_indexed_media
 from app.services.asset_pipeline import ensure_pipeline_started, shutdown_pipeline
@@ -60,6 +61,7 @@ app.include_router(upload_router)
 app.include_router(fs_router)
 app.include_router(collection_router)
 app.include_router(events_router)
+app.include_router(gate_router)
 
 # 轻量健康检查，供 Android 客户端自动探测可用服务地址
 @app.get("/health")

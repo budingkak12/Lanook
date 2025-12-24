@@ -573,6 +573,107 @@ def build_missing_embeddings(
     }
 
 
+def build_embeddings_for_media_ids(
+    db: Session,
+    *,
+    media_ids: Sequence[int],
+    base_path: str | None = None,
+    model_name: str | None = None,
+    batch_size: int = 8,
+) -> dict:
+    """为指定 media_ids 增量构建向量（不影响其他媒体）。"""
+    resolved_model = _resolve_model_name(model_name)
+    encoder = _get_encoder(resolved_model)
+
+    if base_path:
+        _ensure_base_dir(base_path)
+
+    ids = [int(x) for x in media_ids if int(x) > 0]
+    if not ids:
+        return {
+            "model": resolved_model,
+            "processed": 0,
+            "skipped": 0,
+            "total_embeddings": db.query(ClipEmbedding).filter(ClipEmbedding.model == resolved_model).count(),
+            "index_path": str(_index_path(resolved_model)),
+            "dim": 0,
+        }
+
+    medias: list[Media] = (
+        db.query(Media)
+        .filter(Media.id.in_(ids))
+        .filter(Media.media_type.in_(["image", "video"]))
+        .all()
+    )
+    if not medias:
+        return {
+            "model": resolved_model,
+            "processed": 0,
+            "skipped": 0,
+            "total_embeddings": db.query(ClipEmbedding).filter(ClipEmbedding.model == resolved_model).count(),
+            "index_path": str(_index_path(resolved_model)),
+            "dim": 0,
+        }
+
+    existing = {
+        int(mid)
+        for (mid,) in db.query(ClipEmbedding.media_id)
+        .filter(ClipEmbedding.model == resolved_model, ClipEmbedding.media_id.in_([m.id for m in medias]))
+        .all()
+    }
+    targets = [m for m in medias if m.id not in existing]
+
+    processed = 0
+    skipped = 0
+
+    for start in range(0, len(targets), batch_size):
+        batch = targets[start : start + batch_size]
+        images: list[Image.Image] = []
+        alive: list[Media] = []
+        for media in batch:
+            input_path = resolve_model_input_image_path(media)
+            img = _load_image(input_path) if input_path else None
+            if img is None:
+                skipped += 1
+                continue
+            images.append(img)
+            alive.append(media)
+        if not images:
+            continue
+        vectors = _encode_images(encoder, images, batch_size)
+        for media, vec in zip(alive, vectors):
+            vec = _normalize(np.asarray(vec, dtype=np.float32))
+            row = ClipEmbedding(
+                media_id=media.id,
+                model=resolved_model,
+                vector=vec.tobytes(),
+                dim=int(vec.shape[0]),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(row)
+            processed += 1
+
+    db.commit()
+
+    all_rows = db.query(ClipEmbedding).filter(ClipEmbedding.model == resolved_model).all()
+    if not all_rows:
+        raise ClipIndexNotReady("向量表为空，请确认媒体是否已导入。")
+    dim = all_rows[0].dim
+    vectors = np.stack([np.frombuffer(row.vector, dtype=np.float32) for row in all_rows])
+    ids_arr = np.array([row.media_id for row in all_rows], dtype=np.int64)
+    _normalize(vectors)
+    index_path = _save_index(vectors, ids_arr, resolved_model)
+
+    return {
+        "model": resolved_model,
+        "processed": processed,
+        "skipped": skipped,
+        "total_embeddings": len(all_rows),
+        "index_path": str(index_path),
+        "dim": dim,
+    }
+
+
 def _load_index_if_available(model_name: str, dim: int) -> Optional[faiss.Index]:
     path = _index_path(model_name)
     if not path.exists():
