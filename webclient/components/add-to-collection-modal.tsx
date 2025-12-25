@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getCollections, addToCollection, Collection } from "@/lib/api"
+import { getCollections, createCollection, addToCollection, Collection } from "@/lib/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { FolderPlus, Check, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { FolderPlus, Check, Loader2, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface AddToCollectionModalProps {
@@ -31,14 +32,52 @@ export function AddToCollectionModal({
     const [collections, setCollections] = useState<Collection[]>([])
     const [loading, setLoading] = useState(false)
     const [submitting, setSubmitting] = useState<number | null>(null)
+    const [showCreate, setShowCreate] = useState(false)
+    const [createName, setCreateName] = useState("")
+    const [createDescription, setCreateDescription] = useState("")
+    const [creating, setCreating] = useState(false)
     const { toast } = useToast()
 
     useEffect(() => {
         if (open) {
             setLoading(true)
+            setShowCreate(false)
+            setCreateName("")
+            setCreateDescription("")
             getCollections().then(setCollections).finally(() => setLoading(false))
         }
     }, [open])
+
+    const handleCreateAndAdd = async () => {
+        const name = createName.trim()
+        if (!name) {
+            toast({
+                title: "请输入合集名称",
+                description: "合集名称不能为空",
+            })
+            return
+        }
+
+        const description = createDescription.trim() || undefined
+
+        setCreating(true)
+        try {
+            const col = await createCollection(name, description)
+            setCollections(prev => [col, ...prev.filter(item => item.id !== col.id)])
+            setShowCreate(false)
+            setCreateName("")
+            setCreateDescription("")
+            await handleAdd(col.id)
+        } catch (err) {
+            console.error(err)
+            toast({
+                title: "创建失败",
+                description: err instanceof Error ? err.message : "请稍后重试",
+            })
+        } finally {
+            setCreating(false)
+        }
+    }
 
     const handleAdd = async (collectionId: number) => {
         setSubmitting(collectionId)
@@ -98,6 +137,8 @@ export function AddToCollectionModal({
         }
     }
 
+    const shouldShowCreate = showCreate || (!loading && collections.length === 0)
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md bg-card border-border">
@@ -106,12 +147,65 @@ export function AddToCollectionModal({
                 </DialogHeader>
 
                 <div className="py-4 space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                    {!loading && collections.length > 0 && (
+                        <div className="flex items-center justify-end">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowCreate((prev) => !prev)}
+                                disabled={submitting !== null || creating}
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                新建合集
+                            </Button>
+                        </div>
+                    )}
+
+                    {shouldShowCreate && (
+                        <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+                            <div className="space-y-2">
+                                <Input
+                                    value={createName}
+                                    onChange={(e) => setCreateName(e.target.value)}
+                                    placeholder="合集名称（必填）"
+                                    disabled={creating || submitting !== null}
+                                />
+                                <Input
+                                    value={createDescription}
+                                    onChange={(e) => setCreateDescription(e.target.value)}
+                                    placeholder="描述（可选）"
+                                    disabled={creating || submitting !== null}
+                                />
+                            </div>
+                            <div className="flex items-center justify-end gap-2">
+                                {collections.length > 0 && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowCreate(false)}
+                                        disabled={creating}
+                                    >
+                                        取消
+                                    </Button>
+                                )}
+                                <Button
+                                    size="sm"
+                                    onClick={handleCreateAndAdd}
+                                    disabled={creating || submitting !== null || createName.trim().length === 0}
+                                >
+                                    {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    创建并添加
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     {loading ? (
                         <div className="flex justify-center py-8">
                             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : collections.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
+                        <div className="text-center py-4 text-muted-foreground">
                             尚未创建任何合集
                         </div>
                     ) : (
@@ -119,7 +213,7 @@ export function AddToCollectionModal({
                             <button
                                 key={col.id}
                                 onClick={() => handleAdd(col.id)}
-                                disabled={submitting !== null}
+                                disabled={submitting !== null || creating}
                                 className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-primary/10 transition-colors group border border-transparent hover:border-primary/20"
                             >
                                 <div className="flex items-center gap-3">
