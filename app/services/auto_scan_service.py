@@ -22,6 +22,7 @@ from app.db import (
 )
 from app.db.models_extra import MediaSource
 from app.services.access_layer import SourceAccessLayer, classify_media_type, detect_source_type
+from app.services.asset_pipeline import enqueue_security_gate
 from app.services.media_initializer import get_configured_media_root
 from app.services.scan_service import scan_source_once
 from app.services.query_filters import apply_active_source_filter
@@ -258,6 +259,14 @@ class _MediaFileHandler(FileSystemEventHandler):
                 if inserted:
                     session.commit()
                     print(f"[auto-scan] 新媒体文件入库: {Path(file_path).name}")
+                    try:
+                        abs_path = str(Path(file_path).expanduser().resolve())
+                        media_id = session.query(Media.id).filter(Media.absolute_path == abs_path).scalar()
+                        if media_id:
+                            enqueue_security_gate(int(media_id))
+                            print(f"[auto-scan] 安检门已排队: {Path(file_path).name}")
+                    except Exception as exc:
+                        print(f"[auto-scan] 安检门排队失败 {file_path}: {exc}")
                 else:
                     session.rollback()
                     print(f"[auto-scan] 文件已存在或类型不受支持，跳过: {file_path}")
